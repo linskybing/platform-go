@@ -1,22 +1,36 @@
 package db
 
 import (
-    "log"
-    "os"
-    "platform-go/models"
-    "gorm.io/driver/postgres"
-    "gorm.io/gorm"
+	"fmt"
+	"log"
+
+	"github.com/linskybing/platform-go/config"
+	"github.com/linskybing/platform-go/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
 
 func Init() {
-    dsn := os.Getenv("DB_DSN")
-    var err error
-    DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-    if err != nil {
-        log.Fatal("Failed to connect to DB:", err)
-    }
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		config.DbHost,
+		config.DbPort,
+		config.DbUser,
+		config.DbPassword,
+		config.DbName,
+	)
 
-    DB.AutoMigrate(&models.User{})
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatal("Failed to connect to DB:", err)
+	}
+
+	if err := DB.AutoMigrate(&models.User{}); err != nil {
+		log.Fatal("Failed to auto migrate:", err)
+	}
+
+	log.Println("Database connected and migrated")
 }
