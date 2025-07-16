@@ -1,3 +1,7 @@
+* text=auto
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
 main filter=lfs diff=lfs merge=lfs -text
 platform filter=lfs diff=lfs merge=lfs -text
 integration.test filter=lfs diff=lfs merge=lfs -text
