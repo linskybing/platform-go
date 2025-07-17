@@ -8,22 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/linskybing/platform-go/config"
+	"github.com/linskybing/platform-go/types"
 )
 
 var jwtKey []byte
-
-type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	jwt.RegisteredClaims
-}
 
 func Init() {
 	jwtKey = []byte(config.JwtSecret)
 }
 
 func GenerateToken(userID uint, username string, expireDuration time.Duration) (string, error) {
-	claims := &Claims{
+	claims := &types.Claims{
 		UserID:   userID,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -38,8 +33,8 @@ func GenerateToken(userID uint, username string, expireDuration time.Duration) (
 	return token.SignedString(jwtKey)
 }
 
-func ParseToken(tokenStr string) (*Claims, error) {
-	claims := &Claims{}
+func ParseToken(tokenStr string) (*types.Claims, error) {
+	claims := &types.Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil

@@ -5,12 +5,13 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/linskybing/platform-go/types"
 	"github.com/linskybing/platform-go/utils"
 )
 
 func AuthorizeUserOrAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims, ok := c.MustGet("claims").(*Claims)
+		claims, ok := c.MustGet("claims").(*types.Claims)
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			return
@@ -51,7 +52,7 @@ func AuthorizeUserOrAdmin() gin.HandlerFunc {
 
 func AuthorizeAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims, ok := c.MustGet("claims").(*Claims)
+		claims, ok := c.MustGet("claims").(*types.Claims)
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			return
