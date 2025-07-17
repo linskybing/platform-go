@@ -1,3 +1,7 @@
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT Authorization header using the Bearer scheme. Example: "Bearer {token}"
 package main
 
 import (
