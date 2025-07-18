@@ -1,18 +1,12 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/linskybing/platform-go/db"
 	"github.com/linskybing/platform-go/dto"
-	"github.com/linskybing/platform-go/middleware"
-	"github.com/linskybing/platform-go/models"
 	"github.com/linskybing/platform-go/response"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
+	"github.com/linskybing/platform-go/services"
 )
 
 // Register godoc
@@ -34,39 +28,13 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	var existing models.User
-	err := db.DB.Where("username = ?", input.Username).First(&existing).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "database error"})
-		return
-	}
-
-	if err == nil {
-		c.JSON(http.StatusConflict, response.ErrorResponse{Error: "Username already taken"})
-		return
-	}
-
-	hashed, _ := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-
-	user := models.User{
-		Username: input.Username,
-		Password: string(hashed),
-		Email:    input.Email,
-		FullName: input.FullName,
-		Type:     "origin",
-		Status:   "offline",
-	}
-
-	if input.Type != nil {
-		user.Type = *input.Type
-	}
-
-	if input.Status != nil {
-		user.Status = *input.Status
-	}
-
-	if err := db.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to create user"})
+	err := services.RegisterUser(input)
+	if err != nil {
+		if err.Error() == "username already taken" {
+			c.JSON(http.StatusConflict, response.ErrorResponse{Error: err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		}
 		return
 	}
 
@@ -96,20 +64,9 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := db.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Invalid username or password"})
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Invalid username or password"})
-		return
-	}
-
-	token, err := middleware.GenerateToken(user.UID, user.Username, time.Hour*24)
+	user, token, err := services.LoginUser(req.Username, req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to generate token"})
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: err.Error()})
 		return
 	}
 
