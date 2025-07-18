@@ -116,26 +116,16 @@ func CheckPermissionPayload(permission string, dtoType any) gin.HandlerFunc {
 	}
 }
 
-func CheckPermissionByParam(getDataByID func(uint) (any, uint, error)) gin.HandlerFunc {
+func CheckPermissionByParam(getDataByID func(uint) (uint, error)) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get resource ID from path parameter `id`
-		idStr := c.Param("id")
-		if idStr == "" {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Missing resource ID in path"})
-			c.Abort()
-			return
-		}
-
-		id64, err := strconv.ParseUint(idStr, 10, 64)
+		id, err := utils.ParseIDParam(c, "id")
 		if err != nil {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid resource ID"})
-			c.Abort()
+			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid group id"})
 			return
 		}
-		id := uint(id64)
 
 		// Lookup GID from the given resource ID using the passed function
-		data, gid, err := getDataByID(id)
+		gid, err := getDataByID(id)
 		if err != nil {
 			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "Resource not found"})
 			c.Abort()
@@ -157,8 +147,6 @@ func CheckPermissionByParam(getDataByID func(uint) (any, uint, error)) gin.Handl
 			c.Abort()
 			return
 		}
-
-		c.Set("resourceData", data)
 
 		c.Next()
 	}

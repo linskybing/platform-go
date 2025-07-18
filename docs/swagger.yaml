@@ -1,16 +1,4 @@
 definitions:
-  dto.CreateProjectDTO:
-    properties:
-      description:
-        type: string
-      g_id:
-        type: integer
-      project_name:
-        type: string
-    required:
-    - g_id
-    - project_name
-    type: object
   dto.CreateUserInput:
     properties:
       email:
@@ -41,13 +29,6 @@ definitions:
     required:
     - password
     - username
-    type: object
-  dto.GroupUpdateDTO:
-    properties:
-      description:
-        type: string
-      group_name:
-        type: string
     type: object
   dto.UserDTO:
     properties:
@@ -134,13 +115,6 @@ definitions:
       error:
         type: string
     type: object
-  response.GroupResponse:
-    properties:
-      group:
-        $ref: '#/definitions/models.Group'
-      message:
-        type: string
-    type: object
   response.MessageResponse:
     properties:
       message:
@@ -158,7 +132,69 @@ definitions:
 info:
   contact: {}
 paths:
-  /group:
+  /audit/logs:
+    get:
+      description: Retrieve audit logs filtered by optional parameters like user_id,
+        resource_type, action, time range, with pagination support.
+      parameters:
+      - description: User ID to filter logs by user
+        example: 123
+        in: query
+        name: user_id
+        type: integer
+      - description: Resource type to filter
+        example: '"pod"'
+        in: query
+        name: resource_type
+        type: string
+      - description: Action type to filter
+        example: '"create"'
+        in: query
+        name: action
+        type: string
+      - description: Start time in RFC3339 format, e.g. 2023-01-01T00:00:00Z
+        example: '"2023-01-01T00:00:00Z"'
+        in: query
+        name: start_time
+        type: string
+      - description: End time in RFC3339 format, e.g. 2023-02-01T00:00:00Z
+        example: '"2023-02-01T00:00:00Z"'
+        in: query
+        name: end_time
+        type: string
+      - description: Max number of records to return (default 100, max 1000)
+        example: 100
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination (default 0)
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of audit logs
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Query audit logs
+      tags:
+      - audit
+  /groups:
     get:
       produces:
       - application/json
@@ -197,7 +233,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/response.GroupResponse'
+            $ref: '#/definitions/models.Group'
         "400":
           description: Bad request
           schema:
@@ -215,7 +251,7 @@ paths:
       summary: Create a new group
       tags:
       - groups
-  /group/{id}:
+  /groups/{id}:
     delete:
       parameters:
       - description: Group ID
@@ -291,12 +327,14 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Group update input
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/dto.GroupUpdateDTO'
+      - description: Group name
+        in: formData
+        name: group_name
+        type: string
+      - description: Description
+        in: formData
+        name: description
+        type: string
       produces:
       - application/json
       responses:
@@ -360,7 +398,6 @@ paths:
       - auth
   /projects:
     get:
-      description: Returns a list of all projects
       produces:
       - application/json
       responses:
@@ -374,20 +411,29 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Get all projects
+      security:
+      - BearerAuth: []
+      summary: List all projects
       tags:
       - projects
     post:
       consumes:
       - multipart/form-data
-      description: Creates a project with name, group and optional description
       parameters:
-      - description: Project to create
-        in: body
-        name: project
+      - description: Project name
+        in: formData
+        name: project_name
         required: true
-        schema:
-          $ref: '#/definitions/dto.CreateProjectDTO'
+        type: string
+      - description: Description
+        in: formData
+        name: description
+        type: string
+      - description: Group ID
+        in: formData
+        name: g_id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
@@ -396,19 +442,20 @@ paths:
           schema:
             $ref: '#/definitions/models.Project'
         "400":
-          description: Bad Request
+          description: Bad request
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Create a new project
       tags:
       - projects
   /projects/{id}:
     delete:
-      description: Deletes a project by its ID
       parameters:
       - description: Project ID
         in: path
@@ -418,27 +465,28 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: Project deleted
           schema:
-            type: string
-        "403":
-          description: Forbidden
+            $ref: '#/definitions/response.MessageResponse'
+        "400":
+          description: Invalid project id
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "404":
-          description: Not Found
+          description: Project not found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Delete a project by ID
+      security:
+      - BearerAuth: []
+      summary: Delete project by ID
       tags:
       - projects
     get:
-      description: Returns a single project by its ID
       parameters:
       - description: Project ID
         in: path
@@ -452,18 +500,26 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.Project'
-        "404":
-          description: Not Found
+        "400":
+          description: Invalid project id
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Get a project by ID
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project by ID
       tags:
       - projects
     put:
       consumes:
       - multipart/form-data
-      description: Update a project by ID. All fields are optional; only provided
-        fields will be updated.
       parameters:
       - description: Project ID
         in: path
@@ -474,14 +530,14 @@ paths:
         in: formData
         name: project_name
         type: string
-      - description: Group ID
-        in: formData
-        name: gid
-        type: integer
-      - description: Project description
+      - description: Description
         in: formData
         name: description
         type: string
+      - description: Group ID
+        in: formData
+        name: g_id
+        type: integer
       produces:
       - application/json
       responses:
@@ -490,22 +546,20 @@ paths:
           schema:
             $ref: '#/definitions/models.Project'
         "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorResponse'
-        "403":
-          description: Forbidden
+          description: Bad request
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "404":
-          description: Not Found
+          description: Project not found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Update a project
+      security:
+      - BearerAuth: []
+      summary: Update project by ID
       tags:
       - projects
   /register:
@@ -585,6 +639,37 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete user by ID
+      tags:
+      - users
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserWithSuperAdmin'
+        "400":
+          description: Invalid user id
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
       tags:
       - users
     put:

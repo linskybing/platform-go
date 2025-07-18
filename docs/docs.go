@@ -15,7 +15,98 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/group": {
+        "/audit/logs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve audit logs filtered by optional parameters like user_id, resource_type, action, time range, with pagination support.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "audit"
+                ],
+                "summary": "Query audit logs",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 123,
+                        "description": "User ID to filter logs by user",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"pod\"",
+                        "description": "Resource type to filter",
+                        "name": "resource_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"create\"",
+                        "description": "Action type to filter",
+                        "name": "action",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"2023-01-01T00:00:00Z\"",
+                        "description": "Start time in RFC3339 format, e.g. 2023-01-01T00:00:00Z",
+                        "name": "start_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"2023-02-01T00:00:00Z\"",
+                        "description": "End time in RFC3339 format, e.g. 2023-02-01T00:00:00Z",
+                        "name": "end_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 100,
+                        "description": "Max number of records to return (default 100, max 1000)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 0,
+                        "description": "Offset for pagination (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of audit logs",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/groups": {
             "get": {
                 "security": [
                     {
@@ -82,7 +173,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/response.GroupResponse"
+                            "$ref": "#/definitions/models.Group"
                         }
                     },
                     "400": {
@@ -106,7 +197,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/group/{id}": {
+        "/groups/{id}": {
             "get": {
                 "security": [
                     {
@@ -181,13 +272,16 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Group update input",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.GroupUpdateDTO"
-                        }
+                        "type": "string",
+                        "description": "Group name",
+                        "name": "group_name",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Description",
+                        "name": "description",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -331,14 +425,18 @@ const docTemplate = `{
         },
         "/projects": {
             "get": {
-                "description": "Returns a list of all projects",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "projects"
                 ],
-                "summary": "Get all projects",
+                "summary": "List all projects",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -358,7 +456,11 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Creates a project with name, group and optional description",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -371,13 +473,24 @@ const docTemplate = `{
                 "summary": "Create a new project",
                 "parameters": [
                     {
-                        "description": "Project to create",
-                        "name": "project",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateProjectDTO"
-                        }
+                        "type": "string",
+                        "description": "Project name",
+                        "name": "project_name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Description",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Group ID",
+                        "name": "g_id",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -388,13 +501,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -404,14 +517,18 @@ const docTemplate = `{
         },
         "/projects/{id}": {
             "get": {
-                "description": "Returns a single project by its ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "projects"
                 ],
-                "summary": "Get a project by ID",
+                "summary": "Get project by ID",
                 "parameters": [
                     {
                         "type": "integer",
@@ -428,8 +545,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.Project"
                         }
                     },
+                    "400": {
+                        "description": "Invalid project id",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Project not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -437,7 +566,11 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Update a project by ID. All fields are optional; only provided fields will be updated.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -447,7 +580,7 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "Update a project",
+                "summary": "Update project by ID",
                 "parameters": [
                     {
                         "type": "integer",
@@ -463,15 +596,15 @@ const docTemplate = `{
                         "in": "formData"
                     },
                     {
-                        "type": "integer",
-                        "description": "Group ID",
-                        "name": "gid",
+                        "type": "string",
+                        "description": "Description",
+                        "name": "description",
                         "in": "formData"
                     },
                     {
-                        "type": "string",
-                        "description": "Project description",
-                        "name": "description",
+                        "type": "integer",
+                        "description": "Group ID",
+                        "name": "g_id",
                         "in": "formData"
                     }
                 ],
@@ -483,25 +616,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Project not found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -509,14 +636,18 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Deletes a project by its ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "projects"
                 ],
-                "summary": "Delete a project by ID",
+                "summary": "Delete project by ID",
                 "parameters": [
                     {
                         "type": "integer",
@@ -527,26 +658,26 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content",
+                    "200": {
+                        "description": "Project deleted",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.MessageResponse"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
+                    "400": {
+                        "description": "Invalid project id",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Project not found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -639,6 +770,55 @@ const docTemplate = `{
             }
         },
         "/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserWithSuperAdmin"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user id",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "put": {
                 "security": [
                     {
@@ -777,24 +957,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.CreateProjectDTO": {
-            "type": "object",
-            "required": [
-                "g_id",
-                "project_name"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "g_id": {
-                    "type": "integer"
-                },
-                "project_name": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.CreateUserInput": {
             "type": "object",
             "required": [
@@ -834,17 +996,6 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "johndoe"
-                }
-            }
-        },
-        "dto.GroupUpdateDTO": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "group_name": {
-                    "type": "string"
                 }
             }
         },
@@ -969,17 +1120,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "error": {
-                    "type": "string"
-                }
-            }
-        },
-        "response.GroupResponse": {
-            "type": "object",
-            "properties": {
-                "group": {
-                    "$ref": "#/definitions/models.Group"
-                },
-                "message": {
                     "type": "string"
                 }
             }

@@ -109,6 +109,24 @@ SELECT
 FROM project p
 JOIN resource r ON r.p_id = p.p_id;
 
+-- View: project_resource_view
+CREATE OR REPLACE VIEW group_resource_views AS
+SELECT
+  g.g_id,
+  g.group_name,
+  p.p_id,
+  p.project_name,
+  r.r_id,
+  r.type AS resource_type,
+  r.name AS resource_name,
+  r.filename,
+  r.create_at AS resource_create_at,
+  r.update_at AS resource_update_at
+FROM group_list g
+LEFT JOIN project p ON p.g_id = g.g_id
+LEFT JOIN resource r ON r.p_id = p.p_id
+WHERE r.r_id IS NOT NULL;
+
 -- View: user_group_view
 CREATE OR REPLACE VIEW user_group_views AS
 SELECT
@@ -141,13 +159,13 @@ LEFT JOIN user_group_views ug ON u.u_id = ug.u_id AND ug.group_name = 'super' AN
 INSERT INTO group_list (group_name, description)
 VALUES ('super', 'Super administrator group');
 
--- INSERT INTO users (username, password, type, status, full_name, email)
--- VALUES ('admin', 'admin123', 'origin', 'offline', 'Administrator', '');
+INSERT INTO users (username, password, type, status, full_name, email)
+VALUES ('admin', '$2a$10$nsXJXOUAbVyLbvtPizj0RectJWdInu17C2NpWEVKNvwzKQcg8bchu', 'origin', 'offline', 'Administrator', '');
 
--- INSERT INTO user_group (u_id, g_id, role)
--- SELECT u.u_id, g.g_id, 'admin'
--- FROM users u, group_list g
--- WHERE u.username = 'admin' AND g.group_name = 'super';
+INSERT INTO user_group (u_id, g_id, role)
+SELECT u.u_id, g.g_id, 'admin'
+FROM users u, group_list g
+WHERE u.username = 'admin' AND g.group_name = 'super';
 
 -- Job
 -- SELECT cron.schedule(

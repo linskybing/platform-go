@@ -3,12 +3,12 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/dto"
 	"github.com/linskybing/platform-go/response"
 	"github.com/linskybing/platform-go/services"
+	"github.com/linskybing/platform-go/utils"
 	"gorm.io/gorm"
 )
 
@@ -41,13 +41,11 @@ func GetGroups(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /groups/{id} [get]
 func GetGroupByID(c *gin.Context) {
-	id := c.Param("id")
-	gid, err := strconv.ParseUint(id, 10, 64)
+	gid, err := utils.ParseIDParam(c, "id")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid group id"})
 		return
 	}
-
 	group, err := services.GetGroup(uint(gid))
 	if err != nil {
 		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "group not found"})
@@ -80,7 +78,7 @@ func CreateGroup(c *gin.Context) {
 	group, err := services.CreateGroup(c, input)
 	if err != nil {
 		if err == services.ErrReservedGroupName {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: err.Error()})
 		} else {
 			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		}
@@ -105,13 +103,11 @@ func CreateGroup(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /groups/{id} [put]
 func UpdateGroup(c *gin.Context) {
-	idParam := c.Param("id")
-	id64, err := strconv.ParseUint(idParam, 10, 64)
+	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid group id"})
 		return
 	}
-	id := uint(id64)
 
 	var input dto.GroupUpdateDTO
 	if err := c.ShouldBind(&input); err != nil {
@@ -122,7 +118,7 @@ func UpdateGroup(c *gin.Context) {
 	group, err := services.UpdateGroup(c, id, input)
 	if err != nil {
 		if err == services.ErrReservedGroupName {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: err.Error()})
 		} else if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "group not found"})
 		} else {
@@ -147,13 +143,11 @@ func UpdateGroup(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /groups/{id} [delete]
 func DeleteGroup(c *gin.Context) {
-	idParam := c.Param("id")
-	id64, err := strconv.ParseUint(idParam, 10, 64)
+	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid group id"})
 		return
 	}
-	id := uint(id64)
 
 	err = services.DeleteGroup(c, id)
 	if err != nil {

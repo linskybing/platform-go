@@ -22,6 +22,19 @@ type ProjectResourceView struct {
 	ResourceUpdateAt string `gorm:"column:resource_update_at"`
 }
 
+type GroupResourceView struct {
+	GID              uint   `gorm:"column:g_id"`
+	GroupName        string `gorm:"column:group_name"`
+	PID              uint   `gorm:"column:p_id"`
+	ProjectName      string `gorm:"column:project_name"`
+	RID              uint   `gorm:"column:r_id"`
+	ResourceType     string `gorm:"column:resource_type"`
+	ResourceName     string `gorm:"column:resource_name"`
+	Filename         string `gorm:"column:filename"`
+	ResourceCreateAt string `gorm:"column:resource_create_at"`
+	ResourceUpdateAt string `gorm:"column:resource_update_at"`
+}
+
 type UserGroupView struct {
 	UID       uint   `gorm:"column:u_id"`
 	Username  string `gorm:"column:username"`

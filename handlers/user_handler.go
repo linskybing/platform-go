@@ -2,14 +2,12 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/linskybing/platform-go/db"
 	"github.com/linskybing/platform-go/dto"
-	"github.com/linskybing/platform-go/models"
 	"github.com/linskybing/platform-go/response"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/linskybing/platform-go/services"
+	"github.com/linskybing/platform-go/utils"
 )
 
 // GetUsers godoc
@@ -21,12 +19,11 @@ import (
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /users [get]
 func GetUsers(c *gin.Context) {
-	var users []models.UserWithSuperAdmin
-	if err := db.DB.Find(&users).Error; err != nil {
+	users, err := services.ListUsers()
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, users)
 }
 
@@ -40,17 +37,16 @@ func GetUsers(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse "Invalid user id"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /users/{id} [get]
 func GetUserByID(c *gin.Context) {
-	idStr := c.Param("id")
-	idUint64, err := strconv.ParseUint(idStr, 10, 64)
+	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid user id"})
 		return
 	}
-	id := uint(idUint64)
 
-	var user models.UserWithSuperAdmin
-	if err := db.DB.First(&user, id).Error; err != nil {
+	user, err := services.FindUserByID(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "User not found"})
 		return
 	}
@@ -78,17 +74,9 @@ func GetUserByID(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /users/{id} [put]
 func UpdateUser(c *gin.Context) {
-	idParam := c.Param("id")
-	targetUserID64, err := strconv.ParseUint(idParam, 10, 64)
+	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid user id"})
-		return
-	}
-	targetUserID := uint(targetUserID64)
-
-	var user models.User
-	if err := db.DB.First(&user, targetUserID).Error; err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "User not found"})
 		return
 	}
 
@@ -98,46 +86,20 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	if input.Password != nil {
-		if input.OldPassword == nil {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Old password is required to change password"})
-			return
+	updatedUser, err := services.UpdateUser(id, input)
+	if err != nil {
+		switch err {
+		case services.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: err.Error()})
+		case services.ErrMissingOldPassword, services.ErrIncorrectPassword:
+			c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		}
-		err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(*input.OldPassword))
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Old password is incorrect"})
-			return
-		}
-		hashed, err := bcrypt.GenerateFromPassword([]byte(*input.Password), bcrypt.DefaultCost)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to hash new password"})
-			return
-		}
-		user.Password = string(hashed)
-	}
-
-	if input.Type != nil {
-		user.Type = *input.Type
-	}
-
-	if input.Status != nil {
-		user.Status = *input.Status
-	}
-
-	if input.Email != nil {
-		user.Email = input.Email
-	}
-
-	if input.FullName != nil {
-		user.FullName = input.FullName
-	}
-
-	if err := db.DB.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, updatedUser)
 }
 
 // DeleteUser godoc
@@ -151,17 +113,16 @@ func UpdateUser(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /users/{id} [delete]
 func DeleteUser(c *gin.Context) {
-	idParam := c.Param("id")
-	targetUserID64, err := strconv.ParseUint(idParam, 10, 64)
+	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid user id"})
 		return
 	}
-	targetUserID := uint(targetUserID64)
 
-	if err := db.DB.Delete(&models.User{}, targetUserID).Error; err != nil {
+	if err := services.RemoveUser(id); err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
 	}
+
 	c.Status(http.StatusNoContent)
 }

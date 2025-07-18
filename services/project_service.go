@@ -12,7 +12,7 @@ import (
 
 var ErrProjectNotFound = errors.New("project not found")
 
-func GetProject(id string) (models.Project, error) {
+func GetProject(id uint) (models.Project, error) {
 	project, err := repositories.GetProjectByID(id)
 	if err != nil {
 		return models.Project{}, ErrProjectNotFound
@@ -36,7 +36,7 @@ func CreateProject(c *gin.Context, input dto.CreateProjectDTO) (models.Project, 
 	return project, err
 }
 
-func UpdateProject(c *gin.Context, id string, input dto.UpdateProjectDTO) (models.Project, error) {
+func UpdateProject(c *gin.Context, id uint, input dto.UpdateProjectDTO) (models.Project, error) {
 	project, err := repositories.GetProjectByID(id)
 	if err != nil {
 		return models.Project{}, ErrProjectNotFound
@@ -63,7 +63,7 @@ func UpdateProject(c *gin.Context, id string, input dto.UpdateProjectDTO) (model
 	return project, err
 }
 
-func DeleteProject(c *gin.Context, id string) error {
+func DeleteProject(c *gin.Context, id uint) error {
 	project, err := repositories.GetProjectByID(id)
 	if err != nil {
 		return ErrProjectNotFound
