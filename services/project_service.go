@@ -1,0 +1,82 @@
+package services
+
+import (
+	"errors"
+
+	"github.com/gin-gonic/gin"
+	"github.com/linskybing/platform-go/dto"
+	"github.com/linskybing/platform-go/models"
+	"github.com/linskybing/platform-go/repositories"
+	"github.com/linskybing/platform-go/utils"
+)
+
+var ErrProjectNotFound = errors.New("project not found")
+
+func GetProject(id string) (models.Project, error) {
+	project, err := repositories.GetProjectByID(id)
+	if err != nil {
+		return models.Project{}, ErrProjectNotFound
+	}
+	return project, nil
+}
+
+func CreateProject(c *gin.Context, input dto.CreateProjectDTO) (models.Project, error) {
+	project := models.Project{
+		ProjectName: input.ProjectName,
+		GID:         input.GID,
+	}
+	if input.Description != nil {
+		project.Description = *input.Description
+	}
+	err := repositories.CreateProject(&project)
+	if err == nil {
+		userID, _ := utils.GetUserIDFromContext(c)
+		_ = utils.LogAudit(c, userID, "create", "project", project.PID, nil, project, "")
+	}
+	return project, err
+}
+
+func UpdateProject(c *gin.Context, id string, input dto.UpdateProjectDTO) (models.Project, error) {
+	project, err := repositories.GetProjectByID(id)
+	if err != nil {
+		return models.Project{}, ErrProjectNotFound
+	}
+
+	oldProject := project
+
+	if input.ProjectName != nil {
+		project.ProjectName = *input.ProjectName
+	}
+	if input.Description != nil {
+		project.Description = *input.Description
+	}
+	if input.GID != nil {
+		project.GID = *input.GID
+	}
+
+	err = repositories.UpdateProject(&project)
+	if err == nil {
+		userID, _ := utils.GetUserIDFromContext(c)
+		_ = utils.LogAudit(c, userID, "update", "project", project.PID, oldProject, project, "")
+	}
+
+	return project, err
+}
+
+func DeleteProject(c *gin.Context, id string) error {
+	project, err := repositories.GetProjectByID(id)
+	if err != nil {
+		return ErrProjectNotFound
+	}
+
+	err = repositories.DeleteProject(id)
+	if err == nil {
+		userID, _ := utils.GetUserIDFromContext(c)
+		_ = utils.LogAudit(c, userID, "delete", "project", project.PID, project, nil, "")
+	}
+	return err
+}
+
+func ListProjects() ([]models.Project, error) {
+	return repositories.ListProjects()
+}

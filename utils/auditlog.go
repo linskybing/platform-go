@@ -2,44 +2,53 @@ package utils
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/linskybing/platform-go/db"
 	"github.com/linskybing/platform-go/models"
+	"github.com/linskybing/platform-go/repositories"
 )
 
-func LogAudit(c *gin.Context, userID uint, action, resourceType string, resourceID uint, oldObj interface{}, newObj interface{}, description *string) error {
-	var oldDataJSON, newDataJSON []byte
+func LogAudit(
+	c *gin.Context,
+	userID uint,
+	action string,
+	resourceType string,
+	resourceID uint,
+	before any,
+	after any,
+	description string,
+) error {
+	var oldData, newData []byte
 	var err error
 
-	if oldObj != nil {
-		oldDataJSON, err = json.Marshal(oldObj)
+	if before != nil {
+		oldData, err = json.Marshal(before)
 		if err != nil {
-			return err
+			log.Printf("Audit marshal oldData error: %v", err)
 		}
 	}
-	if newObj != nil {
-		newDataJSON, err = json.Marshal(newObj)
+	if after != nil {
+		newData, err = json.Marshal(after)
 		if err != nil {
-			return err
+			log.Printf("Audit marshal newData error: %v", err)
 		}
 	}
 
-	input_description := ""
-	if description != nil {
-		input_description = *description
-	}
-	auditLog := models.AuditLog{
+	ip := c.ClientIP()
+	ua := c.GetHeader("User-Agent")
+
+	audit := &models.AuditLog{
 		UserID:       userID,
 		Action:       action,
 		ResourceType: resourceType,
 		ResourceID:   resourceID,
-		OldData:      oldDataJSON,
-		NewData:      newDataJSON,
-		IPAddress:    c.ClientIP(),
-		UserAgent:    c.Request.UserAgent(),
-		Description:  input_description,
+		OldData:      oldData,
+		NewData:      newData,
+		IPAddress:    ip,
+		UserAgent:    ua,
+		Description:  description,
 	}
 
-	return db.DB.Create(&auditLog).Error
+	return repositories.CreateAuditLog(audit)
 }
