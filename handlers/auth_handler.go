@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,7 @@ func Register(c *gin.Context) {
 
 	err := services.RegisterUser(input)
 	if err != nil {
-		if err.Error() == "username already taken" {
+		if errors.Is(err, services.ErrUsernameTaken) {
 			c.JSON(http.StatusConflict, response.ErrorResponse{Error: err.Error()})
 		} else {
 			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
@@ -66,7 +67,7 @@ func Login(c *gin.Context) {
 
 	user, token, err := services.LoginUser(req.Username, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Invalid username or password"})
 		return
 	}
 

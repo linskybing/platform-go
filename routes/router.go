@@ -2,8 +2,10 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/linskybing/platform-go/dto"
 	"github.com/linskybing/platform-go/handlers"
 	"github.com/linskybing/platform-go/middleware"
+	"github.com/linskybing/platform-go/repositories"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -13,13 +15,18 @@ func RegisterRoutes(r *gin.Engine) {
 	auth := r.Group("/")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
+		audit := auth.Group("/audit/logs")
+		{
+			audit.GET("", handlers.GetAuditLogs)
+		}
+
 		projects := auth.Group("/projects")
 		{
 			projects.GET("", handlers.GetProjects)
 			projects.GET("/:id", handlers.GetProjectByID)
-			projects.POST("", handlers.CreateProject)
+			projects.POST("", middleware.CheckPermissionPayload("create_project", dto.CreateProjectDTO{}), handlers.CreateProject)
 			projects.PUT("/:id", handlers.UpdateProject)
-			projects.DELETE("/:id", handlers.DeleteProject)
+			projects.DELETE("/:id", middleware.CheckPermissionByParam(repositories.GetGroupIDByProjectID), handlers.DeleteProject)
 		}
 		users := auth.Group("/users")
 		{

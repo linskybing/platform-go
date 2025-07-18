@@ -8,8 +8,17 @@ import (
 	"github.com/linskybing/platform-go/dto"
 	"github.com/linskybing/platform-go/middleware"
 	"github.com/linskybing/platform-go/models"
+	"github.com/linskybing/platform-go/repositories"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+)
+
+var (
+	ErrUserNotFound        = errors.New("user not found")
+	ErrIncorrectPassword   = errors.New("old password is incorrect")
+	ErrMissingOldPassword  = errors.New("old password is required to change password")
+	ErrPasswordHashFailure = errors.New("failed to hash new password")
+	ErrUsernameTaken       = errors.New("username already taken")
 )
 
 func RegisterUser(input dto.CreateUserInput) error {
@@ -19,10 +28,13 @@ func RegisterUser(input dto.CreateUserInput) error {
 		return err
 	}
 	if err == nil {
-		return errors.New("username already taken")
+		return ErrUsernameTaken
 	}
 
-	hashed, _ := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return ErrPasswordHashFailure
+	}
 
 	user := models.User{
 		Username: input.Username,
@@ -58,4 +70,55 @@ func LoginUser(username, password string) (models.User, string, error) {
 	}
 
 	return user, token, nil
+}
+
+func ListUsers() ([]models.UserWithSuperAdmin, error) {
+	return repositories.GetAllUsers()
+}
+
+func FindUserByID(id uint) (models.UserWithSuperAdmin, error) {
+	return repositories.GetUserByID(id)
+}
+
+func UpdateUser(id uint, input dto.UpdateUserInput) (models.User, error) {
+	user, err := repositories.GetUserRawByID(id)
+	if err != nil {
+		return models.User{}, ErrUserNotFound
+	}
+
+	if input.Password != nil {
+		if input.OldPassword == nil {
+			return models.User{}, ErrMissingOldPassword
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(*input.OldPassword)); err != nil {
+			return models.User{}, ErrIncorrectPassword
+		}
+		hashed, err := bcrypt.GenerateFromPassword([]byte(*input.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return models.User{}, ErrPasswordHashFailure
+		}
+		user.Password = string(hashed)
+	}
+
+	if input.Type != nil {
+		user.Type = string(*input.Type) // enum to string
+	}
+	if input.Status != nil {
+		user.Status = string(*input.Status) // enum to string
+	}
+	if input.Email != nil {
+		user.Email = input.Email
+	}
+	if input.FullName != nil {
+		user.FullName = input.FullName
+	}
+
+	if err := repositories.SaveUser(&user); err != nil {
+		return models.User{}, err
+	}
+	return user, nil
+}
+
+func RemoveUser(id uint) error {
+	return repositories.DeleteUser(id)
 }
