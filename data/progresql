@@ -29,16 +29,23 @@ CREATE TABLE projects (
   update_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- config_file
+CREATE TABLE config_file (
+    cf_id       SERIAL PRIMARY KEY,
+    filename    VARCHAR(200) NOT NULL,
+    minio_path  VARCHAR(300) NOT NULL,
+    project_id  INTEGER NOT NULL REFERENCES project(p_id),
+    create_at   TIMESTAMP DEFAULT now()
+);
 -- resource
 CREATE TABLE resource (
-  r_id SERIAL PRIMARY KEY,
-  type resource_type NOT NULL,
-  name VARCHAR(50) NOT NULL,
-  filename VARCHAR(200) NOT NULL,
-  description TEXT,
-  p_id INTEGER NOT NULL REFERENCES projects(p_id) ON DELETE CASCADE ON UPDATE CASCADE,
-  create_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  update_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    r_id         SERIAL PRIMARY KEY,
+    cf_id        INTEGER NOT NULL REFERENCES config_file(cf_id),
+    type         resource_type NOT NULL,
+    name         VARCHAR(50) NOT NULL,
+    parsed_yaml  JSONB NOT NULL,
+    description  TEXT,
+    create_at    TIMESTAMP DEFAULT now()
 );
 
 -- users

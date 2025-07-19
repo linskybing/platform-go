@@ -2,10 +2,28 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v2"
 )
+
+func GenerateFilename(projectID uint) string {
+	return fmt.Sprintf("project-%d-%s.yaml", projectID, uuid.New().String())
+}
+
+func SplitYAMLDocuments(content string) []string {
+	parts := strings.Split(content, "---")
+	docs := make([]string, 0)
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			docs = append(docs, trimmed)
+		}
+	}
+	return docs
+}
 
 func ReplacePlaceholders(template string, values map[string]string) string {
 	return replaceString(template, values)
