@@ -3,47 +3,80 @@ package services
 import (
 	"errors"
 
+	"github.com/gin-gonic/gin"
+	"github.com/linskybing/platform-go/dto"
 	"github.com/linskybing/platform-go/models"
 	"github.com/linskybing/platform-go/repositories"
+	"github.com/linskybing/platform-go/utils"
 )
 
-type ResourceService struct {
-	Repo *repositories.ResourceRepository
+var ErrResourceNotFound = errors.New("resource not found")
+
+func ListResourcesByProjectID(projectID uint) ([]models.Resource, error) {
+	return repositories.ListResourcesByProjectID(projectID)
 }
 
-func (s *ResourceService) CreateResource(input *models.Resource) error {
-	if input.Name == "" {
-		return errors.New("resource name is required")
-	}
-	if input.Type == "" {
-		return errors.New("resource type is required")
-	}
-
-	return s.Repo.CreateResource(input)
+func GetResource(rid uint) (*models.Resource, error) {
+	return repositories.GetResourceByID(rid)
 }
 
-func (s *ResourceService) GetResourceByID(rid uint) (*models.Resource, error) {
-	return s.Repo.GetResourceByID(rid)
+func CreateResource(c *gin.Context, resource *models.Resource) (*models.Resource, error) {
+	err := repositories.CreateResource(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	userID, _ := utils.GetUserIDFromContext(c)
+	_ = utils.LogAudit(c, userID, "create", "resource", resource.RID, nil, *resource, "")
+
+	return resource, nil
 }
 
-func (s *ResourceService) UpdateResource(input *models.Resource) error {
-	if input.RID == 0 {
-		return errors.New("resource ID is required")
+func UpdateResource(c *gin.Context, rid uint, input dto.ResourceUpdateDTO) (*models.Resource, error) {
+	existing, err := repositories.GetResourceByID(rid)
+	if err != nil || existing == nil {
+		return nil, ErrResourceNotFound
 	}
-	existing, err := s.Repo.GetResourceByID(input.RID)
+
+	oldResource := *existing
+
+	if input.Type != nil {
+		existing.Type = *input.Type
+	}
+	if input.Name != nil {
+		existing.Name = *input.Name
+	}
+	if input.ParsedYAML != nil {
+		existing.ParsedYAML = *input.ParsedYAML
+	}
+	if input.Description != nil {
+		existing.Description = input.Description
+	}
+
+	err = repositories.UpdateResource(existing)
+	if err != nil {
+		return nil, err
+	}
+
+	userID, _ := utils.GetUserIDFromContext(c)
+	_ = utils.LogAudit(c, userID, "update", "resource", existing.RID, oldResource, *existing, "")
+
+	return existing, nil
+}
+
+func DeleteResource(c *gin.Context, rid uint) error {
+	resource, err := repositories.GetResourceByID(rid)
+	if err != nil || resource == nil {
+		return ErrResourceNotFound
+	}
+
+	err = repositories.DeleteResource(rid)
 	if err != nil {
 		return err
 	}
-	if existing == nil {
-		return errors.New("resource not found")
-	}
-	return s.Repo.UpdateResource(input)
-}
 
-func (s *ResourceService) DeleteResource(rid uint) error {
-	return s.Repo.DeleteResource(rid)
-}
+	userID, _ := utils.GetUserIDFromContext(c)
+	_ = utils.LogAudit(c, userID, "delete", "resource", resource.RID, *resource, nil, "")
 
-func (s *ResourceService) ListResourcesByProjectID(pid uint) ([]models.Resource, error) {
-	return s.Repo.ListResourcesByProjectID(pid)
+	return nil
 }
