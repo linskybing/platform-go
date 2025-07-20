@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.94
 	github.com/stretchr/testify v1.10.0
@@ -19,6 +20,22 @@ require (
 	gorm.io/gorm v1.30.0
 	k8s.io/api v0.33.3
 	k8s.io/apimachinery v0.33.3
+)
+
+require (
+	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
+	github.com/google/gnostic-models v0.6.9 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/moby/spdystream v0.5.0 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	golang.org/x/oauth2 v0.27.0 // indirect
+	golang.org/x/term v0.33.0 // indirect
+	golang.org/x/time v0.9.0 // indirect
+	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
+	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 )
 
 require (
@@ -81,6 +98,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.6 // indirect
+	k8s.io/client-go v0.33.3
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect

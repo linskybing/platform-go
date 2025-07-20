@@ -15,6 +15,10 @@ func RegisterRoutes(r *gin.Engine) {
 	auth := r.Group("/")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
+		websocket := auth.Group("/ws")
+		{
+			websocket.GET("/exec", handlers.ExecWebSocketHandler)
+		}
 		userGroup := auth.Group("/user-group")
 		{
 			userGroup.GET("", handlers.GetUserGroup)
