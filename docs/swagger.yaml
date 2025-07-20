@@ -119,6 +119,20 @@ definitions:
       type:
         type: string
     type: object
+  models.UserGroup:
+    properties:
+      createdAt:
+        type: string
+      gid:
+        type: integer
+      role:
+        description: ENUM
+        type: string
+      uid:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
   models.UserWithSuperAdmin:
     properties:
       create_at:
@@ -147,6 +161,14 @@ definitions:
     type: object
   response.MessageResponse:
     properties:
+      message:
+        type: string
+    type: object
+  response.SuccessResponse:
+    properties:
+      code:
+        type: integer
+      data: {}
       message:
         type: string
     type: object
@@ -972,6 +994,218 @@ paths:
       summary: Update resource by ID
       tags:
       - resources
+  /user-group:
+    delete:
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - description: User ID
+        in: formData
+        name: u_id
+        required: true
+        type: integer
+      - description: Group ID
+        in: formData
+        name: g_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: deleted
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Delete a user-group relation
+      tags:
+      - user_group
+    get:
+      parameters:
+      - description: User ID
+        in: query
+        name: u_id
+        required: true
+        type: integer
+      - description: Group ID
+        in: query
+        name: g_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.UserGroup'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get a user-group relation by user ID and group ID
+      tags:
+      - user_group
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - description: User ID
+        in: formData
+        name: u_id
+        required: true
+        type: integer
+      - description: Group ID
+        in: formData
+        name: g_id
+        required: true
+        type: integer
+      - description: Role (admin, manager, user)
+        in: formData
+        name: role
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserGroup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Create a user-group relation
+      tags:
+      - user_group
+    put:
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - description: User ID
+        in: formData
+        name: u_id
+        required: true
+        type: integer
+      - description: Group ID
+        in: formData
+        name: g_id
+        required: true
+        type: integer
+      - description: Role (admin, manager, user)
+        in: formData
+        name: role
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserGroup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Update role of a user-group relation
+      tags:
+      - user_group
+  /user-group/by-group:
+    get:
+      parameters:
+      - description: Group ID
+        in: query
+        name: g_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.UserGroup'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get all users in a group
+      tags:
+      - user_group
+  /user-group/by-user:
+    get:
+      parameters:
+      - description: User ID
+        in: query
+        name: u_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.UserGroup'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get all groups for a user
+      tags:
+      - user_group
   /users:
     get:
       produces:

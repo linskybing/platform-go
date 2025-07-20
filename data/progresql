@@ -32,14 +32,14 @@ CREATE TABLE config_files (
   cf_id SERIAL PRIMARY KEY,
   filename VARCHAR(200) NOT NULL,
   minio_path VARCHAR(300) NOT NULL,
-  project_id INTEGER NOT NULL REFERENCES projects(p_id),
+  project_id INTEGER NOT NULL REFERENCES projects(p_id) ON DELETE CASCADE ON UPDATE CASCADE,
   create_at TIMESTAMP DEFAULT NOW()
 );
 
 -- resource
 CREATE TABLE resources (
   r_id SERIAL PRIMARY KEY,
-  cf_id INTEGER NOT NULL REFERENCES config_files(cf_id),
+  cf_id INTEGER NOT NULL REFERENCES config_files(cf_id) ON DELETE CASCADE ON UPDATE CASCADE,
   type resource_type NOT NULL,
   name VARCHAR(50) NOT NULL,
   parsed_yaml JSONB NOT NULL,
@@ -177,9 +177,9 @@ FROM users u, group_list g
 WHERE u.username = 'admin' AND g.group_name = 'super';
 
 -- 若要使用 pg_cron 清理日誌，可解除註解並確保 extension 已安裝
-CREATE EXTENSION pg_cron;
-SELECT cron.schedule(
-  'clear_audit_logs',
-  '0 3 * * *',
-  $$DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'$$
-);
+-- CREATE EXTENSION pg_cron;
+-- SELECT cron.schedule(
+--   'clear_audit_logs',
+--   '0 3 * * *',
+--   $$DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '30 days'$$
+-- );

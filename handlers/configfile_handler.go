@@ -71,7 +71,6 @@ func CreateConfigFileHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
 		return
 	}
-
 	configFile, err := services.CreateConfigFile(c, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})

@@ -89,6 +89,16 @@ func updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string) er
 		return ErrNoValidYAMLDocument
 	}
 
+	resources, err := repositories.ListResourcesByConfigFileID(cf.CFID)
+	if err != nil {
+		return fmt.Errorf("failed to list resources for config file %d: %w", cf.CFID, err)
+	}
+	resourceMap := make(map[string]models.Resource)
+	usedKeys := make(map[string]bool)
+	for _, r := range resources {
+		resourceMap[r.Name] = r
+		usedKeys[r.Name] = false
+	}
 	for i, doc := range yamlArray {
 		jsonContent, err := utils.YAMLToJSON(doc)
 		if err != nil {
@@ -99,14 +109,9 @@ func updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string) er
 		if err != nil {
 			return fmt.Errorf("failed to validate YAML document %d: %w", i+1, err)
 		}
-		target, err := repositories.GetResourceByConfigFileIDAndName(cf.CFID, name)
-		if err != nil {
-			return fmt.Errorf("failed to get resource for document %d: %w", i, err)
-		}
-
+		val, ok := resourceMap[name]
 		var resource *models.Resource
-
-		if target == nil {
+		if !ok {
 			resource = &models.Resource{
 				CFID:       cf.CFID,
 				Type:       gvk.Kind,
@@ -118,13 +123,23 @@ func updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string) er
 			}
 			utils.LogAuditWithConsole(c, "create", "resource", fmt.Sprintf("r_id=%d", resource.RID), nil, *resource, "")
 		} else {
-			oldTarget := *target
-			target.Name = name
-			target.ParsedYAML = datatypes.JSON([]byte(jsonContent))
-			if err := repositories.UpdateResource(target); err != nil {
+			usedKeys[name] = true
+			oldTarget := val
+			val.Name = name
+			val.ParsedYAML = datatypes.JSON([]byte(jsonContent))
+			if err := repositories.UpdateResource(&val); err != nil {
 				return fmt.Errorf("failed to update resource for document %d: %w", i+1, err)
 			}
-			utils.LogAuditWithConsole(c, "update", "resource", fmt.Sprintf("r_id=%d", target.RID), oldTarget, *target, "")
+			utils.LogAuditWithConsole(c, "update", "resource", fmt.Sprintf("r_id=%d", val.RID), oldTarget, val, "")
+		}
+	}
+
+	for key, val := range usedKeys {
+		if !val {
+			if err := repositories.DeleteResource(resourceMap[key].RID); err != nil {
+				return fmt.Errorf("failed to delete unused resource %s: %w", key, err)
+			}
+			utils.LogAuditWithConsole(c, "delete", "resource", fmt.Sprintf("r_id=%d", resourceMap[key].RID), resourceMap[key], nil, "")
 		}
 	}
 	return nil
