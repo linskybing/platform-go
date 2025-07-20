@@ -15,6 +15,16 @@ func RegisterRoutes(r *gin.Engine) {
 	auth := r.Group("/")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
+		userGroup := auth.Group("/user-group")
+		{
+			userGroup.GET("", handlers.GetUserGroup)
+			userGroup.GET("/by-group", handlers.GetUserGroupsByGID)
+			userGroup.GET("/by-user", handlers.GetUserGroupsByUID)
+
+			userGroup.POST("", handlers.CreateUserGroup)
+			userGroup.PUT("", handlers.UpdateUserGroup)
+			userGroup.DELETE("", handlers.DeleteUserGroup)
+		}
 		audit := auth.Group("/audit/logs")
 		{
 			audit.GET("", handlers.GetAuditLogs)

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -9,12 +10,19 @@ import (
 	"github.com/linskybing/platform-go/repositories"
 )
 
+func LogAuditWithConsole(c *gin.Context, action, resourceType, resourceID string, oldData, newData interface{}, msg string) {
+	userID, _ := GetUserIDFromContext(c)
+	if err := LogAudit(c, userID, action, resourceType, resourceID, oldData, newData, msg); err != nil {
+		fmt.Printf("[LogAudit] error: %v\n", err)
+	}
+}
+
 func LogAudit(
 	c *gin.Context,
 	userID uint,
 	action string,
 	resourceType string,
-	resourceID uint,
+	resourceID string,
 	before any,
 	after any,
 	description string,
