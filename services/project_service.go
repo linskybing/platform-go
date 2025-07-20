@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/dto"
@@ -30,8 +31,7 @@ func CreateProject(c *gin.Context, input dto.CreateProjectDTO) (models.Project, 
 	}
 	err := repositories.CreateProject(&project)
 	if err == nil {
-		userID, _ := utils.GetUserIDFromContext(c)
-		_ = utils.LogAudit(c, userID, "create", "project", project.PID, nil, project, "")
+		utils.LogAuditWithConsole(c, "create", "project", fmt.Sprintf("p_id=%d", project.PID), nil, project, "")
 	}
 	return project, err
 }
@@ -56,8 +56,7 @@ func UpdateProject(c *gin.Context, id uint, input dto.UpdateProjectDTO) (models.
 
 	err = repositories.UpdateProject(&project)
 	if err == nil {
-		userID, _ := utils.GetUserIDFromContext(c)
-		_ = utils.LogAudit(c, userID, "update", "project", project.PID, oldProject, project, "")
+		utils.LogAuditWithConsole(c, "update", "project", fmt.Sprintf("p_id=%d", project.PID), oldProject, project, "")
 	}
 
 	return project, err
@@ -71,8 +70,7 @@ func DeleteProject(c *gin.Context, id uint) error {
 
 	err = repositories.DeleteProject(id)
 	if err == nil {
-		userID, _ := utils.GetUserIDFromContext(c)
-		_ = utils.LogAudit(c, userID, "delete", "project", project.PID, project, nil, "")
+		utils.LogAuditWithConsole(c, "delete", "project", fmt.Sprintf("p_id=%d", project.PID), project, nil, "")
 	}
 	return err
 }

@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/dto"
@@ -36,8 +37,7 @@ func CreateGroup(c *gin.Context, input dto.GroupCreateDTO) (models.Group, error)
 	if err != nil {
 		return models.Group{}, err
 	}
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "create", "group", group.GID, nil, group, "")
+	utils.LogAuditWithConsole(c, "create", "group", fmt.Sprintf("g_id=%d", group.GID), nil, group, "")
 
 	return group, nil
 }
@@ -65,8 +65,7 @@ func UpdateGroup(c *gin.Context, id uint, input dto.GroupUpdateDTO) (models.Grou
 		return models.Group{}, err
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "update", "group", group.GID, oldGroup, group, "")
+	utils.LogAuditWithConsole(c, "update", "group", fmt.Sprintf("g_id=%d", group.GID), oldGroup, group, "")
 
 	return group, nil
 }
@@ -82,8 +81,7 @@ func DeleteGroup(c *gin.Context, id uint) error {
 		return err
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "delete", "group", group.GID, group, nil, "")
+	utils.LogAuditWithConsole(c, "delete", "group", fmt.Sprintf("g_id=%d", group.GID), group, nil, "")
 
 	return nil
 }

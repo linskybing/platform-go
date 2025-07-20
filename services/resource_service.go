@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/dto"
@@ -31,7 +32,7 @@ func CreateResource(c *gin.Context, resource *models.Resource) (*models.Resource
 	}
 
 	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "create", "resource", resource.RID, nil, *resource, "")
+	_ = utils.LogAudit(c, userID, "create", "resource", fmt.Sprintf("r_id=%d", resource.RID), nil, *resource, "")
 
 	return resource, nil
 }
@@ -61,9 +62,7 @@ func UpdateResource(c *gin.Context, rid uint, input dto.ResourceUpdateDTO) (*mod
 	if err != nil {
 		return nil, err
 	}
-
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "update", "resource", existing.RID, oldResource, *existing, "")
+	utils.LogAuditWithConsole(c, "update", "resource", fmt.Sprintf("r_id=%d", existing.RID), oldResource, *existing, "")
 
 	return existing, nil
 }
@@ -79,8 +78,7 @@ func DeleteResource(c *gin.Context, rid uint) error {
 		return err
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "delete", "resource", resource.RID, *resource, nil, "")
+	utils.LogAuditWithConsole(c, "delete", "resource", fmt.Sprintf("r_id=%d", resource.RID), *resource, nil, "")
 
 	return nil
 }

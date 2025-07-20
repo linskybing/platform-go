@@ -69,3 +69,18 @@ func GetGroupIDByConfigFileID(cfID uint) (uint, error) {
 
 	return res.GID, nil
 }
+
+func IsSuperAdmin(uid uint) (bool, error) {
+	var view models.UserGroupView
+	err := db.DB.
+		Where("u_id = ? AND group_name = ? AND role = ?", uid, "super", "admin").
+		First(&view).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}

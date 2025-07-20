@@ -21,3 +21,9 @@ type GroupResponse struct {
 	Message string       `json:"message"`
 	Group   models.Group `json:"group"`
 }
+
+type SuccessResponse struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+}

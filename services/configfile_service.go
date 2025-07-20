@@ -44,9 +44,7 @@ func CreateConfigFile(c *gin.Context, cf dto.CreateConfigFileInput) (*models.Con
 		return nil, err
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "create", "config_file", createdCF.CFID, nil, createdCF, "")
-
+	utils.LogAuditWithConsole(c, "create", "config_file", fmt.Sprintf("cf_id=%d", createdCF.CFID), nil, *createdCF, "")
 	yamlArray := utils.SplitYAMLDocuments(cf.RawYaml)
 	if len(yamlArray) == 0 {
 		return nil, ErrNoValidYAMLDocument
@@ -73,8 +71,7 @@ func CreateConfigFile(c *gin.Context, cf dto.CreateConfigFileInput) (*models.Con
 		if _, err := CreateResource(c, resource); err != nil {
 			return nil, fmt.Errorf("failed to create resource for document %d: %w", i+1, err)
 		}
-
-		_ = utils.LogAudit(c, userID, "create", "resource", resource.RID, nil, resource, "")
+		utils.LogAuditWithConsole(c, "create", "resource", fmt.Sprintf("r_id=%d", resource.RID), nil, *resource, "")
 	}
 	return createdCF, nil
 }
@@ -92,7 +89,6 @@ func updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string) er
 		return ErrNoValidYAMLDocument
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
 	for i, doc := range yamlArray {
 		jsonContent, err := utils.YAMLToJSON(doc)
 		if err != nil {
@@ -120,7 +116,7 @@ func updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string) er
 			if err := repositories.CreateResource(resource); err != nil {
 				return fmt.Errorf("failed to create resource for document %d: %w", i+1, err)
 			}
-			_ = utils.LogAudit(c, userID, "create", "resource", resource.RID, nil, resource, "")
+			utils.LogAuditWithConsole(c, "create", "resource", fmt.Sprintf("r_id=%d", resource.RID), nil, *resource, "")
 		} else {
 			oldTarget := *target
 			target.Name = name
@@ -128,7 +124,7 @@ func updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string) er
 			if err := repositories.UpdateResource(target); err != nil {
 				return fmt.Errorf("failed to update resource for document %d: %w", i+1, err)
 			}
-			_ = utils.LogAudit(c, userID, "update", "resource", target.RID, oldTarget, target, "")
+			utils.LogAuditWithConsole(c, "update", "resource", fmt.Sprintf("r_id=%d", target.RID), oldTarget, *target, "")
 		}
 	}
 	return nil
@@ -156,8 +152,7 @@ func UpdateConfigFile(c *gin.Context, id uint, input dto.ConfigFileUpdateDTO) (*
 		return nil, err
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "update", "config_file", existing.CFID, oldCF, *existing, "")
+	utils.LogAuditWithConsole(c, "update", "config_file", fmt.Sprintf("cf_id=%d", existing.CFID), oldCF, *existing, "")
 
 	return existing, nil
 }
@@ -185,9 +180,7 @@ func DeleteConfigFile(c *gin.Context, id uint) error {
 		return err
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "delete", "config_file", cf.CFID, *cf, nil, "")
-
+	utils.LogAuditWithConsole(c, "delete", "config_file", fmt.Sprintf("cf_id=%d", cf.CFID), *cf, nil, "")
 	return nil
 }
 
