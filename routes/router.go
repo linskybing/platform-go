@@ -52,17 +52,17 @@ func RegisterRoutes(r *gin.Engine) {
 		users := auth.Group("/users")
 		{
 			users.GET("", handlers.GetUsers)
-			users.GET(":id", handlers.GetUserByID)
-			users.PUT(":id", middleware.AuthorizeUserOrAdmin(), handlers.UpdateUser)
-			users.DELETE(":id", middleware.AuthorizeUserOrAdmin(), handlers.DeleteUser)
+			users.GET("/:id", handlers.GetUserByID)
+			users.PUT("/:id", middleware.AuthorizeUserOrAdmin(), handlers.UpdateUser)
+			users.DELETE("/:id", middleware.AuthorizeUserOrAdmin(), handlers.DeleteUser)
 		}
 		groups := auth.Group("/groups")
 		{
 			groups.GET("", handlers.GetGroups)
-			groups.GET(":id", handlers.GetGroupByID)
+			groups.GET("/:id", handlers.GetGroupByID)
 			groups.POST("", middleware.AuthorizeAdmin(), handlers.CreateGroup)
-			groups.PUT(":id", middleware.AuthorizeAdmin(), handlers.UpdateGroup)
-			groups.DELETE(":id", middleware.AuthorizeAdmin(), handlers.DeleteGroup)
+			groups.PUT("/:id", middleware.AuthorizeAdmin(), handlers.UpdateGroup)
+			groups.DELETE("/:id", middleware.AuthorizeAdmin(), handlers.DeleteGroup)
 		}
 	}
 }

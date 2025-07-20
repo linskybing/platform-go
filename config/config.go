@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/joho/godotenv"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -59,4 +60,5 @@ func getEnv(key, fallback string) string {
 
 func InitK8sConfig() {
 	_ = corev1.AddToScheme(Scheme)
+	_ = appsv1.AddToScheme(Scheme)
 }
