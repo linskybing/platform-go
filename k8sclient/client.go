@@ -1,17 +1,24 @@
 package k8sclient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -199,4 +206,152 @@ func ExecToPodViaWebSocket(
 
 	wsIO.Close()
 	return err
+}
+
+func WatchNamespaceResources(conn *websocket.Conn, namespace string) {
+	ctx := context.Background()
+
+	gvrs := []schema.GroupVersionResource{
+		{Group: "", Version: "v1", Resource: "pods"},
+		{Group: "apps", Version: "v1", Resource: "deployments"},
+	}
+
+	for _, gvr := range gvrs {
+		go watchAndSend(ctx, DynamicClient, gvr, namespace, conn)
+	}
+}
+
+func watchAndSend(ctx context.Context, dynClient dynamic.Interface, gvr schema.GroupVersionResource, ns string, conn *websocket.Conn) {
+	list, err := dynClient.Resource(gvr).Namespace(ns).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for _, item := range list.Items {
+			data := map[string]interface{}{
+				"type": "ADDED", // 模擬 informer 的 ADDED 事件
+				"kind": item.GetKind(),
+				"name": item.GetName(),
+				"ns":   item.GetNamespace(),
+			}
+			for k, v := range extractStatusFields(&item) {
+				data[k] = v
+			}
+			msg, _ := json.Marshal(data)
+			_ = conn.WriteMessage(websocket.TextMessage, msg)
+		}
+	} else {
+		// List 失敗也不阻止，繼續 Watch
+		fmt.Printf("List error for %s.%s: %v\n", gvr.Resource, gvr.Group, err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		watcher, err := dynClient.Resource(gvr).Namespace(ns).Watch(ctx, metav1.ListOptions{})
+		if err != nil {
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		for event := range watcher.ResultChan() {
+			obj, ok := event.Object.(*unstructured.Unstructured)
+			if !ok {
+				continue
+			}
+			data := map[string]interface{}{
+				"type": "ADDED", // 模擬 informer 的 ADDED 事件
+				"kind": obj.GetKind(),
+				"name": obj.GetName(),
+				"ns":   obj.GetNamespace(),
+			}
+			for k, v := range extractStatusFields(obj) {
+				data[k] = v
+			}
+			msg, _ := json.Marshal(data)
+			conn.WriteMessage(websocket.TextMessage, msg)
+		}
+	}
+}
+
+func getWatchableNamespacedResources(dc *discovery.DiscoveryClient) ([]schema.GroupVersionResource, error) {
+	apiResourceLists, err := dc.ServerPreferredNamespacedResources()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []schema.GroupVersionResource
+	for _, apiList := range apiResourceLists {
+		gv, err := schema.ParseGroupVersion(apiList.GroupVersion)
+		if err != nil {
+			continue
+		}
+		for _, r := range apiList.APIResources {
+			if r.Namespaced && contains(r.Verbs, "watch") && !strings.Contains(r.Name, "/") {
+				result = append(result, schema.GroupVersionResource{
+					Group:    gv.Group,
+					Version:  gv.Version,
+					Resource: r.Name,
+				})
+			}
+		}
+	}
+	return result, nil
+}
+
+func contains(sl []string, s string) bool {
+	for _, item := range sl {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func extractStatusFields(obj *unstructured.Unstructured) map[string]interface{} {
+	kind := obj.GetKind()
+	result := map[string]interface{}{}
+
+	switch kind {
+	case "Pod":
+		if phase, found, _ := unstructured.NestedString(obj.Object, "status", "phase"); found {
+			result["status"] = phase
+		}
+	case "Service":
+		if clusterIP, found, _ := unstructured.NestedString(obj.Object, "spec", "clusterIP"); found {
+			result["clusterIP"] = clusterIP
+		}
+		if externalIPs, found, _ := unstructured.NestedSlice(obj.Object, "status", "loadBalancer", "ingress"); found && len(externalIPs) > 0 {
+			if ingressMap, ok := externalIPs[0].(map[string]interface{}); ok {
+				if ip, ok := ingressMap["ip"].(string); ok {
+					result["externalIP"] = ip
+				}
+				if hostname, ok := ingressMap["hostname"].(string); ok {
+					result["externalHostname"] = hostname
+				}
+			}
+		}
+	case "Ingress":
+		if externalIPs, found, _ := unstructured.NestedSlice(obj.Object, "status", "loadBalancer", "ingress"); found && len(externalIPs) > 0 {
+			if ingressMap, ok := externalIPs[0].(map[string]interface{}); ok {
+				if ip, ok := ingressMap["ip"].(string); ok {
+					result["externalIP"] = ip
+				}
+				if hostname, ok := ingressMap["hostname"].(string); ok {
+					result["externalHostname"] = hostname
+				}
+			}
+		}
+	case "Deployment", "ReplicaSet":
+		if availableReplicas, found, _ := unstructured.NestedInt64(obj.Object, "status", "availableReplicas"); found {
+			result["availableReplicas"] = availableReplicas
+		}
+	case "Job":
+		if succeeded, found, _ := unstructured.NestedInt64(obj.Object, "status", "succeeded"); found {
+			result["succeeded"] = succeeded
+		}
+	}
+
+	return result
 }
