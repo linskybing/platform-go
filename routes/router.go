@@ -71,5 +71,14 @@ func RegisterRoutes(r *gin.Engine) {
 			groups.PUT("/:id", middleware.AuthorizeAdmin(), handlers.UpdateGroup)
 			groups.DELETE("/:id", middleware.AuthorizeAdmin(), handlers.DeleteGroup)
 		}
+		pvc := auth.Group("/pvc")
+		{
+			pvc.GET("/:namespace/:name", handlers.GetPVCHandler)
+			pvc.GET("/list/:namespace", handlers.ListPVCsHandler)
+			pvc.POST("", handlers.CreatePVCHandler)
+			pvc.PUT("/expand", handlers.ExpandPVCHandler)
+			pvc.DELETE("/:namespace/:name", handlers.DeletePVCHandler)
+		}
+
 	}
 }
