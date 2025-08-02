@@ -19,7 +19,6 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-
 func main() {
 	config.LoadConfig()
 	config.InitK8sConfig()
@@ -29,6 +28,7 @@ func main() {
 	middleware.Init()
 
 	r := gin.Default()
+	r.Use(middleware.CORSMiddleware())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.SetTrustedProxies([]string{"127.0.0.1"})
 	routes.RegisterRoutes(r)
