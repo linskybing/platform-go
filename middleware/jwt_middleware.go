@@ -19,7 +19,7 @@ func Init() {
 	jwtKey = []byte(config.JwtSecret)
 }
 
-func GenerateToken(userID uint, username string, expireDuration time.Duration, repos repositories.ViewRepo) (string, bool, error) {
+var GenerateToken = func(userID uint, username string, expireDuration time.Duration, repos repositories.ViewRepo) (string, bool, error) {
 	isAdmin, err := utils.IsSuperAdmin(userID, repos)
 	if err != nil {
 		return "", false, err

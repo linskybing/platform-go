@@ -81,12 +81,12 @@ func (h *UserGroupHandler) GetUserGroupsByGID(c *gin.Context) {
 		return
 	}
 
-	userGroups, err := h.svc.GetUserGroupsByGID(uint(gid))
+	rawData, err := h.svc.GetUserGroupsByGID(uint(gid))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
 	}
-
+	userGroups := h.svc.FormatByGID(rawData)
 	c.JSON(http.StatusOK, response.SuccessResponse{
 		Code:    0,
 		Message: "success",
@@ -115,11 +115,12 @@ func (h *UserGroupHandler) GetUserGroupsByUID(c *gin.Context) {
 		return
 	}
 
-	userGroups, err := h.svc.GetFormattedUserGroupsByUID(uint(uid))
+	rawData, err := h.svc.GetUserGroupsByUID(uint(uid))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
 	}
+	userGroups := h.svc.FormatByUID(rawData)
 
 	c.JSON(http.StatusOK, response.SuccessResponse{
 		Code:    0,
@@ -190,7 +191,7 @@ func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 		Role: input.Role,
 	}
 
-	if _, err := h.svc.UpdateUserGroup(c, updated); err != nil {
+	if _, err := h.svc.UpdateUserGroup(c, updated, existing); err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -214,7 +215,6 @@ func (h *UserGroupHandler) DeleteUserGroup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
 		return
 	}
-
 	err := h.svc.DeleteUserGroup(c, input.UID, input.GID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})

@@ -41,9 +41,7 @@ func (s *ResourceService) CreateResource(c *gin.Context, resource *models.Resour
 		return nil, err
 	}
 
-	userID, _ := utils.GetUserIDFromContext(c)
-	_ = utils.LogAudit(c, userID, "create", "resource", fmt.Sprintf("r_id=%d", resource.RID), nil, *resource, "", s.Repos.Audit)
-
+	utils.LogAuditWithConsole(c, "create", "resource", fmt.Sprintf("r_id=%d", resource.RID), nil, *resource, "", s.Repos.Audit)
 	return resource, nil
 }
 

@@ -27,3 +27,15 @@ type GroupInfo struct {
 	GroupName string
 	Role      string
 }
+
+type GroupUsers struct {
+	GID       uint
+	GroupName string
+	Users     []UserInfo
+}
+
+type UserInfo struct {
+	UID      uint
+	Username string
+	Role     string
+}

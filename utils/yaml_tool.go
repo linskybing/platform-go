@@ -13,7 +13,7 @@ func GenerateFilename(projectID uint) string {
 	return fmt.Sprintf("project-%d-%s.yaml", projectID, uuid.New().String())
 }
 
-func SplitYAMLDocuments(content string) []string {
+var SplitYAMLDocuments = func(content string) []string {
 	parts := strings.Split(content, "---")
 	docs := make([]string, 0)
 	for _, part := range parts {
@@ -72,7 +72,7 @@ func replaceInInterface(v interface{}, values map[string]string) interface{} {
 	}
 }
 
-func YAMLToJSON(yamlContent string) (string, error) {
+var YAMLToJSON = func(yamlContent string) (string, error) {
 	var yamlObj interface{}
 	err := yaml.Unmarshal([]byte(yamlContent), &yamlObj)
 	if err != nil {

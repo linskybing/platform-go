@@ -10,6 +10,7 @@ type UserRepo interface {
 	ListUsersPaging(page, limit int) ([]models.UserWithSuperAdmin, error)
 	GetUserByID(id uint) (models.UserWithSuperAdmin, error)
 	GetUsernameByID(id uint) (string, error)
+	GetUserByUsername(username string) (models.User, error)
 	GetUserRawByID(id uint) (models.User, error)
 	SaveUser(user *models.User) error
 	DeleteUser(id uint) error
@@ -23,6 +24,14 @@ func (r *DBUserRepo) GetAllUsers() ([]models.UserWithSuperAdmin, error) {
 		return nil, err
 	}
 	return users, nil
+}
+
+func (r *DBUserRepo) GetUserByUsername(username string) (models.User, error) {
+	var user models.User
+	if err := db.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		return user, err
+	}
+	return user, nil
 }
 
 func (r *DBUserRepo) ListUsersPaging(page, limit int) ([]models.UserWithSuperAdmin, error) {

@@ -84,16 +84,12 @@ func (s *ConfigFileService) CreateConfigFile(c *gin.Context, cf dto.CreateConfig
 	return createdCF, nil
 }
 
-func (s *ConfigFileService) updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string) error {
+func (s *ConfigFileService) updateYamlContent(c *gin.Context, cf *models.ConfigFile, rawYaml string, resources []models.Resource) error {
 	yamlArray := utils.SplitYAMLDocuments(rawYaml)
 	if len(yamlArray) == 0 {
 		return ErrNoValidYAMLDocument
 	}
 
-	resources, err := s.Repos.Resource.ListResourcesByConfigFileID(cf.CFID)
-	if err != nil {
-		return fmt.Errorf("failed to list resources for config file %d: %w", cf.CFID, err)
-	}
 	resourceMap := make(map[string]models.Resource)
 	usedKeys := make(map[string]bool)
 	for _, r := range resources {
@@ -161,10 +157,11 @@ func (s *ConfigFileService) UpdateConfigFile(c *gin.Context, id uint, input dto.
 	}
 
 	if input.RawYaml != nil {
-		if err := s.DeleteConfigFileInstance(id); err != nil {
+		resources, err := s.deleteConfigFileInstance(existing)
+		if err != nil {
 			return nil, err
 		}
-		if err := s.updateYamlContent(c, existing, *input.RawYaml); err != nil {
+		if err = s.updateYamlContent(c, existing, *input.RawYaml, resources); err != nil {
 			return nil, err
 		}
 	}
@@ -288,4 +285,27 @@ func (s *ConfigFileService) DeleteConfigFileInstance(id uint) error {
 	}
 
 	return nil
+}
+
+func (s *ConfigFileService) deleteConfigFileInstance(configfile *models.ConfigFile) ([]models.Resource, error) {
+	resources, err := s.Repos.Resource.ListResourcesByConfigFileID(configfile.CFID)
+	if err != nil {
+		return nil, err
+	}
+
+	users, err := s.Repos.View.ListUsersByProjectID(configfile.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, user := range users {
+		ns := utils.FormatNamespaceName(configfile.ProjectID, user.Username)
+		for _, res := range resources {
+			if err := utils.DeleteByJson(res.ParsedYAML, ns); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return resources, nil
 }
