@@ -80,35 +80,14 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *models.Use
 	return userGroup, nil
 }
 
-func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *models.UserGroup) (*models.UserGroup, error) {
-	oldUserGroup, err := s.Repos.UserGroup.GetUserGroup(userGroup.UID, userGroup.GID)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *models.UserGroup, existing models.UserGroupView) (*models.UserGroup, error) {
 	if err := s.Repos.UserGroup.UpdateUserGroup(userGroup); err != nil {
 		return nil, err
 	}
 
-	if oldUserGroup.GID != userGroup.GID {
-		uesrName, err := s.Repos.User.GetUsernameByID(userGroup.UID)
-
-		if err != nil {
-			return nil, err
-		}
-
-		if err := s.AllocateGroupResource(userGroup.GID, uesrName); err != nil {
-			return nil, err
-		}
-
-		if err := s.RemoveGroupResource(oldUserGroup.GID, uesrName); err != nil {
-			return nil, err
-		}
-
-	}
 	utils.LogAuditWithConsole(c, "update", "user_group",
 		fmt.Sprintf("u_id=%d,g_id=%d", userGroup.UID, userGroup.GID),
-		oldUserGroup, *userGroup, "", s.Repos.Audit)
+		existing, *userGroup, "", s.Repos.Audit)
 
 	return userGroup, nil
 }
@@ -151,31 +130,50 @@ func (s *UserGroupService) GetUserGroupsByGID(gid uint) ([]models.UserGroupView,
 	return s.Repos.UserGroup.GetUserGroupsByGID(gid)
 }
 
-func (s *UserGroupService) GetFormattedUserGroupsByUID(uid uint) ([]dto.UserGroups, error) {
-	records, err := s.Repos.UserGroup.GetUserGroupsByUID(uid)
-	if err != nil {
-		return nil, err
-	}
+func (s *UserGroupService) FormatByUID(records []models.UserGroupView) map[uint]dto.UserGroups {
+	result := make(map[uint]dto.UserGroups)
 
-	userMap := make(map[uint]*dto.UserGroups)
 	for _, r := range records {
-		if _, exists := userMap[r.UID]; !exists {
-			userMap[r.UID] = &dto.UserGroups{
+		if g, exists := result[r.UID]; exists {
+			g.Groups = append(g.Groups, dto.GroupInfo{
+				GID:       r.GID,
+				GroupName: r.GroupName,
+				Role:      r.Role,
+			})
+			result[r.UID] = g
+		} else {
+			result[r.UID] = dto.UserGroups{
 				UID:      r.UID,
 				Username: r.Username,
-				Groups:   []dto.GroupInfo{},
+				Groups: []dto.GroupInfo{
+					{GID: r.GID, GroupName: r.GroupName, Role: r.Role},
+				},
 			}
 		}
-		userMap[r.UID].Groups = append(userMap[r.UID].Groups, dto.GroupInfo{
-			GID:       r.GID,
-			GroupName: r.GroupName,
-			Role:      r.Role,
-		})
 	}
+	return result
+}
 
-	result := make([]dto.UserGroups, 0, len(userMap))
-	for _, v := range userMap {
-		result = append(result, *v)
+func (s *UserGroupService) FormatByGID(records []models.UserGroupView) map[uint]dto.GroupUsers {
+	result := make(map[uint]dto.GroupUsers)
+
+	for _, r := range records {
+		if g, exists := result[r.GID]; exists {
+			g.Users = append(g.Users, dto.UserInfo{
+				UID:      r.UID,
+				Username: r.Username,
+				Role:     r.Role,
+			})
+			result[r.GID] = g
+		} else {
+			result[r.GID] = dto.GroupUsers{
+				GID:       r.GID,
+				GroupName: r.GroupName,
+				Users: []dto.UserInfo{
+					{UID: r.UID, Username: r.Username, Role: r.Role},
+				},
+			}
+		}
 	}
-	return result, nil
+	return result
 }

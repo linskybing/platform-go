@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 )
 
-func ValidateK8sJSON(jsonStr string) (*schema.GroupVersionKind, string, error) {
+var ValidateK8sJSON = func(jsonStr string) (*schema.GroupVersionKind, string, error) {
 	decoder := json.NewSerializerWithOptions(
 		json.DefaultMetaFactory, config.Scheme, config.Scheme,
 		json.SerializerOptions{Yaml: false, Pretty: false, Strict: true},
@@ -37,7 +37,7 @@ func ValidateK8sJSON(jsonStr string) (*schema.GroupVersionKind, string, error) {
 	return gvk, metaObj.GetName(), nil
 }
 
-func CreateByJson(jsonStr []byte, ns string) error {
+var CreateByJson = func(jsonStr []byte, ns string) error {
 	// decode
 	var obj unstructured.Unstructured
 	if err := applyJson.Unmarshal(jsonStr, &obj.Object); err != nil {
@@ -62,7 +62,7 @@ func CreateByJson(jsonStr []byte, ns string) error {
 	return nil
 }
 
-func DeleteByJson(jsonStr []byte, ns string) error {
+var DeleteByJson = func(jsonStr []byte, ns string) error {
 	// decode
 	var obj unstructured.Unstructured
 	if err := applyJson.Unmarshal(jsonStr, &obj.Object); err != nil {
@@ -114,7 +114,7 @@ func UpdateByJson(jsonStr []byte, ns string) error {
 	return nil
 }
 
-func CreateNamespace(name string) error {
+var CreateNamespace = func(name string) error {
 	_, err := k8sclient.Clientset.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
 	if err == nil {
 		return fmt.Errorf("namespace %s already exist \n", name)
@@ -136,7 +136,7 @@ func CreateNamespace(name string) error {
 	return nil
 }
 
-func DeleteNamespace(name string) error {
+var DeleteNamespace = func(name string) error {
 	err := k8sclient.Clientset.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete namespace %s: %w", name, err)
@@ -177,7 +177,7 @@ func ExpandPVC(ns, pvcName, newSize string) error {
 	return nil
 }
 
-func CreatePVC(ns string, name string, storageClassName string, size string) error {
+var CreatePVC = func(ns string, name string, storageClassName string, size string) error {
 	if ns == "" {
 		ns = "default"
 	}
@@ -272,6 +272,6 @@ func ListPVCs(ns string) ([]corev1.PersistentVolumeClaim, error) {
 	return pvcList.Items, nil
 }
 
-func FormatNamespaceName(projectID uint, userName string) string {
+var FormatNamespaceName = func(projectID uint, userName string) string {
 	return fmt.Sprintf("proj-%d-%s", projectID, userName)
 }

@@ -16,7 +16,7 @@ func IsSuperAdmin(uid uint, repos repositories.ViewRepo) (bool, error) {
 	return repos.IsSuperAdmin(uid)
 }
 
-func GetUserIDFromContext(c *gin.Context) (uint, error) {
+var GetUserIDFromContext = func(c *gin.Context) (uint, error) {
 	claimsVal, exists := c.Get("claims")
 	if !exists {
 		return 0, errors.New("user claims not found in context")
