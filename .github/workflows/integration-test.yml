@@ -8,6 +8,7 @@ on:
       - 'routes/**'
       - 'repositories/**'
       - 'handlers/**'
+  workflow_dispatch:
 
 jobs:
   integration-test:
@@ -29,30 +30,25 @@ jobs:
           --health-retries 5
 
     steps:
-      # 1. Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up Go
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      # 3. Install kubectl
       - name: Install kubectl
         run: |
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
 
-      # 4. Set up Kind
       - name: Set up Kind
         uses: helm/kind-action@v1.10.0
         with:
           version: v0.24.0
 
-      # 5. Create Kubernetes cluster
       - name: Create Kind cluster
         run: |
           kind create cluster --name test-cluster
@@ -60,11 +56,9 @@ jobs:
           kind get kubeconfig --name test-cluster > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
-      # 6. Verify Kubernetes cluster
       - name: Verify Kubernetes cluster
         run: kubectl cluster-info
 
-      # 7. Wait for Postgres to be ready
       - name: Wait for Postgres
         run: |
           echo "Waiting for Postgres to be ready..."
@@ -73,11 +67,9 @@ jobs:
             sleep 3
           done
 
-      # 8. Set DATABASE_URL for tests
       - name: Set DATABASE_URL
         run: echo "DATABASE_URL=postgres://test:test@localhost:5432/platform?sslmode=disable" >> $GITHUB_ENV
 
-      # 9. Run integration tests
       - name: Run integration tests
         run: go test ./tests/integration/... -v
         env:
