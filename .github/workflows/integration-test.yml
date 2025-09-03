@@ -42,6 +42,12 @@ jobs:
         with:
           version: v0.24.0
 
+      - name: Create Kubernetes cluster
+        run: |
+          kind create cluster --name test-cluster
+          mkdir -p $HOME/.kube
+          kind get kubeconfig --name test-cluster > $HOME/.kube/config
+
       - name: Wait for Postgres
         run: |
           echo "Waiting for Postgres to be ready..."
