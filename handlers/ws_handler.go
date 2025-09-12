@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -42,6 +43,36 @@ func ExecWebSocketHandler(c *gin.Context) {
 	}
 }
 
+// func WatchNamespaceHandler(c *gin.Context) {
+// 	namespace := c.Param("namespace")
+
+// 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "websocket upgrade failed: " + err.Error()})
+// 		return
+// 	}
+
+// 	writeChan := make(chan []byte, 100)
+
+// 	go func() {
+// 		defer conn.Close()
+// 		for msg := range writeChan {
+// 			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+// 				break
+// 			}
+// 		}
+// 	}()
+
+// 	go k8sclient.WatchNamespaceResources(writeChan, namespace)
+
+// 	for {
+// 		if _, _, err := conn.ReadMessage(); err != nil {
+// 			close(writeChan)
+// 			break
+// 		}
+// 	}
+// }
+
 func WatchNamespaceHandler(c *gin.Context) {
 	namespace := c.Param("namespace")
 
@@ -51,22 +82,31 @@ func WatchNamespaceHandler(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	writeChan := make(chan []byte, 100)
 
 	go func() {
 		defer conn.Close()
-		for msg := range writeChan {
-			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				break
+		for {
+			select {
+			case msg := <-writeChan:
+				if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
 
-	go k8sclient.WatchNamespaceResources(writeChan, namespace)
+	go k8sclient.WatchNamespaceResources(ctx, writeChan, namespace)
 
 	for {
 		if _, _, err := conn.ReadMessage(); err != nil {
-			close(writeChan)
+			cancel()
 			break
 		}
 	}

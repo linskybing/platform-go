@@ -247,24 +247,50 @@ func ExecToPodViaWebSocket(
 	return err
 }
 
-func WatchNamespaceResources(writeChan chan<- []byte, namespace string) {
-	ctx := context.Background()
+// func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, namespace string) {
+// 	gvrs := []schema.GroupVersionResource{
+// 		{Group: "", Version: "v1", Resource: "pods"},
+// 		{Group: "", Version: "v1", Resource: "services"},
+// 		{Group: "apps", Version: "v1", Resource: "deployments"},
+// 	}
 
+// 	for _, gvr := range gvrs {
+// 		go watchAndSend(ctx, DynamicClient, gvr, namespace, writeChan)
+// 	}
+// }
+
+func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, namespace string) {
 	gvrs := []schema.GroupVersionResource{
 		{Group: "", Version: "v1", Resource: "pods"},
 		{Group: "", Version: "v1", Resource: "services"},
 		{Group: "apps", Version: "v1", Resource: "deployments"},
 	}
 
+	var wg sync.WaitGroup
 	for _, gvr := range gvrs {
-		go watchAndSend(ctx, DynamicClient, gvr, namespace, writeChan)
+		wg.Add(1)
+		go func(gvr schema.GroupVersionResource) {
+			defer wg.Done()
+			watchAndSend(ctx, DynamicClient, gvr, namespace, writeChan)
+		}(gvr)
 	}
+
+	go func() {
+		<-ctx.Done()
+		wg.Wait()
+		close(writeChan)
+	}()
 }
 
-func watchAndSend(ctx context.Context, dynClient dynamic.Interface, gvr schema.GroupVersionResource, ns string, writeChan chan<- []byte) {
+func watchAndSend(
+	ctx context.Context,
+	dynClient dynamic.Interface,
+	gvr schema.GroupVersionResource,
+	ns string,
+	writeChan chan<- []byte,
+) {
 	sendObject := func(eventType string, obj *unstructured.Unstructured) error {
 		data := buildDataMap(eventType, obj)
-
 		msg, err := json.Marshal(data)
 		if err != nil {
 			return err
@@ -278,6 +304,7 @@ func watchAndSend(ctx context.Context, dynClient dynamic.Interface, gvr schema.G
 		}
 	}
 
+	// initial list
 	list, err := dynClient.Resource(gvr).Namespace(ns).List(ctx, metav1.ListOptions{})
 	if err == nil {
 		for _, item := range list.Items {
@@ -289,6 +316,7 @@ func watchAndSend(ctx context.Context, dynClient dynamic.Interface, gvr schema.G
 		fmt.Printf("List error for %s.%s: %v\n", gvr.Resource, gvr.Group, err)
 	}
 
+	// watch loop
 	for {
 		select {
 		case <-ctx.Done():
@@ -302,14 +330,24 @@ func watchAndSend(ctx context.Context, dynClient dynamic.Interface, gvr schema.G
 			continue
 		}
 
-		for event := range watcher.ResultChan() {
-			obj, ok := event.Object.(*unstructured.Unstructured)
-			if !ok {
-				continue
-			}
+		for {
+			select {
+			case <-ctx.Done():
+				watcher.Stop()
+				return
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					return
+				}
 
-			if err := sendObject(string(event.Type), obj); err != nil {
-				fmt.Printf("Failed to send watch event: %v\n", err)
+				obj, ok := event.Object.(*unstructured.Unstructured)
+				if !ok {
+					continue
+				}
+
+				if err := sendObject(string(event.Type), obj); err != nil {
+					fmt.Printf("Failed to send watch event: %v\n", err)
+				}
 			}
 		}
 	}

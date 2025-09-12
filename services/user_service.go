@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/linskybing/platform-go/db"
 	"github.com/linskybing/platform-go/dto"
 	"github.com/linskybing/platform-go/middleware"
 	"github.com/linskybing/platform-go/models"
@@ -32,9 +31,8 @@ func NewUserService(repos *repositories.Repos) *UserService {
 }
 
 func (s *UserService) RegisterUser(input dto.CreateUserInput) error {
-	var existing models.User
-	err := db.DB.Where("username = ?", input.Username).First(&existing).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	_, err := s.Repos.User.GetUserByUsername(input.Username)
+	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
 	if err == nil {
@@ -61,21 +59,24 @@ func (s *UserService) RegisterUser(input dto.CreateUserInput) error {
 	if input.Status != nil {
 		user.Status = *input.Status
 	}
-
-	return db.DB.Create(&user).Error
+	return s.Repos.User.SaveUser(&user)
 }
 
 func (s *UserService) LoginUser(username, password string) (models.User, string, bool, error) {
 	var user models.User
-	if err := db.DB.Where("username = ?", username).First(&user).Error; err != nil {
+	user, err := s.Repos.User.GetUserByUsername(username)
+	if err != nil {
+		user = models.User{}
 		return user, "", false, errors.New("invalid credentials")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		user = models.User{}
 		return user, "", false, errors.New("invalid credentials")
 	}
 
 	token, isAdmin, err := middleware.GenerateToken(user.UID, user.Username, 24*time.Hour, s.Repos.View)
 	if err != nil {
+		user = models.User{}
 		return user, "", false, err
 	}
 

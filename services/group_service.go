@@ -86,6 +86,10 @@ func (s *GroupService) DeleteGroup(c *gin.Context, id uint) error {
 		return err
 	}
 
+	if group.GroupName == "super" {
+		return ErrReservedGroupName
+	}
+
 	err = s.Repos.Group.DeleteGroup(id)
 	if err != nil {
 		return err
