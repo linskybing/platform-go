@@ -242,6 +242,18 @@ func TestUserGroup(t *testing.T) {
 	addUserToGroup(t, user2Token, groupID, 4, "admin", http.StatusForbidden) // test2
 }
 
+func TestGroupInvaild(t *testing.T) {
+	adminToken := loginUser(t, "admin", "1234")
+	require.NotEmpty(t, adminToken, "admin token should not be empty")
+
+	form := url.Values{}
+	form.Set("group_name", "super")
+	form.Set("description", "this for test")
+	doRequest(t, "POST", "/groups", adminToken, form, http.StatusForbidden)
+	doRequest(t, "DELETE", "/groups/1", adminToken, nil, http.StatusForbidden)
+	removeUserFromGroup(t, adminToken, 1, 1, http.StatusForbidden)
+}
+
 func TestUpdateUserGroup(t *testing.T) {
 	adminToken := loginUser(t, "admin", "1234")
 	require.NotEmpty(t, adminToken)
