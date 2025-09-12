@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,8 @@ import (
 	"github.com/linskybing/platform-go/repositories"
 	"github.com/linskybing/platform-go/utils"
 )
+
+var ErrReservedUser = errors.New("cannot modify reserved user & group 'admin & super'")
 
 type UserGroupService struct {
 	Repos *repositories.Repos
@@ -96,6 +99,10 @@ func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid uint) error 
 	oldUserGroup, err := s.Repos.UserGroup.GetUserGroup(uid, gid)
 	if err != nil {
 		return err
+	}
+
+	if uid == 1 && gid == 1 || uid == 1 && oldUserGroup.GroupName == "super" {
+		return ErrReservedUser
 	}
 
 	if err := s.Repos.UserGroup.DeleteUserGroup(uid, gid); err != nil {
