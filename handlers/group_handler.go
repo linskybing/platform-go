@@ -161,6 +161,8 @@ func (h *GroupHandler) DeleteGroup(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "group not found"})
+		} else if err == services.ErrReservedGroupName {
+			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: "super group can't be removed"})
 		} else {
 			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		}

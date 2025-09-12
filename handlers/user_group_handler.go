@@ -230,7 +230,11 @@ func (h *UserGroupHandler) DeleteUserGroup(c *gin.Context) {
 	}
 
 	if err := h.svc.DeleteUserGroup(c, uint(uid64), uint(gid64)); err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		if err == services.ErrReservedUser {
+			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		}
 		return
 	}
 
