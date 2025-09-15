@@ -31,6 +31,7 @@ CREATE TABLE projects (
 CREATE TABLE config_files (
   cf_id SERIAL PRIMARY KEY,
   filename VARCHAR(200) NOT NULL,
+  content VARCHAR(5000),
   project_id INTEGER NOT NULL REFERENCES projects(p_id) ON DELETE CASCADE ON UPDATE CASCADE,
   create_at TIMESTAMP DEFAULT NOW()
 );

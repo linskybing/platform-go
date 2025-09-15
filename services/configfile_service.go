@@ -66,6 +66,7 @@ func (s *ConfigFileService) CreateConfigFile(c *gin.Context, cf dto.CreateConfig
 
 	createdCF := &models.ConfigFile{
 		Filename:  cf.Filename,
+		Content:   cf.RawYaml,
 		ProjectID: cf.ProjectID,
 	}
 	if err := s.Repos.ConfigFile.CreateConfigFile(createdCF); err != nil {
@@ -164,6 +165,7 @@ func (s *ConfigFileService) UpdateConfigFile(c *gin.Context, id uint, input dto.
 		if err = s.updateYamlContent(c, existing, *input.RawYaml, resources); err != nil {
 			return nil, err
 		}
+		existing.Content = *input.RawYaml
 	}
 
 	err = s.Repos.ConfigFile.UpdateConfigFile(existing)

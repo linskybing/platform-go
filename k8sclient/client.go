@@ -15,8 +15,10 @@ import (
 
 	"github.com/gorilla/websocket"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -246,18 +248,6 @@ func ExecToPodViaWebSocket(
 	return err
 }
 
-// func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, namespace string) {
-// 	gvrs := []schema.GroupVersionResource{
-// 		{Group: "", Version: "v1", Resource: "pods"},
-// 		{Group: "", Version: "v1", Resource: "services"},
-// 		{Group: "apps", Version: "v1", Resource: "deployments"},
-// 	}
-
-// 	for _, gvr := range gvrs {
-// 		go watchAndSend(ctx, DynamicClient, gvr, namespace, writeChan)
-// 	}
-// }
-
 func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, namespace string) {
 	gvrs := []schema.GroupVersionResource{
 		{Group: "", Version: "v1", Resource: "pods"},
@@ -279,6 +269,80 @@ func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, names
 		wg.Wait()
 		close(writeChan)
 	}()
+}
+
+// WatchNamespaceResources 監控單一命名空間的資源變化
+func WatchUserNamespaceResources(namespace string, writeChan chan<- []byte) {
+	gvrs := []schema.GroupVersionResource{
+		{Group: "", Version: "v1", Resource: "pods"},
+		{Group: "", Version: "v1", Resource: "services"},
+		{Group: "apps", Version: "v1", Resource: "deployments"},
+	}
+
+	// 同步等待所有資源監控結束
+	var wg sync.WaitGroup
+
+	// 為每個資源啟動一個監控協程
+	for _, gvr := range gvrs {
+		wg.Add(1)
+		go func(gvr schema.GroupVersionResource) {
+			defer wg.Done()
+			watchUserAndSend(namespace, gvr, writeChan)
+		}(gvr)
+	}
+
+	// 等待所有協程結束
+	wg.Wait()
+}
+
+func watchUserAndSend(namespace string, gvr schema.GroupVersionResource, writeChan chan<- []byte) {
+	sendObject := func(eventType string, obj *unstructured.Unstructured) error {
+		data := buildDataMap(eventType, obj)
+		msg, err := json.Marshal(data)
+		if err != nil {
+			return err
+		}
+
+		select {
+		case writeChan <- msg:
+			return nil
+		case <-time.After(time.Second * 10): // 增加超時避免死鎖
+			return fmt.Errorf("timeout sending message")
+		}
+	}
+
+	// initial list of resources
+	list, err := DynamicClient.Resource(gvr).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err == nil {
+		for _, item := range list.Items {
+			if err := sendObject("ADDED", &item); err != nil {
+				fmt.Printf("Failed to send list item: %v\n", err)
+			}
+		}
+	} else {
+		fmt.Printf("List error for %s.%s: %v\n", gvr.Resource, gvr.Group, err)
+	}
+
+	// watch loop
+	for {
+		select {
+		case <-time.After(time.Second * 30): // 進行每 30 秒重連
+			// 每30秒進行一次 watch 重新連接
+			watcher, err := DynamicClient.Resource(gvr).Namespace(namespace).Watch(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				fmt.Printf("Failed to start watch: %v\n", err)
+				continue
+			}
+
+			for event := range watcher.ResultChan() {
+				if obj, ok := event.Object.(*unstructured.Unstructured); ok {
+					if err := sendObject(string(event.Type), obj); err != nil {
+						fmt.Printf("Failed to send watch event: %v\n", err)
+					}
+				}
+			}
+		}
+	}
 }
 
 func watchAndSend(
@@ -351,7 +415,6 @@ func watchAndSend(
 		}
 	}
 }
-
 func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]interface{} {
 	data := map[string]interface{}{
 		"type": eventType,
@@ -362,6 +425,22 @@ func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]i
 
 	for k, v := range extractStatusFields(obj) {
 		data[k] = v
+	}
+
+	if obj.GetKind() == "Pod" {
+		if containers, found, _ := unstructured.NestedSlice(obj.Object, "spec", "containers"); found {
+			var containerNames []string
+			for _, c := range containers {
+				if m, ok := c.(map[string]interface{}); ok {
+					if name, ok := m["name"].(string); ok {
+						containerNames = append(containerNames, name)
+					}
+				}
+			}
+			if len(containerNames) > 0 {
+				data["containers"] = containerNames
+			}
+		}
 	}
 
 	if isService(obj) {
@@ -506,4 +585,20 @@ func extractStatusFields(obj *unstructured.Unstructured) map[string]interface{} 
 	}
 
 	return result
+}
+
+func GetFilteredNamespaces(filter string) ([]v1.Namespace, error) {
+	namespaces, err := Clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list namespaces: %v", err)
+	}
+
+	var filteredNamespaces []v1.Namespace
+	for _, ns := range namespaces.Items {
+		if strings.Contains(ns.Name, filter) {
+			filteredNamespaces = append(filteredNamespaces, ns)
+		}
+	}
+
+	return filteredNamespaces, nil
 }
