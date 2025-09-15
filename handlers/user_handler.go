@@ -83,11 +83,43 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
+	c.SetCookie(
+		"token",
+		token,
+		3600,
+		"/",
+		"",
+		false, // [TODO]
+		true,
+	)
+
 	c.JSON(http.StatusOK, response.TokenResponse{
 		Token:    token,
 		UID:      user.UID,
 		Username: user.Username,
 		IsAdmin:  isAdmin,
+	})
+}
+
+// Logout godoc
+// @Summary User logout
+// @Tags auth
+// @Produce json
+// @Success 200 {object} response.BasicResponse "Logout successful"
+// @Router /logout [post]
+func (h *UserHandler) Logout(c *gin.Context) {
+	c.SetCookie(
+		"token",
+		"",
+		-1,
+		"/",
+		"",
+		false,
+		true,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout successful",
 	})
 }
 

@@ -19,11 +19,13 @@ func RegisterRoutes(r *gin.Engine) {
 	// setup
 	r.POST("/register", handlers_instance.User.Register)
 	r.POST("/login", handlers_instance.User.Login)
+	r.POST("/logout", handlers_instance.User.Logout)
 	r.GET("/ws/exec", handlers.ExecWebSocketHandler)
 	r.GET("/ws/monitoring/:namespace", handlers.WatchNamespaceHandler)
 	auth := r.Group("/")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
+		auth.GET("/ws/monitoring", handlers.WatchUserNamespaceHandler)
 		userGroup := auth.Group("/user-group")
 		{
 			userGroup.GET("", middleware.AuthorizeAdmin(repos_instance.View), handlers_instance.UserGroup.GetUserGroup)

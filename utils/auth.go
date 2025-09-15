@@ -30,6 +30,20 @@ var GetUserIDFromContext = func(c *gin.Context) (uint, error) {
 	return claims.UserID, nil
 }
 
+var GetUserNameFromContext = func(c *gin.Context) (string, error) {
+	claimsVal, exists := c.Get("claims")
+	if !exists {
+		return "", errors.New("user claims not found in context")
+	}
+
+	claims, ok := claimsVal.(*types.Claims)
+	if !ok {
+		return "", errors.New("invalid user claims type")
+	}
+
+	return claims.Username, nil
+}
+
 func HasGroupRole(userID uint, gid uint, roles []string) (bool, error) {
 	var view models.UserGroupView
 	err := db.DB.

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/linskybing/platform-go/k8sclient"
 	"github.com/linskybing/platform-go/response"
+	"github.com/linskybing/platform-go/utils"
 )
 
 var upgrader = websocket.Upgrader{
@@ -43,36 +45,6 @@ func ExecWebSocketHandler(c *gin.Context) {
 	}
 }
 
-// func WatchNamespaceHandler(c *gin.Context) {
-// 	namespace := c.Param("namespace")
-
-// 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "websocket upgrade failed: " + err.Error()})
-// 		return
-// 	}
-
-// 	writeChan := make(chan []byte, 100)
-
-// 	go func() {
-// 		defer conn.Close()
-// 		for msg := range writeChan {
-// 			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-// 				break
-// 			}
-// 		}
-// 	}()
-
-// 	go k8sclient.WatchNamespaceResources(writeChan, namespace)
-
-// 	for {
-// 		if _, _, err := conn.ReadMessage(); err != nil {
-// 			close(writeChan)
-// 			break
-// 		}
-// 	}
-// }
-
 func WatchNamespaceHandler(c *gin.Context) {
 	namespace := c.Param("namespace")
 
@@ -104,6 +76,70 @@ func WatchNamespaceHandler(c *gin.Context) {
 
 	go k8sclient.WatchNamespaceResources(ctx, writeChan, namespace)
 
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			cancel()
+			break
+		}
+	}
+}
+
+func WatchUserNamespaceHandler(c *gin.Context) {
+	// 從 cookie 取得 username
+	username, err := utils.GetUserNameFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "missing username cookie"})
+		return
+	}
+
+	// 升級 websocket
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "websocket upgrade failed: " + err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	writeChan := make(chan []byte, 100)
+
+	// 監聽 websocket 寫入
+	go func() {
+		defer conn.Close()
+		for {
+			select {
+			case msg := <-writeChan:
+				if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// 取得符合 username 的 namespace 列表
+	namespacesList, err := k8sclient.GetFilteredNamespaces(username)
+	if err != nil {
+		fmt.Printf("Failed to list user namespaces: %v\n", err)
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "failed to list namespaces"})
+		return
+	}
+
+	// 只取 namespace 名稱
+	var namespaces []string
+	for _, ns := range namespacesList {
+		namespaces = append(namespaces, ns.Name)
+	}
+
+	// 為每個 namespace 啟動監控
+	for _, ns := range namespaces {
+		go k8sclient.WatchUserNamespaceResources(ns, writeChan)
+	}
+
+	// 監聽 client 關閉
 	for {
 		if _, _, err := conn.ReadMessage(); err != nil {
 			cancel()

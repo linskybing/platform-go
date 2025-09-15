@@ -60,21 +60,27 @@ func ParseToken(tokenStr string) (*types.Claims, error) {
 
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-			c.Abort()
-			return
-		}
+		var tokenStr string
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header format must be Bearer {token}"})
-			c.Abort()
-			return
-		}
+		if cookie, err := c.Cookie("token"); err == nil {
+			tokenStr = cookie
+		} else {
+			authHeader := c.GetHeader("Authorization")
+			if authHeader == "" {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization required (header or cookie)"})
+				c.Abort()
+				return
+			}
 
-		tokenStr := parts[1]
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || parts[0] != "Bearer" {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header format must be Bearer {token}"})
+				c.Abort()
+				return
+			}
+
+			tokenStr = parts[1]
+		}
 
 		claims, err := ParseToken(tokenStr)
 		if err != nil {
