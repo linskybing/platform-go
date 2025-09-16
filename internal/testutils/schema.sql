@@ -1,7 +1,4 @@
 -- 建立資料庫
-CREATE DATABASE platform;
-\c platform;
-
 -- 建立 enum 類型
 CREATE TYPE resource_type AS ENUM ('Pod','Service','Deployment','ConfigMap','Ingress');
 CREATE TYPE user_type AS ENUM ('origin','oauth2');
