@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/config"
@@ -104,7 +105,7 @@ func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid uint) error 
 	if uid == 1 && gid == 1 || uid == 1 && oldUserGroup.GroupName == "super" {
 		return ErrReservedUser
 	}
-
+	log.Printf("sddf")
 	if err := s.Repos.UserGroup.DeleteUserGroup(uid, gid); err != nil {
 		return err
 	}
