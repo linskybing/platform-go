@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -39,7 +40,12 @@ func ExecWebSocketHandler(c *gin.Context) {
 		c.DefaultQuery("tty", "true") == "true",
 	)
 	if err != nil {
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("exec error: "+err.Error()))
+		errorMsg := k8sclient.TerminalMessage{
+			Type: "stdout",
+			Data: "\r\n\x1b[31m[Error] " + err.Error() + "\x1b[0m\r\n",
+		}
+		jsonMsg, _ := json.Marshal(errorMsg)
+		_ = conn.WriteMessage(websocket.TextMessage, jsonMsg)
 		conn.Close()
 		return
 	}

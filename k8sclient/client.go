@@ -3,7 +3,6 @@ package k8sclient
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -33,13 +32,18 @@ import (
 )
 
 type WebSocketIO struct {
-	Conn       *websocket.Conn
-	readBuffer chan []byte
-	closeCh    chan struct{}
+	conn        *websocket.Conn
+	stdinPipe   *io.PipeReader // 來自 websocket 的數據 -> stdin
+	stdinWriter *io.PipeWriter
+	sizeChan    chan remotecommand.TerminalSize
+	once        sync.Once
+}
 
-	sizeMu     sync.Mutex
-	size       remotecommand.TerminalSize
-	notifySize chan struct{}
+type TerminalMessage struct {
+	Type string `json:"type"`
+	Data string `json:"data,omitempty"` // 用於 stdin/stdout
+	Cols int    `json:"cols,omitempty"` // 用於 resize
+	Rows int    `json:"rows,omitempty"` // 用於 resize
 }
 
 var (
@@ -123,89 +127,96 @@ func Init() {
 	}
 }
 
-func NewWebSocketIO(conn *websocket.Conn, initialCols, initialRows uint16) *WebSocketIO {
-	wsio := &WebSocketIO{
-		Conn:       conn,
-		readBuffer: make(chan []byte, 10),
-		closeCh:    make(chan struct{}),
-
-		size:       remotecommand.TerminalSize{Width: initialCols, Height: initialRows},
-		notifySize: make(chan struct{}, 1),
+// NewWebSocketIO 建立一個新的 WebSocketIO 處理器
+func NewWebSocketIO(conn *websocket.Conn) *WebSocketIO {
+	pr, pw := io.Pipe()
+	handler := &WebSocketIO{
+		conn:        conn,
+		stdinPipe:   pr,
+		stdinWriter: pw,
+		sizeChan:    make(chan remotecommand.TerminalSize),
 	}
-
-	go func() {
-		defer close(wsio.readBuffer)
-		for {
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				return
-			}
-
-			var resize struct {
-				Type string `json:"type"`
-				Cols uint16 `json:"cols"`
-				Rows uint16 `json:"rows"`
-			}
-
-			if err := json.Unmarshal(msg, &resize); err == nil && resize.Type == "resize" {
-				wsio.sizeMu.Lock()
-				wsio.size.Width = resize.Cols
-				wsio.size.Height = resize.Rows
-				wsio.sizeMu.Unlock()
-
-				// 非阻塞通知有 resize
-				select {
-				case wsio.notifySize <- struct{}{}:
-				default:
-				}
-				continue
-			}
-
-			// 不是 resize 就當一般輸入傳給 shell
-			wsio.readBuffer <- msg
-		}
-	}()
-
-	return wsio
+	// 這裡不變，依然啟動 readLoop
+	go handler.readLoop()
+	return handler
 }
 
-// Read 實作 io.Reader，提供給 executor stdin
-func (w *WebSocketIO) Read(p []byte) (int, error) {
-	select {
-	case b, ok := <-w.readBuffer:
-		if !ok {
-			return 0, io.EOF
-		}
-		return copy(p, b), nil
-	case <-w.closeCh:
-		return 0, errors.New("connection closed")
-	}
+// Read 方法會從接收 stdin 數據的管道中讀取數據 (實現 io.Reader)
+func (h *WebSocketIO) Read(p []byte) (n int, err error) {
+	return h.stdinPipe.Read(p)
 }
 
-// Write 實作 io.Writer，提供給 executor stdout/stderr
-func (w *WebSocketIO) Write(p []byte) (int, error) {
-	err := w.Conn.WriteMessage(websocket.TextMessage, p)
+// Write 方法會將數據寫入 WebSocket (實現 io.Writer)
+func (h *WebSocketIO) Write(p []byte) (n int, err error) {
+	msg, err := json.Marshal(TerminalMessage{
+		Type: "stdout",
+		Data: string(p),
+	})
 	if err != nil {
+		return 0, err
+	}
+	if err := h.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 		return 0, err
 	}
 	return len(p), nil
 }
 
-// Close 關閉連線
-func (w *WebSocketIO) Close() error {
-	close(w.closeCh)
-	return w.Conn.Close()
+// Next 方法會被 executor 呼叫，用來等待一個 resize 事件 (實現 remotecommand.TerminalSizeQueue)
+func (h *WebSocketIO) Next() *remotecommand.TerminalSize {
+	size, ok := <-h.sizeChan
+	if !ok {
+		return nil // Channel 被關閉
+	}
+	return &size
 }
 
-// TerminalSizeQueue 介面實作，executor 呼叫這裡取得最新大小
-func (w *WebSocketIO) Next() *remotecommand.TerminalSize {
-	<-w.notifySize
-	w.sizeMu.Lock()
-	defer w.sizeMu.Unlock()
-	return &w.size
+// Close 用於清理資源
+func (h *WebSocketIO) Close() {
+	h.once.Do(func() {
+		_ = h.stdinWriter.Close()
+		close(h.sizeChan)
+	})
 }
 
-// ExecToPodViaWebSocket 改用 WebSocketIO
+// readLoop 是核心邏輯，在背景持續讀取 WebSocket 訊息並分發
+func (h *WebSocketIO) readLoop() {
+	// ✅ **核心修正：由 readLoop 自己負責清理**
+	// 當這個 goroutine 退出時（無論是正常結束還是出錯），
+	// defer 會確保 Close() 被呼叫，安全地關閉 channels。
+	defer h.Close()
+
+	for {
+		_, message, err := h.conn.ReadMessage()
+		if err != nil {
+			// 當讀取發生錯誤 (例如 WebSocket 關閉)，
+			// for 迴圈會終止，然後上面的 defer h.Close() 就會執行。
+			return
+		}
+
+		var msg TerminalMessage
+		if err := json.Unmarshal(message, &msg); err != nil {
+			continue
+		}
+
+		switch msg.Type {
+		case "stdin":
+			if msg.Data != "" {
+				// 在這裡，因為迴圈還在繼續，所以 channel 肯定是打開的。
+				_, _ = h.stdinWriter.Write([]byte(msg.Data))
+			}
+		case "resize":
+			// 同上，channel 肯定是打開的。
+			h.sizeChan <- remotecommand.TerminalSize{
+				Width:  uint16(msg.Cols),
+				Height: uint16(msg.Rows),
+			}
+		}
+	}
+}
+
+// WebSocketIO's code remains the same, it's correct.
+// ... NewWebSocketIO, Read, Write, Next, Close, readLoop ...
+
 func ExecToPodViaWebSocket(
 	conn *websocket.Conn,
 	config *rest.Config,
@@ -214,7 +225,19 @@ func ExecToPodViaWebSocket(
 	command []string,
 	tty bool,
 ) error {
-	wsIO := NewWebSocketIO(conn, 80, 24) // 初始 80x24
+	// Create our handler which implements all necessary interfaces.
+	wsIO := NewWebSocketIO(conn)
+
+	// ✅ **CORE FIX: Remove the defer from the main goroutine.**
+	// The responsibility of closing the channels is now solely
+	// within the readLoop goroutine. This eliminates the race condition.
+	// defer wsIO.Close()  <-- REMOVE THIS LINE
+
+	execCmd := []string{
+		"env",
+		"TERM=xterm",
+	}
+	execCmd = append(execCmd, command...) // Append the original command (e.g., "/bin/sh")
 
 	req := clientset.CoreV1().RESTClient().
 		Post().
@@ -224,11 +247,12 @@ func ExecToPodViaWebSocket(
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: container,
-			Command:   command,
-			Stdin:     true,
-			Stdout:    true,
-			Stderr:    true,
-			TTY:       tty,
+			// Use the modified command with the TERM variable.
+			Command: execCmd,
+			Stdin:   true,
+			Stdout:  true,
+			Stderr:  true,
+			TTY:     tty,
 		}, scheme.ParameterCodec)
 
 	executor, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
@@ -236,16 +260,13 @@ func ExecToPodViaWebSocket(
 		return err
 	}
 
-	err = executor.Stream(remotecommand.StreamOptions{
+	return executor.Stream(remotecommand.StreamOptions{
 		Stdin:             wsIO,
 		Stdout:            wsIO,
 		Stderr:            wsIO,
 		Tty:               tty,
 		TerminalSizeQueue: wsIO,
 	})
-
-	wsIO.Close()
-	return err
 }
 
 func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, namespace string) {
