@@ -4,10 +4,10 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'services/**'
-      - 'routes/**'
-      - 'repositories/**'
-      - 'handlers/**'
+      - 'src/services/**'
+      - 'src/routes/**'
+      - 'src/repositories/**'
+      - 'src/handlers/**'
   workflow_dispatch:
 
 jobs:
@@ -76,7 +76,7 @@ jobs:
         run: echo "DATABASE_URL=postgres://test:test@localhost:5432/platform?sslmode=disable" >> $GITHUB_ENV
 
       - name: Run integration tests
-        run: go test ./tests/integration/... -v
+        run: go test ./src/tests/integration/... -v
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           KUBECONFIG: ${{ env.KUBECONFIG }}
