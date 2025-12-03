@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'services/**'
+      - 'src/services/**'
   workflow_dispatch:
 jobs:
   unit-test:
@@ -20,4 +20,4 @@ jobs:
           go-version: '1.22'
 
       - name: Run unit tests
-        run: go test ./services/... -v
+        run: go test ./src/services/... -v

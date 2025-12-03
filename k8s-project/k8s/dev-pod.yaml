@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-pod
+  labels:
+    app: k8s-project
+spec:
+  containers:
+  - name: app-container
+    image: your-image-name:latest
+    volumeMounts:
+    - mountPath: /app
+      name: app-volume
+  volumes:
+  - name: app-volume
+    hostPath:
+      path: /path/to/your/local/directory
+      type: Directory
+  restartPolicy: Always
