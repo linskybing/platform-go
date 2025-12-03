@@ -25,6 +25,6 @@ echo "   (Press Ctrl+C to stop the application, the pod will remain running)"
 echo "   (Source code is mounted at /go/web-go)"
 
 # We use 'exec -it' to keep the terminal interactive so you can see logs and stop it with Ctrl+C
-kubectl exec -it $POD_NAME -- /bin/bash -c "tmux"
+kubectl exec -it $POD_NAME -- bash
 
 # "cd /go/web-go && export GOTOOLCHAIN=local && export GOSUMDB=off && go run src/main.go"
