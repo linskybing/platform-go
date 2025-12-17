@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linskybing/platform-go/src/db"
 	"github.com/linskybing/platform-go/src/dto"
 	"github.com/linskybing/platform-go/src/k8sclient"
 	"github.com/linskybing/platform-go/src/models"
@@ -35,6 +34,7 @@ func (s *K8sService) CreateJob(ctx context.Context, userID uint, input dto.Creat
 	}
 
 	envVars := make(map[string]string)
+	annotations := make(map[string]string)
 
 	// Check GPU Quota and Access
 	if input.GPUCount > 0 {
@@ -70,7 +70,7 @@ func (s *K8sService) CreateJob(ctx context.Context, userID uint, input dto.Creat
 					if err != nil {
 						return err
 					}
-					
+
 					// Calculate requested quota units
 					requestedUnits := input.GPUCount
 					if requestedType == "dedicated" {
@@ -82,35 +82,24 @@ func (s *K8sService) CreateJob(ctx context.Context, userID uint, input dto.Creat
 						return fmt.Errorf("GPU quota exceeded. Current: %d, Requested: %d, Quota: %d", currentUsage, requestedUnits, project.GPUQuota)
 					}
 
-					// Inject MPS Env Vars and Volumes if shared
-					if requestedType == "shared" {
-						if project.MPSLimit > 0 {
-							envVars["CUDA_MPS_ACTIVE_THREAD_PERCENTAGE"] = strconv.Itoa(project.MPSLimit)
-						}
-						if project.MPSMemory > 0 {
-							envVars["CUDA_MPS_PINNED_DEVICE_MEM_LIMIT"] = fmt.Sprintf("%dM", project.MPSMemory)
-						}
-						
-						// Set MPS Pipe Directory
-						envVars["CUDA_MPS_PIPE_DIRECTORY"] = "/tmp/nvidia-mps"
-
-						// Mount MPS Pipe and SHM
-						volumes = append(volumes, k8sclient.VolumeSpec{
-							Name:      "nvidia-mps",
-							HostPath:  "/run/nvidia/mps",
-							MountPath: "/tmp/nvidia-mps",
-						})
-						volumes = append(volumes, k8sclient.VolumeSpec{
-							Name:      "nvidia-mps-shm",
-							HostPath:  "/run/nvidia/mps/shm",
-							MountPath: "/dev/shm",
-						})
-					}
-
 					// Handle Dedicated on Shared Node (Emulation)
 					if requestedType == "dedicated" {
 						input.GPUType = "shared"
 						input.GPUCount = input.GPUCount * 10
+
+						// Set MPS limits to Max for "dedicated" usage via Annotations
+						annotations["mps.nvidia.com/threads"] = "100"
+						annotations["mps.nvidia.com/vram"] = "48000M"
+					}
+
+					// Inject MPS Annotations if shared
+					if requestedType == "shared" {
+						if project.MPSLimit > 0 {
+							annotations["mps.nvidia.com/threads"] = strconv.Itoa(project.MPSLimit)
+						}
+						if project.MPSMemory > 0 {
+							annotations["mps.nvidia.com/vram"] = fmt.Sprintf("%dM", project.MPSMemory)
+						}
 					}
 				}
 			}
@@ -136,6 +125,7 @@ func (s *K8sService) CreateJob(ctx context.Context, userID uint, input dto.Creat
 		GPUCount:          input.GPUCount,
 		GPUType:           input.GPUType,
 		EnvVars:           envVars,
+		Annotations:       annotations,
 	}
 
 	// Default values if not provided
@@ -160,13 +150,24 @@ func (s *K8sService) CreateJob(ctx context.Context, userID uint, input dto.Creat
 		Priority:   "low", // Force low priority in DB record
 		Status:     "Pending",
 	}
-	if err := db.DB.Create(&jobRecord).Error; err != nil {
+	if err := s.repos.Job.Create(&jobRecord); err != nil {
 		// Note: Job is created in K8s but DB record failed.
 		// In a real system, we might want to rollback or handle this inconsistency.
 		return err
 	}
 
 	return nil
+}
+
+func (s *K8sService) ListJobs(userID uint, isAdmin bool) ([]models.Job, error) {
+	if isAdmin {
+		return s.repos.Job.FindAll()
+	}
+	return s.repos.Job.FindByUserID(userID)
+}
+
+func (s *K8sService) GetJob(id uint) (*models.Job, error) {
+	return s.repos.Job.FindByID(id)
 }
 
 func (s *K8sService) CountProjectGPUUsage(ctx context.Context, projectID uint) (int, error) {
@@ -199,7 +200,6 @@ func (s *K8sService) CountProjectGPUUsage(ctx context.Context, projectID uint) (
 	}
 	return totalGPU, nil
 }
-
 
 func (s *K8sService) GetPVC(ns, name string) (*corev1.PersistentVolumeClaim, error) {
 	return utils.GetPVC(ns, name)
