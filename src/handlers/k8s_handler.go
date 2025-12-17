@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/src/dto"
@@ -50,6 +51,72 @@ func (h *K8sHandler) CreateJob(c *gin.Context) {
 	c.JSON(http.StatusCreated, response.SuccessResponse{
 		Code:    0,
 		Message: "Job created successfully",
+	})
+}
+
+// @Summary List Jobs
+// @Tags k8s
+// @Produce json
+// @Success 200 {object} response.SuccessResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /k8s/jobs [get]
+func (h *K8sHandler) ListJobs(c *gin.Context) {
+	uid, err := utils.GetUserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+
+	// Check if user is admin (optional, depending on requirements)
+	// For now, let's assume we pass isAdmin=false unless we check roles
+	// But wait, GetUserIDFromContext only gives ID.
+	// We might need to fetch user to check role, or rely on middleware.
+	// Let's assume we want to list jobs for the current user.
+	// If we want admin to see all, we need to check role.
+	// Let's just list by user for now.
+
+	// Actually, let's check if we can get role from context or token.
+	// The middleware sets "userID".
+	// Let's just list for the user.
+
+	jobs, err := h.svc.ListJobs(uid, false) // false for isAdmin for now
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.SuccessResponse{
+		Code:    0,
+		Message: "success",
+		Data:    jobs,
+	})
+}
+
+// @Summary Get Job
+// @Tags k8s
+// @Produce json
+// @Param id path int true "Job ID"
+// @Success 200 {object} response.SuccessResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Router /k8s/jobs/{id} [get]
+func (h *K8sHandler) GetJob(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid ID"})
+		return
+	}
+
+	job, err := h.svc.GetJob(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.SuccessResponse{
+		Code:    0,
+		Message: "success",
+		Data:    job,
 	})
 }
 

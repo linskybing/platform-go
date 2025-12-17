@@ -263,6 +263,12 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 			}
 		}
 
+		// Inject GPU Annotations
+		jsonBytes, err = s.InjectGPUAnnotations(jsonBytes, project)
+		if err != nil {
+			return err
+		}
+
 		if err := utils.CreateByJson(datatypes.JSON(jsonBytes), ns); err != nil {
 			return err
 		}
@@ -327,8 +333,13 @@ func (s *ConfigFileService) enforceReadOnly(jsonBytes []byte) ([]byte, error) {
 		return jsonBytes, nil
 	}
 
+	// Inject MPS Annotations if Project ID is available
+	// Note: This requires passing Project ID to this function or fetching it
+	// For now, we assume the caller handles annotation injection or we do it here if we have context
+
 	for _, c := range containers {
 		if container, ok := c.(map[string]interface{}); ok {
+			// ... existing volume logic ...
 			if mounts, ok := container["volumeMounts"].([]interface{}); ok {
 				for _, m := range mounts {
 					if mount, ok := m.(map[string]interface{}); ok {
@@ -344,6 +355,36 @@ func (s *ConfigFileService) enforceReadOnly(jsonBytes []byte) ([]byte, error) {
 				}
 			}
 		}
+	}
+
+	return json.Marshal(obj)
+}
+
+// Helper to inject GPU annotations into Pod spec
+func (s *ConfigFileService) InjectGPUAnnotations(jsonBytes []byte, project models.Project) ([]byte, error) {
+	var obj map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &obj); err != nil {
+		return nil, err
+	}
+
+	metadata, ok := obj["metadata"].(map[string]interface{})
+	if !ok {
+		metadata = make(map[string]interface{})
+		obj["metadata"] = metadata
+	}
+
+	annotations, ok := metadata["annotations"].(map[string]interface{})
+	if !ok {
+		annotations = make(map[string]interface{})
+		metadata["annotations"] = annotations
+	}
+
+	// Inject MPS Annotations
+	if project.MPSLimit > 0 {
+		annotations["mps.nvidia.com/threads"] = fmt.Sprintf("%d", project.MPSLimit)
+	}
+	if project.MPSMemory > 0 {
+		annotations["mps.nvidia.com/vram"] = fmt.Sprintf("%dM", project.MPSMemory)
 	}
 
 	return json.Marshal(obj)

@@ -11,6 +11,7 @@ type Repos struct {
 	Audit      AuditRepo
 	Form       *FormRepository
 	GPURequest GPURequestRepo
+	Job        JobRepo
 }
 
 func New() *Repos {
@@ -25,5 +26,6 @@ func New() *Repos {
 		Audit:      &DBAuditRepo{},
 		Form:       NewFormRepository(),
 		GPURequest: &DBGPURequestRepo{},
+		Job:        &DBJobRepo{},
 	}
 }
