@@ -93,6 +93,8 @@ func RegisterRoutes(r *gin.Engine) {
 		k8s := auth.Group("/k8s")
 		{
 			k8s.POST("/jobs", authMiddleware.Admin(), handlers_instance.K8s.CreateJob)
+			k8s.GET("/jobs", handlers_instance.K8s.ListJobs)
+			k8s.GET("/jobs/:id", handlers_instance.K8s.GetJob)
 
 			// PVC routes moved here
 			pvc := k8s.Group("/pvc")

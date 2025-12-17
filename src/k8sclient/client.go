@@ -660,6 +660,7 @@ type JobSpec struct {
 	GPUCount          int
 	GPUType           string
 	EnvVars           map[string]string
+	Annotations       map[string]string
 }
 
 type VolumeSpec struct {
@@ -742,6 +743,9 @@ func CreateJob(ctx context.Context, spec JobSpec) error {
 			Parallelism: &spec.Parallelism,
 			Completions: &spec.Completions,
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: spec.Annotations,
+				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:     corev1.RestartPolicyOnFailure,
 					PriorityClassName: spec.PriorityClassName,
@@ -761,7 +765,7 @@ func CreateJob(ctx context.Context, spec JobSpec) error {
 // CreateFileBrowserPod creates a pod running filebrowser
 func CreateFileBrowserPod(ctx context.Context, ns, pvcName string) (string, error) {
 	podName := fmt.Sprintf("filebrowser-%s", pvcName)
-	
+
 	// Check if pod already exists
 	_, err := Clientset.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
 	if err == nil {
@@ -817,7 +821,7 @@ func CreateFileBrowserPod(ctx context.Context, ns, pvcName string) (string, erro
 // CreateFileBrowserService creates a service for filebrowser
 func CreateFileBrowserService(ctx context.Context, ns, pvcName string) (string, error) {
 	svcName := fmt.Sprintf("filebrowser-%s-svc", pvcName)
-	
+
 	// Check if service already exists
 	svc, err := Clientset.CoreV1().Services(ns).Get(ctx, svcName, metav1.GetOptions{})
 	if err == nil {
@@ -848,7 +852,6 @@ func CreateFileBrowserService(ctx context.Context, ns, pvcName string) (string, 
 			},
 		},
 	}
-
 
 	createdSvc, err := Clientset.CoreV1().Services(ns).Create(ctx, service, metav1.CreateOptions{})
 	if err != nil {
