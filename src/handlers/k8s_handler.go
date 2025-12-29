@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/src/dto"
@@ -15,12 +20,13 @@ import (
 )
 
 type K8sHandler struct {
-	K8sService  *services.K8sService
-	UserService *services.UserService
+	K8sService     *services.K8sService
+	UserService    *services.UserService
+	ProjectService *services.ProjectService
 }
 
-func NewK8sHandler(K8sService *services.K8sService, UserService *services.UserService) *K8sHandler {
-	return &K8sHandler{K8sService: K8sService, UserService: UserService}
+func NewK8sHandler(K8sService *services.K8sService, UserService *services.UserService, ProjectService *services.ProjectService) *K8sHandler {
+	return &K8sHandler{K8sService: K8sService, UserService: UserService, ProjectService: ProjectService}
 }
 
 // @Summary Create a Kubernetes Job
@@ -491,15 +497,14 @@ func (h *K8sHandler) OpenMyDrive(c *gin.Context) {
 		return
 	}
 
-	port, err := h.K8sService.OpenUserGlobalFileBrowser(c, user.Username)
+	_, err = h.K8sService.OpenUserGlobalFileBrowser(c, user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to start file browser: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"nodePort": port,
-		"message":  "User file browser ready",
+		"message": "User file browser ready",
 	})
 }
 
@@ -558,4 +563,221 @@ func (h *K8sHandler) DeleteUserStorage(c *gin.Context) {
 	c.JSON(http.StatusOK, response.MessageResponse{
 		Message: fmt.Sprintf("Storage for user '%s' has been completely removed", targetUsername),
 	})
+}
+
+// UserStorageProxy 處理所有通往 FileBrowser 的流量
+// @Router /k8s/user-storage/proxy/*path [all]
+func (h *K8sHandler) UserStorageProxy(c *gin.Context) {
+	claimsVal, _ := c.Get("claims")
+	claims := claimsVal.(*types.Claims)
+	userID := claims.UserID
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// 2. 找出該使用者的 Service 內部位址
+	// 假設你有一個 Helper function 可以組出 K8s 內部的 DNS 名稱
+	// 格式通常是: http://{service-name}.{namespace}.svc.cluster.local:{port}
+	user, _ := h.UserService.FindUserByID(userID)
+	safeUsername := strings.ToLower(user.Username)
+
+	// 根據我們之前的命名規則
+	serviceName := fmt.Sprintf("fb-hub-svc-%s", safeUsername)
+	namespace := fmt.Sprintf("user-%s-storage", safeUsername)
+	targetStr := fmt.Sprintf("http://%s.%s.svc.cluster.local:80", serviceName, namespace)
+
+	remote, err := url.Parse(targetStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid target url"})
+		return
+	}
+
+	// 3. 建立反向代理
+	proxy := httputil.NewSingleHostReverseProxy(remote)
+
+	// 4. 修改請求路徑 (Path Rewriting)
+	// 前端呼叫: /k8s/user-storage/proxy/files/...
+	// 後端轉發: /files/... (去除 /k8s/user-storage/proxy 前綴)
+	// 注意：FileBrowser 需要設定 baseurl (詳見步驟 3) 才能完美運作，
+	// 這裡我們示範標準的 Director 修改
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+
+		// 移除 Gin 的路由前綴，讓後面的 FileBrowser 收到正確的路徑
+		// 假設你的路由群組是 /k8s/user-storage/proxy
+		req.URL.Path = strings.TrimPrefix(req.URL.Path, "/k8s/user-storage/proxy")
+
+		// 確保 Header 正確
+		req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
+		req.Header.Set("X-Forwarded-Proto", "http")
+	}
+
+	// 5. 執行代理 (直接接管 ResponseWriter)
+	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+// ListProjectStorages retrieves a list of all project-related PVCs.
+// @Summary List all project storages
+// @Description Fetch all PersistentVolumeClaims that are managed by the platform for projects.
+// @Tags K8s/ProjectStorage
+// @Accept json
+// @Produce json
+// @Success 200 {array} dto.ProjectPVCOutput
+// @Failure 500 {object} map[string]string "Internal Server Error"
+// @Router /k8s/storage/projects [get]
+func (h *K8sHandler) ListProjectStorages(c *gin.Context) {
+	// 1. Setup Context with Timeout
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// 2. Call Service
+	list, err := h.K8sService.ListAllProjectStorages(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to fetch project storages",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// 3. Return Result
+	c.JSON(http.StatusOK, list)
+}
+
+// CreateProjectStorage provisions a new shared storage (PVC) for a project.
+// @Summary Create project storage
+// @Description Provisions a Namespace and PVC for the specified project. Auto-generates labels for management.
+// @Tags K8s/ProjectStorage
+// @Accept json
+// @Produce json
+// @Param request body dto.CreateProjectStorageRequest true "Project Storage Request"
+// @Success 201 {object} map[string]interface{} "Storage created successfully"
+// @Failure 400 {object} map[string]string "Invalid request parameters"
+// @Failure 409 {object} map[string]string "Storage already exists"
+// @Failure 500 {object} map[string]string "Internal Server Error"
+// @Router /k8s/storage/projects [post]
+func (h *K8sHandler) CreateProjectStorage(c *gin.Context) {
+	// 1. Bind JSON Payload
+	var req dto.CreateProjectStorageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request parameters",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// 2. Setup Context
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	// 3. Call Service
+	createdPVC, err := h.K8sService.CreateProjectPVC(ctx, req)
+	if err != nil {
+		// Check for specific errors (e.g., already exists)
+		if strings.Contains(err.Error(), "already exists") {
+			c.JSON(http.StatusConflict, gin.H{"error": "Storage for this project already exists"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to provision storage",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// 4. Return Success Response
+	c.JSON(http.StatusCreated, gin.H{
+		"message":   "Project storage created successfully",
+		"id":        req.ProjectID,
+		"pvcName":   createdPVC.Name,
+		"namespace": createdPVC.Namespace,
+		"capacity":  req.Capacity,
+		"createdAt": createdPVC.CreationTimestamp,
+	})
+}
+
+// ProjectStorageProxy forwards traffic to the FileBrowser instance of a specific project.
+// @Summary Reverse proxy to project file browser
+// @Description Proxies requests to the internal K8s Service of the project's FileBrowser. Requires the drive to be started.
+// @Tags K8s/ProjectStorage
+// @Param id path int true "Project ID"
+// @Param path path string true "Path to access (e.g., /files/)"
+// @Success 200 {string} string "HTML/Content"
+// @Failure 400 {object} map[string]string "Invalid Project ID"
+// @Failure 404 {object} map[string]string "Project not found"
+// @Failure 502 {object} map[string]string "Storage service unreachable"
+// @Router /k8s/storage/projects/{id}/proxy/{path} [get]
+// @Router /k8s/storage/projects/{id}/proxy/{path} [post]
+// @Router /k8s/storage/projects/{id}/proxy/{path} [put]
+// @Router /k8s/storage/projects/{id}/proxy/{path} [delete]
+func (h *K8sHandler) ProjectStorageProxy(c *gin.Context) {
+	// 1. Get Project ID from URL
+	projectIDStr := c.Param("id")
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Project ID"})
+		return
+	}
+
+	// 2. Fetch Project Details to reconstruct Namespace name
+	// We need the Project Name to recreate the hashed namespace via Utils.
+	project, err := h.ProjectService.GetProject(uint(projectID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	// 3. Reconstruct K8s DNS Name
+	// Use the utility to get the exact namespace name used during creation.
+	targetNamespace := utils.GenerateSafeResourceName("project", project.ProjectName, project.PID)
+
+	// Assuming the Service name inside the namespace follows a convention.
+	// E.g., "fb-service". Adjust this if your deployment logic uses a different name.
+	serviceName := "fb-service"
+
+	// Construct the internal K8s Cluster DNS URL
+	targetURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:80", serviceName, targetNamespace)
+
+	remote, err := url.Parse(targetURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid target URL configuration"})
+		return
+	}
+
+	// 4. Setup Reverse Proxy
+	proxy := httputil.NewSingleHostReverseProxy(remote)
+
+	// 5. Rewrite Path (Director)
+	// The path sent to K8s should not contain the proxy prefix.
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+
+		// Incoming Path: /k8s/storage/projects/123/proxy/files/example.txt
+		// Target Path:   /files/example.txt
+		// Note: The FileBrowser container must be started with --baseurl or matching prefix handling if needed,
+		// but usually stripping the prefix here is sufficient for the backend.
+		prefix := fmt.Sprintf("/k8s/storage/projects/%d/proxy", projectID)
+		req.URL.Path = strings.TrimPrefix(req.URL.Path, prefix)
+
+		// Set headers for proper forwarding so the upstream knows the original host
+		req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
+		req.Header.Set("X-Forwarded-Proto", "http") // Change to https if behind SSL ingress
+	}
+
+	// 6. Error Handler for Proxy
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		// This usually happens if the Pod is not running or Service is unreachable
+		fmt.Printf("[Proxy Error] Target: %s, Error: %v\n", targetURL, err)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte(fmt.Sprintf(`{"error": "Storage service unreachable. Is the drive started?", "details": "%v"}`, err)))
+	}
+
+	// 7. Serve Content
+	proxy.ServeHTTP(c.Writer, c.Request)
 }

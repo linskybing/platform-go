@@ -14,10 +14,6 @@ spec:
     spec:
       serviceAccountName: admin-sa
       dnsPolicy: ClusterFirst
-      dnsConfig:
-        nameservers:
-          - 8.8.8.8
-          - 1.1.1.1
       containers:
         - name: go-api
           image: linskybing/platform-go-api:latest

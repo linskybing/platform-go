@@ -165,32 +165,24 @@ func DeleteFileBrowserResources(ctx context.Context, ns string, pvcName string) 
 	return nil
 }
 
+func int64Ptr(i int64) *int64 { return &i }
+
 func StartUserHubBrowser(ctx context.Context, username string) (string, error) {
 	if k8sclient.Clientset == nil {
 		return "30000", nil
 	}
 
-	// 定義資源名稱
 	ns := fmt.Sprintf("user-%s-storage", username)
 	appName := fmt.Sprintf("fb-hub-%s", username)
 	svcName := fmt.Sprintf("fb-hub-svc-%s", username)
 	nfsServiceName := "storage-svc"
 
-	// ---------------------------------------------------------
-	// [FIX 1] 獲取 NFS Service 的 ClusterIP
-	// 因為 Kubelet (Node層) 無法解析 Service 名稱，必須給它 IP
-	// ---------------------------------------------------------
 	nfsSvc, err := k8sclient.Clientset.CoreV1().Services(ns).Get(ctx, nfsServiceName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get nfs service IP: %w", err)
 	}
 	nfsClusterIP := nfsSvc.Spec.ClusterIP
 
-	// ---------------------------------------------------------
-	// [FIX 2] 確認 NFS Path
-	// 如果你用的是 'itsthenetwork/nfs-server-alpine'，路徑必須是 "/exports"
-	// 如果用的是原本的 Image，可能是 "/"，請根據 storage-gateway 的設定調整
-	// ---------------------------------------------------------
 	nfsPath := "/"
 
 	// 1. 建立 Pod (Mount NFS)
@@ -205,13 +197,16 @@ func StartUserHubBrowser(ctx context.Context, username string) (string, error) {
 				{
 					Name:  "filebrowser",
 					Image: "filebrowser/filebrowser:v2",
-					// 使用者的 Hub 是私有的，這裡我們用 --noauth
-					Args:  []string{"--noauth", "--root=/srv", "--address=0.0.0.0"},
+					Args:  []string{"--noauth", "--root=/srv", "--address=0.0.0.0", "--baseurl=/k8s/users/proxy"},
 					Ports: []corev1.ContainerPort{{ContainerPort: 80}},
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser:  int64Ptr(0),
+						RunAsGroup: int64Ptr(0),
+					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "nfs-data",
-							MountPath: "/srv", // FileBrowser 根目錄
+							MountPath: "/srv",
 						},
 					},
 				},
@@ -254,35 +249,18 @@ func StartUserHubBrowser(ctx context.Context, username string) (string, error) {
 					TargetPort: intstr.FromInt(80),
 				},
 			},
-			Type: corev1.ServiceTypeNodePort,
+			Type: corev1.ServiceTypeClusterIP,
 		},
 	}
 
-	createdSvc, err := k8sclient.Clientset.CoreV1().Services(ns).Create(ctx, svc, metav1.CreateOptions{})
+	_, err = k8sclient.Clientset.CoreV1().Services(ns).Create(ctx, svc, metav1.CreateOptions{})
 	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			createdSvc, _ = k8sclient.Clientset.CoreV1().Services(ns).Get(ctx, svcName, metav1.GetOptions{})
-		} else {
+		if !apierrors.IsAlreadyExists(err) {
 			return "", fmt.Errorf("failed to create Hub FB service: %w", err)
 		}
 	}
 
-	// 3. 等待並取得 Port (保持不變)
-	var nodePort int32
-	err = wait.PollImmediate(100*time.Millisecond, 5*time.Second, func() (bool, error) {
-		if len(createdSvc.Spec.Ports) > 0 && createdSvc.Spec.Ports[0].NodePort > 0 {
-			nodePort = createdSvc.Spec.Ports[0].NodePort
-			return true, nil
-		}
-		createdSvc, _ = k8sclient.Clientset.CoreV1().Services(ns).Get(ctx, svcName, metav1.GetOptions{})
-		return false, nil
-	})
-
-	if err != nil {
-		return "", fmt.Errorf("timeout waiting for nodeport")
-	}
-
-	return fmt.Sprintf("%d", nodePort), nil
+	return "80", nil
 }
 
 func StopUserHubBrowser(ctx context.Context, username string) error {

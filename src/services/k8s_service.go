@@ -15,6 +15,7 @@ import (
 	"github.com/linskybing/platform-go/src/repositories"
 	"github.com/linskybing/platform-go/src/utils"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -351,4 +352,142 @@ func (s *K8sService) StopUserGlobalFileBrowser(ctx context.Context, username str
 	safeUser := strings.ToLower(username)
 	// safeUser = regexp.MustCompile("[^a-z0-9-]").ReplaceAllString(safeUser, "-")
 	return utils.StopUserHubBrowser(ctx, safeUser)
+}
+
+func (s *K8sService) CreateProjectPVC(ctx context.Context, req dto.CreateProjectStorageRequest) (*corev1.PersistentVolumeClaim, error) {
+
+	// 1. Generate Safe Name (Using Utils)
+	// 呼叫工具函式生成唯一且合法的 Namespace 名稱
+	targetNamespace := utils.GenerateSafeResourceName("project", req.ProjectName, req.ProjectID)
+
+	// PVC name convention
+	pvcName := fmt.Sprintf("pvc-%s", targetNamespace)
+
+	// 2. Prepare Labels
+	// 準備 Namespace 標籤
+	nsLabels := map[string]string{
+		"managed-by":   "tailadmin",
+		"type":         "project-space",
+		"project-id":   fmt.Sprintf("%d", req.ProjectID),
+		"project-name": req.ProjectName,
+	}
+
+	// 3. Ensure Namespace Exists
+	if err := s.ensureNamespaceWithLabels(ctx, targetNamespace, nsLabels); err != nil {
+		return nil, fmt.Errorf("failed to ensure namespace: %v", err)
+	}
+
+	// 4. Parse Capacity
+	storageQty, err := resource.ParseQuantity(fmt.Sprintf("%dGi", req.Capacity))
+	if err != nil {
+		return nil, fmt.Errorf("invalid capacity: %v", err)
+	}
+
+	// 5. Prepare PVC Labels (Critical for Filtering)
+	// 準備 PVC 標籤，這對於 List API 的過濾至關重要
+	pvcLabels := map[string]string{
+		"app.kubernetes.io/name":       "filebrowser-storage",
+		"app.kubernetes.io/managed-by": "nthu-cscc",
+		"storage-type":                 "project",                        // 核心過濾鍵
+		"project-id":                   fmt.Sprintf("%d", req.ProjectID), // 唯一識別
+		"project-name":                 req.ProjectName,
+	}
+
+	// Config
+	scName := config.DefaultStorageClassName // 根據你的 Cluster 環境修改 (例如: "nfs-client", "longhorn")
+	accessMode := corev1.ReadWriteMany
+
+	// 6. Create PVC Object
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvcName,
+			Namespace: targetNamespace,
+			Labels:    pvcLabels,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{accessMode},
+
+			// [FIXED] Updated for newer client-go versions (v1.30+)
+			// 使用 VolumeResourceRequirements 取代舊的 ResourceRequirements
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: storageQty,
+				},
+			},
+
+			StorageClassName: &scName,
+		},
+	}
+
+	return k8sclient.Clientset.CoreV1().PersistentVolumeClaims(targetNamespace).Create(ctx, pvc, metav1.CreateOptions{})
+}
+
+// ensureNamespaceWithLabels checks if a namespace exists, creates it if not.
+// It's a private helper method for the service.
+func (s *K8sService) ensureNamespaceWithLabels(ctx context.Context, name string, labels map[string]string) error {
+	_, err := k8sclient.Clientset.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+	if err == nil {
+		// Namespace exists.
+		// Future improvement: We could update labels here if they changed.
+		return nil
+	}
+
+	// Create new Namespace
+	newNs := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+	}
+	_, err = k8sclient.Clientset.CoreV1().Namespaces().Create(ctx, newNs, metav1.CreateOptions{})
+	return err
+}
+
+// ListAllProjectStorages retrieves all project-related PVCs using LabelSelectors.
+func (s *K8sService) ListAllProjectStorages(ctx context.Context) ([]dto.ProjectPVCOutput, error) {
+	// 1. Define Filter Options.
+	// We use server-side filtering to only fetch PVCs relevant to projects.
+	listOptions := metav1.ListOptions{
+		LabelSelector: "storage-type=project,app.kubernetes.io/managed-by=nthu-cscc",
+	}
+
+	// 2. List PVCs from ALL namespaces.
+	pvcs, err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(metav1.NamespaceAll).List(ctx, listOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []dto.ProjectPVCOutput
+
+	// 3. Map Kubernetes resources to DTOs.
+	for _, pvc := range pvcs.Items {
+		projectID := pvc.Labels["project-id"]
+		projectName := pvc.Labels["project-name"]
+
+		// Skip if essential labels are missing (integrity check)
+		if projectID == "" {
+			continue
+		}
+
+		capacityStr := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+		// Safe check for AccessModes
+		accessMode := ""
+		if len(pvc.Spec.AccessModes) > 0 {
+			accessMode = string(pvc.Spec.AccessModes[0])
+		}
+
+		result = append(result, dto.ProjectPVCOutput{
+			ID:          projectID,
+			PVCName:     pvc.Name,
+			ProjectName: projectName,
+			Namespace:   pvc.Namespace,
+			Capacity:    capacityStr.String(),
+			Status:      string(pvc.Status.Phase),
+			AccessMode:  accessMode,
+			CreatedAt:   pvc.CreationTimestamp.Time,
+		})
+	}
+
+	return result, nil
 }
