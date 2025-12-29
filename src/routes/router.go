@@ -110,12 +110,25 @@ func RegisterRoutes(r *gin.Engine) {
 				pvc.DELETE("/:namespace/:name", authMiddleware.Admin(), handlers_instance.K8s.DeletePVC)
 			}
 
-			fb := k8s.Group("/filebrowser")
+			// [NEW] Project Storage Management & Proxy
+			// Base URL: /k8s/storage/projects
+			projectStorage := k8s.Group("/storage/projects")
 			{
-				fb.POST("/start", authMiddleware.Admin(), handlers_instance.K8s.StartFileBrowser)
-				fb.POST("/stop", authMiddleware.Admin(), handlers_instance.K8s.StopFileBrowser)
-			}
+				// 1. Admin Management (List & Create)
+				// GET /k8s/storage/projects -> List all project storages
+				projectStorage.GET("", authMiddleware.Admin(), handlers_instance.K8s.ListProjectStorages)
 
+				// POST /k8s/storage/projects -> Create new project storage (with labels)
+				projectStorage.POST("", authMiddleware.Admin(), handlers_instance.K8s.CreateProjectStorage)
+
+				// 2. FileBrowser Proxy (Access)
+				// Use "id" (projectID) to verify membership via middleware
+				// URL: /k8s/storage/projects/:id/proxy/*path
+				projectStorage.Any("/:id/proxy/*path",
+					authMiddleware.GroupMember(middleware.FromIDParam(repos_instance.Project.GetGroupIDByProjectID)),
+					handlers_instance.K8s.ProjectStorageProxy,
+				)
+			}
 			userStorageGroup := k8s.Group("/users")
 			{
 				userStorageGroup.GET("/:username/storage/status", authMiddleware.Admin(), handlers_instance.K8s.GetUserStorageStatus)
@@ -124,6 +137,7 @@ func RegisterRoutes(r *gin.Engine) {
 				userStorageGroup.DELETE("/:username/storage", authMiddleware.Admin(), handlers_instance.K8s.DeleteUserStorage)
 				userStorageGroup.POST("/browse", handlers_instance.K8s.OpenMyDrive)
 				userStorageGroup.DELETE("/browse", handlers_instance.K8s.StopMyDrive)
+				userStorageGroup.Any("/proxy/*path", handlers_instance.K8s.UserStorageProxy)
 			}
 		}
 

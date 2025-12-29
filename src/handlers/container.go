@@ -28,7 +28,7 @@ func New(svc *services.Services, router *gin.Engine) *Handlers {
 		Resource:   NewResourceHandler(svc.Resource),
 		UserGroup:  NewUserGroupHandler(svc.UserGroup),
 		User:       NewUserHandler(svc.User),
-		K8s:        NewK8sHandler(svc.K8s, svc.User),
+		K8s:        NewK8sHandler(svc.K8s, svc.User, svc.Project),
 		Form:       NewFormHandler(svc.Form),
 		GPURequest: NewGPURequestHandler(svc.GPURequest, svc.Project),
 		Router:     router,
