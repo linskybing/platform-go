@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/src/config"
@@ -254,8 +256,30 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 		}
 	}
 
+	// Prepare template values for replacement
+	safeUsername := strings.ToLower(claims.Username)
+	reg, err := regexp.Compile("[^a-z0-9-]+")
+	if err == nil {
+		safeUsername = reg.ReplaceAllString(safeUsername, "-")
+	}
+	userStorageNamespace := fmt.Sprintf("user-%s-storage", safeUsername)
+
+	templateValues := map[string]string{
+		"username":             claims.Username,
+		"namespace":            ns,
+		"userStorageNamespace": userStorageNamespace,
+		"projectId":            fmt.Sprintf("%d", configfile.ProjectID),
+	}
+
 	for _, val := range data {
-		jsonBytes := []byte(val.ParsedYAML)
+		// Replace placeholders in JSON before processing
+		jsonStr := string(val.ParsedYAML)
+		replacedJSON, err := utils.ReplacePlaceholdersInJSON(jsonStr, templateValues)
+		if err != nil {
+			return fmt.Errorf("failed to replace placeholders: %w", err)
+		}
+
+		jsonBytes := []byte(replacedJSON)
 		if shouldEnforceRO {
 			jsonBytes, err = s.enforceReadOnly(jsonBytes)
 			if err != nil {
