@@ -12,6 +12,6 @@ roleRef:
   kind: ClusterRole
   name: cluster-admin
 subjects:
-- kind: ServiceAccount
-  name: admin-sa
-  namespace: default
+  - kind: ServiceAccount
+    name: admin-sa
+    namespace: default

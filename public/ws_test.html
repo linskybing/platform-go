@@ -1,101 +1,122 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Kubernetes Watch WebSocket Tester</title>
-  <style>
-    body { font-family: sans-serif; margin: 20px; }
-    h2 { color: #444; }
-    .status { margin-bottom: 1em; }
-    .added { color: green; }
-    .modified { color: orange; }
-    .deleted { color: red; }
-    #log div { margin-bottom: 0.5em; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-    code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; }
-    .resource-info { margin-left: 10px; font-size: 0.9em; color: #555; }
-  </style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Kubernetes Watch WebSocket Tester</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+      }
+      h2 {
+        color: #444;
+      }
+      .status {
+        margin-bottom: 1em;
+      }
+      .added {
+        color: green;
+      }
+      .modified {
+        color: orange;
+      }
+      .deleted {
+        color: red;
+      }
+      #log div {
+        margin-bottom: 0.5em;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+      }
+      code {
+        background: #f0f0f0;
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+      .resource-info {
+        margin-left: 10px;
+        font-size: 0.9em;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>🔍 Kubernetes Informer WebSocket Viewer</h2>
 
-<h2>🔍 Kubernetes Informer WebSocket Viewer</h2>
+    <label
+      >Namespace:
+      <input id="namespaceInput" value="default" />
+    </label>
+    <button onclick="startWebSocket()">Connect</button>
 
-<label>Namespace:
-  <input id="namespaceInput" value="default" />
-</label>
-<button onclick="startWebSocket()">Connect</button>
+    <div class="status">Status: <span id="status">Not connected</span></div>
 
-<div class="status">
-  Status: <span id="status">Not connected</span>
-</div>
+    <div id="log"></div>
 
-<div id="log"></div>
+    <script>
+      let ws;
 
-<script>
-let ws;
+      function startWebSocket() {
+        const ns = document.getElementById("namespaceInput").value;
+        const url = `ws://10.121.124.22:30080/ws/monitoring/${ns}`;
+        if (ws) {
+          ws.close();
+        }
+        ws = new WebSocket(url);
 
-function startWebSocket() {
-  const ns = document.getElementById("namespaceInput").value;
-  const url = `ws://10.121.124.22:30080/ws/monitoring/${ns}`;
-  if (ws) {
-    ws.close();
-  }
-  ws = new WebSocket(url);
+        document.getElementById("status").innerText = "Connecting...";
 
-  document.getElementById("status").innerText = "Connecting...";
+        ws.onopen = () => {
+          document.getElementById("status").innerText = "✅ Connected";
+        };
 
-  ws.onopen = () => {
-    document.getElementById("status").innerText = "✅ Connected";
-  };
+        ws.onclose = () => {
+          document.getElementById("status").innerText = "❌ Disconnected";
+        };
 
-  ws.onclose = () => {
-    document.getElementById("status").innerText = "❌ Disconnected";
-  };
+        ws.onerror = (err) => {
+          console.error("WebSocket error:", err);
+          document.getElementById("status").innerText = "⚠️ Error";
+        };
 
-  ws.onerror = (err) => {
-    console.error("WebSocket error:", err);
-    document.getElementById("status").innerText = "⚠️ Error";
-  };
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            const div = document.createElement("div");
+            div.classList.add(data.type.toLowerCase());
 
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      const div = document.createElement("div");
-      div.classList.add(data.type.toLowerCase());
-
-      // 顯示主要欄位
-      let html = `
+            // 顯示主要欄位
+            let html = `
         <strong>[${data.type}]</strong>
         <code>${data.kind}/${data.name}</code>
-        <div class="resource-info">Status: ${data.status || 'n/a'}</div>
+        <div class="resource-info">Status: ${data.status || "n/a"}</div>
       `;
 
-      // 如果是 Service 額外顯示 External IPs
-      if (data.kind === "Service") {
-        if (data.externalIPs && data.externalIPs.length > 0) {
-          html += `<div class="resource-info">External IPs: ${data.externalIPs.join(", ")}</div>`;
-        }
-        if (data.nodePorts && data.nodePorts.length > 0) {
-          html += `<div class="resource-info">NodePorts: ${data.nodePorts.join(", ")}</div>`;
-        }
+            // 如果是 Service 額外顯示 External IPs
+            if (data.kind === "Service") {
+              if (data.externalIPs && data.externalIPs.length > 0) {
+                html += `<div class="resource-info">External IPs: ${data.externalIPs.join(", ")}</div>`;
+              }
+              if (data.nodePorts && data.nodePorts.length > 0) {
+                html += `<div class="resource-info">NodePorts: ${data.nodePorts.join(", ")}</div>`;
+              }
+            }
+
+            div.innerHTML = html;
+
+            // 新訊息放頂端
+            const log = document.getElementById("log");
+            log.prepend(div);
+
+            // 限制訊息最多 100 筆，避免網頁越滾越慢
+            while (log.children.length > 100) {
+              log.removeChild(log.lastChild);
+            }
+          } catch (e) {
+            console.warn("Invalid message:", event.data);
+          }
+        };
       }
-
-      div.innerHTML = html;
-
-      // 新訊息放頂端
-      const log = document.getElementById("log");
-      log.prepend(div);
-
-      // 限制訊息最多 100 筆，避免網頁越滾越慢
-      while (log.children.length > 100) {
-        log.removeChild(log.lastChild);
-      }
-
-    } catch (e) {
-      console.warn("Invalid message:", event.data);
-    }
-  };
-}
-</script>
-
-</body>
+    </script>
+  </body>
 </html>

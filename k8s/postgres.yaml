@@ -61,4 +61,4 @@ spec:
     - port: 5432
   selector:
     app: postgres
-  clusterIP: None  # Headless service (optional)
+  clusterIP: None # Headless service (optional)

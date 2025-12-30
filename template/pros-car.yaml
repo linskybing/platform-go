@@ -24,7 +24,7 @@ spec:
         requests:
           memory: "256Mi"
         limits:
-          nvidia.com/gpu.shared: 1 
+          nvidia.com/gpu.shared: 1
   volumes:
     - name: workdir
       persistentVolumeClaim:

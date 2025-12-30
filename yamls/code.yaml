@@ -15,17 +15,17 @@ spec:
         app: code-server
     spec:
       containers:
-      - name: code-server
-        image: "master.harbor.registry/docker-hub/codercom/code-server:latest"
-        imagePullPolicy: Never
-        ports:
-        - containerPort: 8080
-        env:
-        - name: PASSWORD
-          value: "1234"
-        volumeMounts:
-          - name: workdir
-            mountPath: /home/coder
+        - name: code-server
+          image: "master.harbor.registry/docker-hub/codercom/code-server:latest"
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PASSWORD
+              value: "1234"
+          volumeMounts:
+            - name: workdir
+              mountPath: /home/coder
       volumes:
         - name: workdir
           persistentVolumeClaim:
@@ -40,6 +40,6 @@ spec:
   selector:
     app: code-server
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 8080
+    - protocol: TCP
+      port: 80
+      targetPort: 8080

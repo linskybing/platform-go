@@ -19,10 +19,10 @@ spec:
           subPath: ros2_yolo_integration/src
         - name: volume
           mountPath: /workspaces/screenshots
-          subPath: ros2_yolo_integration/screenshots          
+          subPath: ros2_yolo_integration/screenshots
         - name: volume
           mountPath: /workspaces/fps_screenshots
-          subPath: ros2_yolo_integration/fps_screenshots  
+          subPath: ros2_yolo_integration/fps_screenshots
       resources:
         requests:
           memory: "256Mi"
