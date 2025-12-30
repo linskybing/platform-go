@@ -27,10 +27,10 @@ authMiddleware := middleware.NewAuth(repos_instance)
 
 The system supports the following permission levels:
 
-*   **Admin()**: Restricts access to Super Admins only.
-*   **UserOrAdmin()**: Allows access if the authenticated user matches the target `id` in the URL parameter, or is a Super Admin.
-*   **GroupMember(extractor)**: Allows access if the user is a member of the target group (Admin, Manager, or User role) or is a Super Admin.
-*   **GroupAdmin(extractor)**: Restricts access to Group Admins/Managers or Super Admins.
+- **Admin()**: Restricts access to Super Admins only.
+- **UserOrAdmin()**: Allows access if the authenticated user matches the target `id` in the URL parameter, or is a Super Admin.
+- **GroupMember(extractor)**: Allows access if the user is a member of the target group (Admin, Manager, or User role) or is a Super Admin.
+- **GroupAdmin(extractor)**: Restricts access to Group Admins/Managers or Super Admins.
 
 ### 3. Extractors
 
@@ -43,6 +43,7 @@ Used when the Group ID is present in the request body (JSON/Form). The DTO must 
 **Signature**: `middleware.FromPayload(dtoInstance)`
 
 **Example**:
+
 ```go
 // DTO definition
 type CreateProjectDTO struct {
@@ -51,8 +52,8 @@ type CreateProjectDTO struct {
 func (d CreateProjectDTO) GetGID() uint { return d.GID }
 
 // Route definition
-r.POST("/projects", 
-    authMiddleware.GroupMember(middleware.FromPayload(dto.CreateProjectDTO{})), 
+r.POST("/projects",
+    authMiddleware.GroupMember(middleware.FromPayload(dto.CreateProjectDTO{})),
     handler.CreateProject,
 )
 ```
@@ -64,10 +65,11 @@ Used when the request targets a specific resource by ID in the URL (e.g., `/proj
 **Signature**: `middleware.FromIDParam(lookupFunction)`
 
 **Example**:
+
 ```go
 // Route definition
-r.GET("/projects/:id", 
-    authMiddleware.GroupMember(middleware.FromIDParam(repos.Project.GetGroupIDByProjectID)), 
+r.GET("/projects/:id",
+    authMiddleware.GroupMember(middleware.FromIDParam(repos.Project.GetGroupIDByProjectID)),
     handler.GetProject,
 )
 ```
