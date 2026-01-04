@@ -408,8 +408,8 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 			}
 		}
 
-		// Inject GPU configurations based on project quota
-		jsonBytes, err = s.InjectGPUAnnotations(jsonBytes, project)
+		// Validate and inject GPU configurations if GPU resources are requested
+		jsonBytes, err = s.ValidateAndInjectGPUConfig(jsonBytes, project)
 		if err != nil {
 			return err
 		}
@@ -506,34 +506,167 @@ func (s *ConfigFileService) enforceReadOnly(jsonBytes []byte) ([]byte, error) {
 	return json.Marshal(obj)
 }
 
-// Helper to inject GPU annotations into Pod spec
-func (s *ConfigFileService) InjectGPUAnnotations(jsonBytes []byte, project project.Project) ([]byte, error) {
+// ValidateAndInjectGPUConfig checks if GPU resources are requested and validates against project MPS limits.
+// Only injects GPU configuration when nvidia.com/gpu request is present in container spec.
+// This implements the dual-validation pattern: first check at config parsing, second check at instance creation.
+func (s *ConfigFileService) ValidateAndInjectGPUConfig(jsonBytes []byte, project project.Project) ([]byte, error) {
 	var obj map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &obj); err != nil {
 		return nil, err
 	}
 
-	metadata, ok := obj["metadata"].(map[string]interface{})
+	kind, ok := obj["kind"].(string)
 	if !ok {
-		metadata = make(map[string]interface{})
-		obj["metadata"] = metadata
+		return jsonBytes, nil
 	}
 
-	annotations, ok := metadata["annotations"].(map[string]interface{})
-	if !ok {
-		annotations = make(map[string]interface{})
-		metadata["annotations"] = annotations
+	var podSpec map[string]interface{}
+
+	// Extract pod spec from different resource kinds
+	switch kind {
+	case "Pod":
+		if spec, ok := obj["spec"].(map[string]interface{}); ok {
+			podSpec = spec
+		}
+	case "Deployment", "StatefulSet", "DaemonSet", "Job":
+		if spec, ok := obj["spec"].(map[string]interface{}); ok {
+			if template, ok := spec["template"].(map[string]interface{}); ok {
+				if tSpec, ok := template["spec"].(map[string]interface{}); ok {
+					podSpec = tSpec
+				}
+			}
+		}
+	default:
+		return jsonBytes, nil
 	}
 
-	// Inject MPS Annotations
-	if project.MPSLimit > 0 {
-		annotations["mps.nvidia.com/threads"] = fmt.Sprintf("%d", project.MPSLimit)
+	if podSpec == nil {
+		return jsonBytes, nil
 	}
-	if project.MPSMemory > 0 {
-		annotations["mps.nvidia.com/vram"] = fmt.Sprintf("%dM", project.MPSMemory)
+
+	// Check if any container requests GPU resources
+	hasGPURequest, err := s.containerHasGPURequest(podSpec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check GPU requests: %w", err)
+	}
+
+	// Only inject GPU config if GPU resources are actually requested
+	if !hasGPURequest {
+		return jsonBytes, nil
+	}
+
+	// First validation: Check project MPS configuration is properly set
+	if err := s.validateProjectMPSConfig(project); err != nil {
+		return nil, err
+	}
+
+	// Second validation & injection: Inject GPU configuration (memory limit, env vars, etc.)
+	if err := s.injectMPSConfig(podSpec, project); err != nil {
+		return nil, fmt.Errorf("failed to inject MPS configuration: %w", err)
 	}
 
 	return json.Marshal(obj)
+}
+
+// containerHasGPURequest checks if any container in the pod spec requests nvidia.com/gpu resources.
+// Returns true only if at least one container has an explicit GPU request.
+func (s *ConfigFileService) containerHasGPURequest(podSpec map[string]interface{}) (bool, error) {
+	containers, ok := podSpec["containers"].([]interface{})
+	if !ok {
+		return false, nil
+	}
+
+	for _, c := range containers {
+		if container, ok := c.(map[string]interface{}); ok {
+			if resources, ok := container["resources"].(map[string]interface{}); ok {
+				if requests, ok := resources["requests"].(map[string]interface{}); ok {
+					if _, hasGPU := requests["nvidia.com/gpu"]; hasGPU {
+						return true, nil
+					}
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// validateProjectMPSConfig validates that the project has proper MPS configuration.
+// This is the first validation point before resource creation.
+func (s *ConfigFileService) validateProjectMPSConfig(project project.Project) error {
+	// Check if project has MPS configuration defined
+	if project.MPSLimit <= 0 || project.MPSMemory <= 0 {
+		return fmt.Errorf("project MPS configuration invalid: MPSLimit=%d, MPSMemory=%d. Both must be greater than 0",
+			project.MPSLimit, project.MPSMemory)
+	}
+
+	// Validate MPS limit is within acceptable range (0-100%)
+	if project.MPSLimit > 100 {
+		return fmt.Errorf("invalid MPS thread limit: %d%%. Must be <= 100%%", project.MPSLimit)
+	}
+
+	// Validate MPS memory is reasonable (at least 512MB)
+	if project.MPSMemory < 512 {
+		return fmt.Errorf("MPS memory limit too low: %dMB. Must be at least 512MB", project.MPSMemory)
+	}
+
+	return nil
+}
+
+// injectMPSConfig injects MPS memory limit configuration into the pod spec.
+// This modifies container resource limits and environment variables for CUDA MPS.
+// This is the second validation/injection point during instance creation.
+func (s *ConfigFileService) injectMPSConfig(podSpec map[string]interface{}, project project.Project) error {
+	containers, ok := podSpec["containers"].([]interface{})
+	if !ok {
+		return nil
+	}
+
+	for _, c := range containers {
+		if container, ok := c.(map[string]interface{}); ok {
+			if resources, ok := container["resources"].(map[string]interface{}); ok {
+				if requests, ok := resources["requests"].(map[string]interface{}); ok {
+					if _, hasGPU := requests["nvidia.com/gpu"]; hasGPU {
+						// Ensure limits map exists
+						limits, ok := resources["limits"].(map[string]interface{})
+						if !ok {
+							limits = make(map[string]interface{})
+							resources["limits"] = limits
+						}
+
+						// Inject MPS memory limit as resource limit
+						limits["nvidia.com/gpu.memory"] = fmt.Sprintf("%dM", project.MPSMemory)
+
+						// Also inject thread percentage as a limit
+						limits["nvidia.com/gpu.threads"] = fmt.Sprintf("%d", project.MPSLimit)
+
+						// Inject environment variables for CUDA MPS configuration
+						env, ok := container["env"].([]interface{})
+						if !ok {
+							env = make([]interface{}, 0)
+						}
+
+						// Add MPS memory limit environment variable (convert MB to bytes)
+						memoryBytes := int64(project.MPSMemory) * 1024 * 1024
+						env = append(env, map[string]interface{}{
+							"name":  "CUDA_MPS_PINNED_DEVICE_MEM_LIMIT",
+							"value": fmt.Sprintf("%d", memoryBytes),
+						})
+
+						// Add MPS thread percentage environment variable
+						env = append(env, map[string]interface{}{
+							"name":  "CUDA_MPS_ACTIVE_THREAD_PERCENTAGE",
+							"value": fmt.Sprintf("%d", project.MPSLimit),
+						})
+
+						container["env"] = env
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *ConfigFileService) DeleteInstance(c *gin.Context, id uint) error {
