@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -250,6 +251,203 @@ func TestDeleteConfigFileInstance_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+// TestValidateAndInjectGPUConfig tests MPS configuration validation and injection
+func TestValidateAndInjectGPUConfig(t *testing.T) {
+	svc, _, _, _, _, _, _, _ := setupMocks(t)
+
+	t.Run("GPUConfig_WithoutGPURequest", func(t *testing.T) {
+		// Pod spec without GPU request should pass through unchanged
+		podJSON := `{
+			"kind": "Pod",
+			"metadata": {"name": "test-pod"},
+			"spec": {
+				"containers": [{
+					"name": "test-container",
+					"image": "test:latest",
+					"resources": {
+						"requests": {
+							"cpu": "1"
+						}
+					}
+				}]
+			}
+		}`
+
+		proj := project.Project{
+			PID:         1,
+			ProjectName: "test-proj",
+			MPSLimit:    100,
+			MPSMemory:   1024,
+		}
+
+		result, err := svc.ValidateAndInjectGPUConfig([]byte(podJSON), proj)
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		var obj map[string]interface{}
+		if err := json.Unmarshal(result, &obj); err != nil {
+			t.Fatalf("failed to unmarshal result: %v", err)
+		}
+
+		// Verify no GPU-related fields were added
+		spec := obj["spec"].(map[string]interface{})
+		containers := spec["containers"].([]interface{})
+		container := containers[0].(map[string]interface{})
+		env, ok := container["env"]
+		if ok && env != nil {
+			t.Fatalf("expected no env injection for non-GPU pod, but got: %v", env)
+		}
+	})
+
+	t.Run("GPUConfig_WithGPURequest_ValidConfig", func(t *testing.T) {
+		// Pod spec with GPU request and valid project MPS config
+		podJSON := `{
+			"kind": "Pod",
+			"metadata": {"name": "gpu-pod"},
+			"spec": {
+				"containers": [{
+					"name": "gpu-container",
+					"image": "cuda:latest",
+					"resources": {
+						"requests": {
+							"nvidia.com/gpu": "1"
+						}
+					}
+				}]
+			}
+		}`
+
+		proj := project.Project{
+			PID:         1,
+			ProjectName: "test-proj",
+			MPSLimit:    80,
+			MPSMemory:   2048,
+		}
+
+		result, err := svc.ValidateAndInjectGPUConfig([]byte(podJSON), proj)
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		var obj map[string]interface{}
+		if err := json.Unmarshal(result, &obj); err != nil {
+			t.Fatalf("failed to unmarshal result: %v", err)
+		}
+
+		// Verify GPU configuration was injected
+		spec := obj["spec"].(map[string]interface{})
+		containers := spec["containers"].([]interface{})
+		container := containers[0].(map[string]interface{})
+		resources := container["resources"].(map[string]interface{})
+
+		// Check resource limits were set
+		limits := resources["limits"].(map[string]interface{})
+		if _, ok := limits["nvidia.com/gpu.memory"]; !ok {
+			t.Fatalf("expected gpu.memory limit to be injected")
+		}
+		if _, ok := limits["nvidia.com/gpu.threads"]; !ok {
+			t.Fatalf("expected gpu.threads limit to be injected")
+		}
+
+		// Check environment variables were set
+		env := container["env"].([]interface{})
+		if len(env) < 2 {
+			t.Fatalf("expected at least 2 env vars for GPU, got %d", len(env))
+		}
+	})
+
+	t.Run("GPUConfig_InvalidMPSLimit", func(t *testing.T) {
+		podJSON := `{
+			"kind": "Pod",
+			"metadata": {"name": "gpu-pod"},
+			"spec": {
+				"containers": [{
+					"name": "gpu-container",
+					"image": "cuda:latest",
+					"resources": {
+						"requests": {
+							"nvidia.com/gpu": "1"
+						}
+					}
+				}]
+			}
+		}`
+
+		proj := project.Project{
+			PID:         1,
+			ProjectName: "test-proj",
+			MPSLimit:    150, // Invalid: > 100
+			MPSMemory:   2048,
+		}
+
+		_, err := svc.ValidateAndInjectGPUConfig([]byte(podJSON), proj)
+		if err == nil {
+			t.Fatalf("expected error for invalid MPS limit, but got nil")
+		}
+	})
+
+	t.Run("GPUConfig_InvalidMPSMemory", func(t *testing.T) {
+		podJSON := `{
+			"kind": "Pod",
+			"metadata": {"name": "gpu-pod"},
+			"spec": {
+				"containers": [{
+					"name": "gpu-container",
+					"image": "cuda:latest",
+					"resources": {
+						"requests": {
+							"nvidia.com/gpu": "1"
+						}
+					}
+				}]
+			}
+		}`
+
+		proj := project.Project{
+			PID:         1,
+			ProjectName: "test-proj",
+			MPSLimit:    80,
+			MPSMemory:   256, // Invalid: < 512MB minimum
+		}
+
+		_, err := svc.ValidateAndInjectGPUConfig([]byte(podJSON), proj)
+		if err == nil {
+			t.Fatalf("expected error for insufficient MPS memory, but got nil")
+		}
+	})
+
+	t.Run("GPUConfig_MissingMPSConfig", func(t *testing.T) {
+		podJSON := `{
+			"kind": "Pod",
+			"metadata": {"name": "gpu-pod"},
+			"spec": {
+				"containers": [{
+					"name": "gpu-container",
+					"image": "cuda:latest",
+					"resources": {
+						"requests": {
+							"nvidia.com/gpu": "1"
+						}
+					}
+				}]
+			}
+		}`
+
+		proj := project.Project{
+			PID:         1,
+			ProjectName: "test-proj",
+			MPSLimit:    0, // Not configured
+			MPSMemory:   0,
+		}
+
+		_, err := svc.ValidateAndInjectGPUConfig([]byte(podJSON), proj)
+		if err == nil {
+			t.Fatalf("expected error for missing MPS config, but got nil")
+		}
+	})
 }
 
 func TestConfigFileRead(t *testing.T) {

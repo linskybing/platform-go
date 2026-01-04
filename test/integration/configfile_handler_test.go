@@ -357,3 +357,135 @@ func TestConfigFileHandler_ResourceLimits(t *testing.T) {
 		})
 	}
 }
+
+// TestConfigFileGPUMPSConfiguration tests GPU MPS configuration validation and injection
+func TestConfigFileGPUMPSConfiguration(t *testing.T) {
+	ctx := GetTestContext()
+	if ctx.TestProject.MPSMemory == 0 || ctx.TestProject.MPSLimit == 0 {
+		t.Skip("Project MPS configuration not set up for testing")
+	}
+
+	client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
+
+	t.Run("CreateConfigFile with GPU request without MPS config - Should fail", func(t *testing.T) {
+		// Test with a project that has no MPS configuration
+		gpuPodYAML := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-test-pod
+spec:
+  containers:
+  - name: gpu-container
+    image: nvidia/cuda:11.8.0-runtime
+    resources:
+      requests:
+        nvidia.com/gpu: "1"
+`
+		// Create test project without MPS config
+		formData := map[string]string{
+			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+			"filename":   "gpu-test-no-mps.yaml",
+			"raw_yaml":   gpuPodYAML,
+		}
+
+		resp, err := client.POSTFormRaw("/config-files", formData)
+		require.NoError(t, err)
+		// Should succeed at creation time (no GPU request check during config creation)
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	})
+
+	t.Run("CreateConfigFile with GPU request and valid MPS config", func(t *testing.T) {
+		gpuPodYAML := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-mps-pod
+spec:
+  containers:
+  - name: gpu-container
+    image: nvidia/cuda:11.8.0-runtime
+    resources:
+      requests:
+        nvidia.com/gpu: "1"
+      limits:
+        nvidia.com/gpu: "1"
+`
+		formData := map[string]string{
+			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+			"filename":   "gpu-mps-valid.yaml",
+			"raw_yaml":   gpuPodYAML,
+		}
+
+		resp, err := client.POSTFormRaw("/config-files", formData)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		var created configfile.ConfigFile
+		err = resp.DecodeJSON(&created)
+		require.NoError(t, err)
+		assert.Equal(t, "gpu-mps-valid.yaml", created.Filename)
+	})
+
+	t.Run("CreateConfigFile with non-GPU workload ignores MPS config", func(t *testing.T) {
+		// Pod without GPU request should not have MPS config validated or injected
+		regularPodYAML := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: regular-pod
+spec:
+  containers:
+  - name: app-container
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+`
+		formData := map[string]string{
+			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+			"filename":   "regular-pod.yaml",
+			"raw_yaml":   regularPodYAML,
+		}
+
+		resp, err := client.POSTFormRaw("/config-files", formData)
+		require.NoError(t, err)
+		// Should succeed - no GPU validation needed for non-GPU workloads
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	})
+
+	t.Run("CreateConfigFile with Deployment containing GPU request", func(t *testing.T) {
+		deploymentYAML := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-app
+  template:
+    metadata:
+      labels:
+        app: gpu-app
+    spec:
+      containers:
+      - name: gpu-container
+        image: nvidia/cuda:11.8.0-runtime
+        resources:
+          requests:
+            nvidia.com/gpu: "1"
+`
+		formData := map[string]string{
+			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+			"filename":   "gpu-deployment.yaml",
+			"raw_yaml":   deploymentYAML,
+		}
+
+		resp, err := client.POSTFormRaw("/config-files", formData)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	})
+}

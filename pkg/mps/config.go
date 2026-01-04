@@ -1,5 +1,7 @@
 package mps
 
+import "fmt"
+
 // MPSConfig represents MPS configuration for a container
 type MPSConfig struct {
 	ThreadPercentage int // MPS thread percentage (0-100)
@@ -21,10 +23,12 @@ func (c *MPSConfig) Validate() error {
 func (c *MPSConfig) ToEnvVars() map[string]string {
 	env := make(map[string]string)
 	if c.ThreadPercentage > 0 {
-		env["CUDA_MPS_ACTIVE_THREAD_PERCENTAGE"] = string(rune(c.ThreadPercentage))
+		env["CUDA_MPS_ACTIVE_THREAD_PERCENTAGE"] = fmt.Sprintf("%d", c.ThreadPercentage)
 	}
 	if c.MemoryLimitMB > 0 {
-		env["CUDA_MPS_PINNED_DEVICE_MEM_LIMIT"] = string(rune(c.MemoryLimitMB))
+		// Convert MB to bytes for CUDA_MPS_PINNED_DEVICE_MEM_LIMIT
+		memoryBytes := int64(c.MemoryLimitMB) * 1024 * 1024
+		env["CUDA_MPS_PINNED_DEVICE_MEM_LIMIT"] = fmt.Sprintf("%d", memoryBytes)
 	}
 	return env
 }
