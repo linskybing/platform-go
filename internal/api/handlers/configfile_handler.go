@@ -207,14 +207,16 @@ func (h *ConfigFileHandler) ListConfigFilesByProjectIDHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, configFiles)
 }
 
-// Instantiate ConfigFile Instance godoc
+// CreateInstanceHandler godoc
 // @Summary Instantiate a config file instance
+// @Description Creates a Kubernetes instance from a config file. Validates GPU resource requests against project MPS limits.
+// GPU resources (nvidia.com/gpu) must match project MPS configuration. Non-GPU workloads skip MPS validation.
 // @Tags Instance
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Config File ID"
-// @Success 200 {object} response.MessageResponse
-// @Failure 400 {object} response.ErrorResponse "Invalid ID"
+// @Success 200 {object} response.MessageResponse "Instance created successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid config file ID or validation error"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /instance/{id} [post]
 func (h *ConfigFileHandler) CreateInstanceHandler(c *gin.Context) {
