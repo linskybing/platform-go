@@ -71,6 +71,11 @@ func (s *ProjectService) GetProjectsByGroupId(id uint) ([]project.Project, error
 }
 
 func (s *ProjectService) CreateProject(c *gin.Context, input project.CreateProjectDTO) (*project.Project, error) {
+	// Validate that the group exists
+	if _, err := s.Repos.Group.GetGroupByID(input.GID); err != nil {
+		return nil, fmt.Errorf("group with ID %d not found", input.GID)
+	}
+
 	p := &project.Project{
 		ProjectName: input.ProjectName,
 		GID:         input.GID,
