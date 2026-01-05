@@ -52,6 +52,9 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
+	// Create database views after tables are created
+	db.CreateViews()
+
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 

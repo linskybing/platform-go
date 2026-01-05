@@ -48,7 +48,7 @@ func Init() {
 	createEnums()
 
 	// Note: AutoMigrate moved to cmd/api/main.go to avoid import cycles
-	createViews()
+	// Note: createViews() is called after AutoMigrate in cmd/api/main.go and test setup
 
 	log.Println("Database connected and migrated")
 }
@@ -74,7 +74,7 @@ func dropViews() {
 	}
 }
 
-func createViews() {
+func CreateViews() {
 	views := []string{
 		`CREATE OR REPLACE VIEW project_group_views AS
 		SELECT
