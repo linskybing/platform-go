@@ -78,6 +78,7 @@ func RegisterRoutes(r *gin.Engine) {
 			// Project-level image management (for project managers)
 			projects.GET("/:id/images", authMiddleware.GroupMember(middleware.FromIDParam(repos_instance.Project.GetGroupIDByProjectID)), handlers_instance.Image.ListAllowed)
 			projects.POST("/:id/images", authMiddleware.GroupManager(middleware.FromIDParam(repos_instance.Project.GetGroupIDByProjectID)), handlers_instance.Image.AddProjectImage)
+			projects.DELETE("/:id/images/:image_id", authMiddleware.GroupManager(middleware.FromIDParam(repos_instance.Project.GetGroupIDByProjectID)), handlers_instance.Image.RemoveProjectImage)
 		}
 
 		audit := auth.Group("/audit/logs")
