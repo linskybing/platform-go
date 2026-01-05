@@ -160,6 +160,26 @@ func (h *ImageHandler) AddProjectImage(c *gin.Context) {
 	})
 }
 
+// RemoveProjectImage removes an image from a project (manager only)
+func (h *ImageHandler) RemoveProjectImage(c *gin.Context) {
+	projectID, err := utils.ParseIDParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid project id"})
+		return
+	}
+	imageID, err := utils.ParseIDParam(c, "image_id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid image id"})
+		return
+	}
+
+	if err := h.service.RemoveProjectImage(uint(projectID), uint(imageID)); err != nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, response.SuccessResponse{Message: "image removed from project"})
+}
+
 // Trigger cluster pull (admin)
 func (h *ImageHandler) PullImage(c *gin.Context) {
 	var payload struct {

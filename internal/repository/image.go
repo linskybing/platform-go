@@ -14,6 +14,7 @@ type ImageRepo interface {
 	ListAllowed() ([]image.AllowedImage, error)
 	FindAllowedImagesByProject(projectID uint) ([]image.AllowedImage, error)
 	FindAllowedImagesForProject(projectID uint) ([]image.AllowedImage, error)
+	FindAllowedByID(id uint) (*image.AllowedImage, error)
 	ValidateImageForProject(name, tag string, projectID uint) (bool, error)
 	DeleteAllowedImage(id uint) error
 }
@@ -68,6 +69,14 @@ func (r *DBImageRepo) FindAllowedImagesForProject(projectID uint) ([]image.Allow
 	err := db.DB.Where("is_global = ? OR project_id = ?", true, projectID).
 		Order("is_global desc, created_at desc").Find(&imgs).Error
 	return imgs, err
+}
+
+func (r *DBImageRepo) FindAllowedByID(id uint) (*image.AllowedImage, error) {
+	var img image.AllowedImage
+	if err := db.DB.First(&img, id).Error; err != nil {
+		return nil, err
+	}
+	return &img, nil
 }
 
 // ValidateImageForProject checks if an image is allowed for a project
