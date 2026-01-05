@@ -241,11 +241,7 @@ func (h *K8sHandler) ListPVCsByProject(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, response.SuccessResponse{
-		Code:    0,
-		Message: "success",
-		Data:    pvcDTOs,
-	})
+	c.JSON(http.StatusOK, pvcDTOs)
 }
 
 // @Summary Create PVC
@@ -667,6 +663,9 @@ func (h *K8sHandler) GetUserProjectStorages(c *gin.Context) {
 		}
 	}
 
+	if userStorages == nil {
+		userStorages = []job.ProjectPVCOutput{}
+	}
 	c.JSON(http.StatusOK, userStorages)
 }
 

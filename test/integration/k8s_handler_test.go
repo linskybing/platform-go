@@ -444,26 +444,34 @@ func TestK8sHandler_Jobs_Integration(t *testing.T) {
 	t.Run("CreateJob - Admin Only", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
+		// Use proper namespace format: pid-username
+		namespace := fmt.Sprintf("%d-test-admin", ctx.TestProject.PID)
+
 		jobDTO := map[string]interface{}{
 			"name":      "test-job",
 			"image":     "busybox:latest",
 			"command":   []string{"echo", "hello"},
-			"namespace": ctx.TestNamespace,
+			"namespace": namespace,
 		}
 
 		resp, err := client.POST("/k8s/jobs", jobDTO)
 		require.NoError(t, err)
+		if resp.StatusCode != http.StatusOK {
+			t.Logf("Error response: %s", string(resp.Body))
+		}
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("CreateJob - Forbidden for User", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
+		namespace := fmt.Sprintf("%d-test-admin", ctx.TestProject.PID)
+
 		jobDTO := map[string]interface{}{
 			"name":      "unauthorized-job",
 			"image":     "busybox:latest",
 			"command":   []string{"echo", "hello"},
-			"namespace": ctx.TestNamespace,
+			"namespace": namespace,
 		}
 
 		resp, err := client.POST("/k8s/jobs", jobDTO)

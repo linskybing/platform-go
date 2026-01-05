@@ -279,6 +279,27 @@ func createTestData() error {
 	}
 	testCtx.TestProject = testProject
 
+	// Add whitelisted images for testing
+	testImages := []struct {
+		name string
+		tag  string
+	}{
+		{"busybox", "latest"},
+		{"alpine", "latest"},
+		{"nginx", "latest"},
+	}
+
+	for _, img := range testImages {
+		allowedImg := &image.AllowedImage{
+			Name:      img.name,
+			Tag:       img.tag,
+			ProjectID: &testProject.PID,
+			IsGlobal:  false,
+			CreatedBy: adminUser.UID,
+		}
+		_ = db.DB.Create(allowedImg) // Ignore errors if image already exists
+	}
+
 	// Add users to project group
 	for _, u := range []*user.User{regularUser, managerUser} {
 		role := "user"
