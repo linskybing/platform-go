@@ -114,9 +114,7 @@ func setupTestEnvironment() error {
 	log.Println("AutoMigrate completed")
 
 	// Create database views after tables are created
-	if err := createDatabaseViews(); err != nil {
-		return fmt.Errorf("failed to create database views: %v", err)
-	}
+	db.CreateViews()
 	log.Println("Database views created")
 
 	// Initialize K8s client (optional - tests will skip K8s operations if unavailable)
@@ -354,103 +352,6 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
-}
-
-// createDatabaseViews creates all necessary database views
-func createDatabaseViews() error {
-	views := []string{
-		`CREATE OR REPLACE VIEW user_group_views AS
-		SELECT
-			u.u_id,
-			u.username,
-			g.g_id,
-			g.group_name,
-			ug.role
-		FROM users u
-		JOIN user_group ug ON u.u_id = ug.u_id
-		JOIN group_list g ON ug.g_id = g.g_id`,
-
-		`CREATE OR REPLACE VIEW users_with_superadmin AS
-		SELECT
-			u.u_id,
-			u.username,
-			u.password,
-			u.email,
-			u.full_name,
-			u.type,
-			u.status,
-			u.create_at,
-			u.update_at,
-			CASE WHEN ug.role = 'admin' AND ug.group_name = 'super' THEN true ELSE false END AS is_super_admin
-		FROM users u
-		LEFT JOIN user_group_views ug ON u.u_id = ug.u_id AND ug.group_name = 'super' AND ug.role = 'admin'`,
-
-		`CREATE OR REPLACE VIEW project_group_views AS
-		SELECT
-			g.g_id,
-			g.group_name,
-			COUNT(DISTINCT p.p_id) AS project_count,
-			COUNT(r.r_id) AS resource_count,
-			MAX(g.create_at) AS group_create_at,
-			MAX(g.update_at) AS group_update_at
-		FROM group_list g
-		LEFT JOIN project_list p ON p.g_id = g.g_id
-		LEFT JOIN config_files cf ON cf.project_id = p.p_id
-		LEFT JOIN resource_list r ON r.cf_id = cf.cf_id
-		GROUP BY g.g_id, g.group_name`,
-
-		`CREATE OR REPLACE VIEW project_resource_views AS
-		SELECT
-			p.p_id,
-			p.project_name,
-			r.r_id,
-			r.type,
-			r.name,
-			cf.filename,
-			r.create_at AS resource_create_at
-		FROM project_list p
-		JOIN config_files cf ON cf.project_id = p.p_id
-		JOIN resource_list r ON r.cf_id = cf.cf_id`,
-
-		`CREATE OR REPLACE VIEW group_resource_views AS
-		SELECT
-			g.g_id,
-			g.group_name,
-			p.p_id,
-			p.project_name,
-			r.r_id,
-			r.type AS resource_type,
-			r.name AS resource_name,
-			cf.filename,
-			r.create_at AS resource_create_at
-		FROM group_list g
-		LEFT JOIN project_list p ON p.g_id = g.g_id
-		LEFT JOIN config_files cf ON cf.project_id = p.p_id
-		LEFT JOIN resource_list r ON r.cf_id = cf.cf_id
-		WHERE r.r_id IS NOT NULL`,
-
-		`CREATE OR REPLACE VIEW project_user_views AS
-		SELECT
-			p.p_id,
-			p.project_name,
-			g.g_id,
-			g.group_name,
-			u.u_id,
-			u.username,
-			ug.role
-		FROM project_list p
-		JOIN group_list g ON p.g_id = g.g_id
-		JOIN user_group ug ON ug.g_id = g.g_id
-		JOIN users u ON u.u_id = ug.u_id`,
-	}
-
-	for _, view := range views {
-		if err := db.DB.Exec(view).Error; err != nil {
-			return fmt.Errorf("failed to create view: %v", err)
-		}
-	}
-
-	return nil
 }
 
 // GetTestContext returns the global test context
