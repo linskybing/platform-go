@@ -14,6 +14,7 @@ import (
 	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/config"
 	"github.com/linskybing/platform-go/internal/domain/job"
+	"github.com/linskybing/platform-go/pkg/k8s"
 	"github.com/linskybing/platform-go/pkg/response"
 	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
@@ -926,7 +927,7 @@ func (h *K8sHandler) StopProjectFileBrowser(c *gin.Context) {
 	uID, _ := utils.GetUserIDFromContext(c)
 	
 	// Check user has access to project
-	role, err := h.ProjectService.GetUserRoleInProjectGroup(uID, uint(projectID))
+	_, err := h.ProjectService.GetUserRoleInProjectGroup(uID, uint(projectID))
 	if err != nil {
 		c.JSON(http.StatusForbidden, response.ErrorResponse{Error: "Access denied"})
 		return
