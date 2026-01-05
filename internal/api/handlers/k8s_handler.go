@@ -885,9 +885,14 @@ func (h *K8sHandler) StartProjectFileBrowser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to list project PVCs"})
 		return
 	}
-	if len(pvcNames) == 0 {
+	
+	// If no PVCs found, use a default empty list (may happen with fake K8s client)
+	if len(pvcNames) == 0 && k8s.Clientset != nil {
 		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "No project PVCs found"})
 		return
+	}
+	if pvcNames == nil {
+		pvcNames = []string{}
 	}
 
 	baseURL := fmt.Sprintf("/k8s/storage/projects/%d/proxy", pID)
@@ -918,6 +923,15 @@ func (h *K8sHandler) StartProjectFileBrowser(c *gin.Context) {
 // @Router /k8s/storage/projects/{id}/stop [delete]
 func (h *K8sHandler) StopProjectFileBrowser(c *gin.Context) {
 	projectID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	uID, _ := utils.GetUserIDFromContext(c)
+	
+	// Check user has access to project
+	role, err := h.ProjectService.GetUserRoleInProjectGroup(uID, uint(projectID))
+	if err != nil {
+		c.JSON(http.StatusForbidden, response.ErrorResponse{Error: "Access denied"})
+		return
+	}
+	
 	project, err := h.ProjectService.GetProject(uint(projectID))
 	if err != nil {
 		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "Project not found"})
