@@ -1,6 +1,8 @@
 package application
 
 import (
+	"fmt"
+
 	"github.com/linskybing/platform-go/internal/domain/form"
 	"github.com/linskybing/platform-go/internal/repository"
 )
@@ -47,7 +49,10 @@ func (s *FormService) AddMessage(formID, userID uint, content string) (*form.For
 	if err != nil {
 		return nil, err
 	}
-	// TODO: block messages when status is Completed; currently allow to unblock later if needed
+	// Block messages when status is Completed
+	if f.Status == form.FormStatusCompleted {
+		return nil, fmt.Errorf("cannot add message to completed form")
+	}
 	msg := &form.FormMessage{FormID: f.ID, UserID: userID, Content: content}
 	return msg, s.repo.CreateMessage(msg)
 }

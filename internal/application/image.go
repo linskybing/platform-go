@@ -140,6 +140,17 @@ func (s *ImageService) validateNameAndTag(name, tag string) string {
 	return ""
 }
 
+func (s *ImageService) RemoveProjectImage(projectID, imageID uint) error {
+	img, err := s.repo.FindAllowedByID(imageID)
+	if err != nil {
+		return err
+	}
+	if img.ProjectID == nil || *img.ProjectID != projectID {
+		return fmt.Errorf("image does not belong to this project")
+	}
+	return s.repo.DeleteAllowedImage(imageID)
+}
+
 func (s *ImageService) DeleteAllowedImage(id uint) error {
 	return s.repo.DeleteAllowedImage(id)
 }
