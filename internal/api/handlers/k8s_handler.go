@@ -58,7 +58,7 @@ func (h *K8sHandler) CreateJob(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response.SuccessResponse{
+	c.JSON(http.StatusCreated, response.SuccessResponse{
 		Code:    0,
 		Message: "Job created successfully",
 	})

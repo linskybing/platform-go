@@ -41,11 +41,19 @@ trap cleanup EXIT
 
 echo ""
 echo "[1/6] Starting PostgreSQL..."
+
+# Stop and remove existing container if present
+if docker ps -a --format '{{.Names}}' | grep -q "^${POSTGRES_CONTAINER}$"; then
+    echo "Removing existing PostgreSQL container..."
+    docker stop ${POSTGRES_CONTAINER} >/dev/null 2>&1 || true
+    docker rm ${POSTGRES_CONTAINER} >/dev/null 2>&1 || true
+fi
+
 docker run --name ${POSTGRES_CONTAINER} \
   -e POSTGRES_USER=test \
   -e POSTGRES_PASSWORD=test \
   -e POSTGRES_DB=platform_test \
-  -p 5432:5432 \
+  -p 5433:5432 \
   --health-cmd="pg_isready -U test" \
   --health-interval=10s \
   --health-timeout=5s \
@@ -96,7 +104,7 @@ echo "[6/6] Running integration tests..."
 echo "=========================================="
 
 export TEST_DB_HOST=localhost
-export TEST_DB_PORT=5432
+export TEST_DB_PORT=5433
 export TEST_DB_USER=test
 export TEST_DB_PASSWORD=test
 export TEST_DB_NAME=platform_test
@@ -104,7 +112,7 @@ export KUBECONFIG="${HOME}/.kube/config"
 
 cd "$(dirname "$0")/.."
 
-go test -v -count=1 -timeout 15m ./test/integration/... 2>&1 | tee /tmp/integration-test-kind.log
+go test -v -count=1 -timeout 15m github.com/linskybing/platform-go/test/integration 2>&1 | tee /tmp/integration-test-kind.log
 
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 
