@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"regexp"
@@ -8,6 +9,10 @@ import (
 
 	"github.com/linskybing/platform-go/internal/domain/image"
 	"github.com/linskybing/platform-go/internal/repository"
+	"github.com/linskybing/platform-go/pkg/k8s"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type ImageService struct {
@@ -115,7 +120,43 @@ func (s *ImageService) PullImage(name, tag string) error {
 	if warn := s.validateNameAndTag(name, tag); warn != "" {
 		log.Printf("[image-validate] warning on pull: %s", warn)
 	}
-	// TODO: implement actual cluster pull (e.g., via k8s Job/DaemonSet)
+
+	fullImage := fmt.Sprintf("%s:%s", name, tag)
+	ttl := int32(300) // Clean up job 5 minutes after completion
+
+	// Create a Job to pull the image
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "image-puller-",
+			Namespace:    "default", // Using default namespace for admin tasks
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: &ttl,
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+					Containers: []corev1.Container{
+						{
+							Name:            "puller",
+							Image:           fullImage,
+							ImagePullPolicy: corev1.PullAlways, // Force pull
+							// We try to run a harmless command.
+							// If the image lacks sh, it will fail, but the image will be pulled.
+							Command: []string{"/bin/sh", "-c", "echo Image pulled successfully"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := k8s.Clientset.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
+	if err != nil {
+		log.Printf("Failed to create image pull job: %v", err)
+		return err
+	}
+
+	log.Printf("Created job to pull image: %s", fullImage)
 	return nil
 }
 

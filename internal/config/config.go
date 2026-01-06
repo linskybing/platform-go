@@ -35,6 +35,8 @@ var (
 	DefaultStorageClassName = "longhorn"
 	DefaultStorageSize      = "3Gi"
 	UserPVSize              = "50Gi"
+	// Environment
+	IsProduction bool
 	// Reserved names that cannot be deleted or downgraded
 	ReservedGroupName     = "super"
 	ReservedAdminUsername = "admin"
@@ -66,6 +68,10 @@ func LoadConfig() {
 	MinioSecretKey = getEnv("MINIO_SECRET_KEY", "minio123")
 	MinioBucket = getEnv("MINIO_BUCKET", "platform-bucket")
 	MinioUseSSL, _ = strconv.ParseBool(getEnv("MINIO_USE_SSL", "true"))
+
+	// Environment
+	env := getEnv("GO_ENV", "development")
+	IsProduction = env == "production" || env == "release"
 
 	// K8s Service Names
 	PersonalStorageServiceName = getEnv("PERSONAL_STORAGE_SERVICE_NAME", "storage-svc")

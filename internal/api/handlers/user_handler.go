@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/application"
+	"github.com/linskybing/platform-go/internal/config"
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"github.com/linskybing/platform-go/pkg/response"
 	"github.com/linskybing/platform-go/pkg/utils"
@@ -89,7 +90,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		3600,
 		"/",
 		"",
-		false, // [TODO]
+		config.IsProduction, // Secure only in production
 		true,
 	)
 
