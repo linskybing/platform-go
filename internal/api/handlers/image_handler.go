@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/application"
@@ -198,9 +199,16 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 	var requests []PullRequest
 	for _, fullImage := range payload.Names {
 		// Parse "name:tag" format
+		name := fullImage
+		tag := "latest"
+		if idx := strings.LastIndex(fullImage, ":"); idx > 0 {
+			// Only split if colon is not at the beginning (IPv6 check)
+			name = fullImage[:idx]
+			tag = fullImage[idx+1:]
+		}
 		requests = append(requests, PullRequest{
-			Name: fullImage,
-			Tag:  "latest",
+			Name: name,
+			Tag:  tag,
 		})
 	}
 
