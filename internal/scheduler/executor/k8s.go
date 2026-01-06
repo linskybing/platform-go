@@ -59,6 +59,11 @@ func (e *K8sExecutor) Execute(ctx context.Context, j *job.Job) error {
 		}
 	}
 
+	var envVars map[string]string
+	if j.EnvVars != "" {
+		_ = json.Unmarshal([]byte(j.EnvVars), &envVars)
+	}
+
 	spec := k8s.JobSpec{
 		Name:              j.K8sJobName,
 		Namespace:         j.Namespace,
@@ -69,7 +74,9 @@ func (e *K8sExecutor) Execute(ctx context.Context, j *job.Job) error {
 		Completions:       1,
 		GPUCount:          j.GPUCount,
 		GPUType:           j.GPUType,
-		EnvVars:           map[string]string{},
+		CPURequest:        j.CPURequest,
+		MemoryRequest:     j.MemoryRequest,
+		EnvVars:           envVars,
 		Annotations:       map[string]string{},
 	}
 

@@ -791,6 +791,8 @@ type JobSpec struct {
 	Volumes           []VolumeSpec
 	GPUCount          int
 	GPUType           string
+	CPURequest        string
+	MemoryRequest     string
 	EnvVars           map[string]string
 	Annotations       map[string]string
 }
@@ -849,6 +851,11 @@ func CreateJob(ctx context.Context, spec JobSpec) error {
 		Env:          env,
 	}
 
+	resources := corev1.ResourceRequirements{
+		Limits:   corev1.ResourceList{},
+		Requests: corev1.ResourceList{},
+	}
+
 	if spec.GPUCount > 0 {
 		qty := resource.MustParse(fmt.Sprintf("%d", spec.GPUCount))
 		resourceName := corev1.ResourceName("nvidia.com/gpu")
@@ -856,15 +863,25 @@ func CreateJob(ctx context.Context, spec JobSpec) error {
 			resourceName = corev1.ResourceName("nvidia.com/gpu.shared")
 		}
 
-		container.Resources = corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				resourceName: qty,
-			},
-			Requests: corev1.ResourceList{
-				resourceName: qty,
-			},
+		resources.Limits[resourceName] = qty
+		resources.Requests[resourceName] = qty
+	}
+
+	if spec.CPURequest != "" {
+		if q, err := resource.ParseQuantity(spec.CPURequest); err == nil {
+			resources.Requests[corev1.ResourceCPU] = q
+			// Defaults limit to request if not specified, or leave unbounded (Burstable)
+			// For now, only setting request
 		}
 	}
+
+	if spec.MemoryRequest != "" {
+		if q, err := resource.ParseQuantity(spec.MemoryRequest); err == nil {
+			resources.Requests[corev1.ResourceMemory] = q
+		}
+	}
+
+	container.Resources = resources
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
