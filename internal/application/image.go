@@ -603,5 +603,31 @@ func (s *ImageService) RemoveProjectImage(projectID, imageID uint) error {
 }
 
 func (s *ImageService) DeleteAllowedImage(id uint) error {
+	// Find the allowed image to determine name/tag
+	img, err := s.repo.FindAllowedByID(id)
+	if err != nil {
+		return err
+	}
+
+	// Cancel any active pull jobs for this image
+	active := pullTracker.GetActiveJobs()
+	for _, job := range active {
+		if job.ImageName == img.Name && job.ImageTag == img.Tag {
+			// Try to delete k8s job (best-effort)
+			if k8s.Clientset != nil {
+				propagation := metav1.DeletePropagationForeground
+				if err := k8s.Clientset.BatchV1().Jobs("default").Delete(context.TODO(), job.JobID, metav1.DeleteOptions{PropagationPolicy: &propagation}); err != nil {
+					log.Printf("Failed to delete k8s job %s: %v", job.JobID, err)
+				} else {
+					log.Printf("Deleted k8s job %s for image %s:%s", job.JobID, job.ImageName, job.ImageTag)
+				}
+			}
+
+			// Remove from tracker
+			pullTracker.RemoveJob(job.JobID)
+		}
+	}
+
+	// Finally delete the allowed image record from DB
 	return s.repo.DeleteAllowedImage(id)
 }

@@ -8,7 +8,7 @@ set -e
 
 # --- Configuration ---
 # Registry details from your previous setup
-HARBOR_HOST="192.168.109.1:30002"
+HARBOR_HOST="192.168.110.1:30003"
 PROJECT_NAME="library"   # Ensure this project exists in Harbor UI
 TAG="latest"
 

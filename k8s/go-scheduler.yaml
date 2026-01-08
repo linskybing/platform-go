@@ -22,7 +22,7 @@ spec:
         kubernetes.io/hostname: gpu1
       containers:
         - name: go-scheduler
-          image: 192.168.109.1:30003/library/platform-go-scheduler:latest
+          image: 192.168.110.1:30003/library/platform-go-scheduler:latest
           imagePullPolicy: Always
           command: ["sleep", "infinity"]
           resources:

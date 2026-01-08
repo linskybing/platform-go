@@ -29,14 +29,8 @@ func NewProjectHandler(svc *application.ProjectService) *ProjectHandler {
 // @Failure 500 {object} response.ErrorResponse
 // @Router /projects [get]
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
-	userID, err := utils.GetUserIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid user"})
-		return
-	}
-
 	// Get project views for this user
-	projectViews, err := h.svc.GetProjectsByUser(userID)
+	projectViews, err := h.svc.ListProjects()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
