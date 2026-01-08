@@ -179,7 +179,7 @@ func RegisterRoutes(r *gin.Engine) {
 			}
 			userStorageGroup := k8s.Group("/users")
 			{
-				userStorageGroup.GET("/:username/storage/status", authMiddleware.Admin(), handlers_instance.K8s.GetUserStorageStatus)
+				userStorageGroup.GET("/:username/storage/status", handlers_instance.K8s.GetUserStorageStatus)
 				userStorageGroup.POST("/:username/storage/init", authMiddleware.Admin(), handlers_instance.K8s.InitializeUserStorage)
 				userStorageGroup.PUT("/:username/storage/expand", authMiddleware.Admin(), handlers_instance.K8s.ExpandUserStorage)
 				userStorageGroup.DELETE("/:username/storage", authMiddleware.Admin(), handlers_instance.K8s.DeleteUserStorage)

@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/config"
 	"github.com/linskybing/platform-go/internal/domain/user"
@@ -37,6 +40,49 @@ func (h *UserHandler) Register(c *gin.Context) {
 	var input user.CreateUserInput
 
 	if err := c.ShouldBind(&input); err != nil {
+		// Try to produce friendly validation messages for the frontend
+		var verr validator.ValidationErrors
+		if errors.As(err, &verr) {
+			msgs := make([]string, 0, len(verr))
+
+			labels := map[string]string{
+				"Username": "username",
+				"Password": "password",
+				"Email":    "email",
+				"FullName": "full name",
+				"Type":     "type",
+				"Status":   "status",
+			}
+
+			for _, fe := range verr {
+				field := fe.StructField()
+				lbl, ok := labels[field]
+				if !ok {
+					lbl = strings.ToLower(field)
+				}
+
+				var msg string
+				switch fe.Tag() {
+				case "required":
+					msg = fmt.Sprintf("%s is required", lbl)
+				case "min":
+					msg = fmt.Sprintf("%s must be at least %s characters", lbl, fe.Param())
+				case "max":
+					msg = fmt.Sprintf("%s must be at most %s characters", lbl, fe.Param())
+				case "email":
+					msg = fmt.Sprintf("%s must be a valid email address", lbl)
+				case "oneof":
+					msg = fmt.Sprintf("%s must be one of [%s]", lbl, fe.Param())
+				default:
+					msg = fmt.Sprintf("%s is invalid", lbl)
+				}
+				msgs = append(msgs, msg)
+			}
+
+			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: strings.Join(msgs, "; ")})
+			return
+		}
+
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid input"})
 		return
 	}

@@ -28,7 +28,7 @@ spec:
         kubernetes.io/hostname: gpu1
       containers:
         - name: postgres
-          image: 192.168.109.1:30003/library/postgres-with-pg_cron:latest
+          image: 192.168.110.1:30003/library/postgres-with-pg_cron:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5432
