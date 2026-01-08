@@ -553,7 +553,7 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 		}
 
 		// Inject fsGroup to ensure consistent file permissions for mounted volumes
-		jsonBytes, err = s.injectFSGroup(jsonBytes)
+		jsonBytes, err = s.injectGeneralPodConfig(jsonBytes)
 		if err != nil {
 			return err
 		}
@@ -883,68 +883,122 @@ func (s *ConfigFileService) deleteConfigFileInstance(configfile *configfile.Conf
 	return resources, nil
 }
 
-// injectFSGroup injects fsGroup into pod specs to ensure consistent file permissions for mounted volumes.
-// This is crucial for NFS and PVC mounts where multiple pods/containers need consistent access.
-// fsGroup ensures all files created in the volume belong to the specified group (1000).
-func (s *ConfigFileService) injectFSGroup(jsonBytes []byte) ([]byte, error) {
+// injectGeneralPodConfig injects general Pod infrastructure settings (permissions and base paths).
+// It does NOT contain any application-specific logic (like ROS 2), making it universal.
+func (s *ConfigFileService) injectGeneralPodConfig(jsonBytes []byte) ([]byte, error) {
 	var obj map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &obj); err != nil {
 		return nil, err
 	}
 
-	kind, ok := obj["kind"].(string)
-	if !ok {
+	podSpecs := findPodSpecs(obj)
+	if len(podSpecs) == 0 {
 		return jsonBytes, nil
 	}
 
-	var podSpec map[string]interface{}
+	// ================= Configuration Section =================
+	// Define infrastructure-level parameters here.
+	const targetUID int64 = 1000
+	const targetGID int64 = 1000
 
-	// Extract pod spec from different resource kinds
-	switch kind {
-	case "Pod":
-		if spec, ok := obj["spec"].(map[string]interface{}); ok {
-			podSpec = spec
+	// Set the common working directory (HOME).
+	// This is usually where your NFS/PVC is mounted.
+	// Setting HOME is crucial for most Linux apps (including ROS) to store configs/logs.
+	const userHome = "/workspace"
+	// =========================================================
+
+	for _, podSpec := range podSpecs {
+		// 1. SecurityContext: Resolves NFS write permissions and "I have no name!" issues.
+		secContext, ok := podSpec["securityContext"].(map[string]interface{})
+		if !ok {
+			secContext = make(map[string]interface{})
+			podSpec["securityContext"] = secContext
 		}
-	case "Deployment", "StatefulSet", "DaemonSet", "Job":
-		if spec, ok := obj["spec"].(map[string]interface{}); ok {
-			if template, ok := spec["template"].(map[string]interface{}); ok {
-				if tSpec, ok := template["spec"].(map[string]interface{}); ok {
-					podSpec = tSpec
-				}
+
+		// Enforce consistent User/Group IDs.
+		secContext["runAsUser"] = targetUID
+		secContext["runAsGroup"] = targetGID
+
+		// If volumes are mounted, inject fsGroup to ensure file ownership.
+		if _, hasVolumes := podSpec["volumes"]; hasVolumes {
+			secContext["fsGroup"] = targetUID
+
+			// Optimization: Only recursively change file permissions if the root directory
+			// permissions do not match. This significantly speeds up Pod startup for large volumes.
+			secContext["fsGroupChangePolicy"] = "OnRootMismatch"
+		}
+
+		// 2. Inject Base Environment Variables (HOME).
+		// We avoid injecting ROS-specific variables here; let ConfigMap handle them.
+		containers := getContainers(podSpec)
+		for _, c := range containers {
+			container, ok := c.(map[string]interface{})
+			if !ok {
+				continue
 			}
+
+			// Retrieve existing environment variables.
+			existingEnv, _ := container["env"].([]interface{})
+
+			// // Only inject HOME, which is required by almost all applications.
+			// baseEnvs := []map[string]interface{}{
+			// 	{"name": "HOME", "value": userHome},
+			// }
+
+			// for _, ne := range baseEnvs {
+			// 	// Prevent overwriting if HOME is already manually set in the YAML.
+			// 	if !envExists(existingEnv, ne["name"].(string)) {
+			// 		existingEnv = append(existingEnv, ne)
+			// 	}
+			// }
+			container["env"] = existingEnv
 		}
-	default:
-		return jsonBytes, nil
-	}
-
-	if podSpec == nil {
-		return jsonBytes, nil
-	}
-
-	// Check if spec has volumes (PVC or NFS mounts)
-	if _, hasVolumes := podSpec["volumes"]; !hasVolumes {
-		return jsonBytes, nil
-	}
-
-	// Create or update securityContext
-	secContext, ok := podSpec["securityContext"].(map[string]interface{})
-	if !ok {
-		secContext = make(map[string]interface{})
-		podSpec["securityContext"] = secContext
-	}
-
-	// Set fsGroup to 1000 to ensure consistent file permissions for all mounted volumes
-	// This allows all pods using the same volume to read/write files created by any pod
-	int64Value := int64(1000)
-	secContext["fsGroup"] = int64Value
-
-	// Also set runAsUser and runAsGroup for consistency if not already set
-	if _, hasRunAsUser := secContext["runAsUser"]; !hasRunAsUser {
-		secContext["runAsUser"] = int64Value
-	}
-	if _, hasRunAsGroup := secContext["runAsGroup"]; !hasRunAsGroup {
-		secContext["runAsGroup"] = int64Value
 	}
 
 	return json.Marshal(obj)
+}
+
+// --- Helper Functions ---
+
+// findPodSpecs recursively searches for PodSpecs within the JSON object.
+// It handles Pods, Deployments, StatefulSets, Jobs, and nested CronJobs.
+func findPodSpecs(obj map[string]interface{}) []map[string]interface{} {
+	var results []map[string]interface{}
+
+	// Identify PodSpec by checking for the "containers" field.
+	if _, hasContainers := obj["containers"]; hasContainers {
+		results = append(results, obj)
+		return results
+	}
+
+	// Recursive search for nested specs.
+	for key, value := range obj {
+		if subMap, ok := value.(map[string]interface{}); ok {
+			// Traverse down common Kubernetes spec paths.
+			if key == "spec" || key == "template" || key == "jobTemplate" {
+				results = append(results, findPodSpecs(subMap)...)
+			}
+		}
+	}
+	return results
+}
+
+// getContainers safely retrieves the containers list from a PodSpec.
+func getContainers(podSpec map[string]interface{}) []interface{} {
+	if containers, ok := podSpec["containers"].([]interface{}); ok {
+		return containers
+	}
+	return []interface{}{}
+}
+
+// envExists checks if an environment variable with the given name already exists in the list.
+func envExists(envs []interface{}, name string) bool {
+	for _, e := range envs {
+		if eMap, ok := e.(map[string]interface{}); ok {
+			if val, exists := eMap["name"]; exists && val == name {
+				return true
+			}
+		}
+	}
+	return false
 }

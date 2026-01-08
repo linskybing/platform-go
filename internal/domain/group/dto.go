@@ -11,14 +11,14 @@ type GroupCreateDTO struct {
 }
 
 type UserGroupInputDTO struct {
-	UID  uint   `json:"uid" form:"uid" binding:"required"`
-	GID  uint   `json:"gid" form:"gid" binding:"required"`
+	UID  uint   `json:"uid" form:"u_id" binding:"required"`
+	GID  uint   `json:"gid" form:"g_id" binding:"required"`
 	Role string `json:"role" form:"role" binding:"required,oneof=admin manager user"`
 }
 
 type UserGroupDeleteDTO struct {
-	UID uint `json:"uid" form:"uid" binding:"required"`
-	GID uint `json:"gid" form:"gid" binding:"required"`
+	UID uint `json:"uid" form:"u_id" binding:"required"`
+	GID uint `json:"gid" form:"g_id" binding:"required"`
 }
 
 func (d UserGroupInputDTO) GetGID() uint {
