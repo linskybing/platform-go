@@ -904,7 +904,6 @@ func (s *ConfigFileService) injectGeneralPodConfig(jsonBytes []byte) ([]byte, er
 	// Set the common working directory (HOME).
 	// This is usually where your NFS/PVC is mounted.
 	// Setting HOME is crucial for most Linux apps (including ROS) to store configs/logs.
-	const userHome = "/workspace"
 	// =========================================================
 
 	for _, podSpec := range podSpecs {
@@ -991,14 +990,4 @@ func getContainers(podSpec map[string]interface{}) []interface{} {
 	return []interface{}{}
 }
 
-// envExists checks if an environment variable with the given name already exists in the list.
-func envExists(envs []interface{}, name string) bool {
-	for _, e := range envs {
-		if eMap, ok := e.(map[string]interface{}); ok {
-			if val, exists := eMap["name"]; exists && val == name {
-				return true
-			}
-		}
-	}
-	return false
-}
+// (removed) envExists was only used in commented-out code; function removed to avoid unused symbol

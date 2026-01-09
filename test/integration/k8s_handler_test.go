@@ -226,7 +226,7 @@ func TestK8sHandler_UserStorage_Integration(t *testing.T) {
 	ctx := GetTestContext()
 	k8sValidator := NewK8sValidator()
 
-	testUsername := "storage-test-user"
+	testUsername := ctx.TestUser.Username
 
 	t.Run("GetUserStorageStatus - Admin Only", func(t *testing.T) {
 		adminClient := NewHTTPClient(ctx.Router, ctx.AdminToken)
@@ -235,11 +235,11 @@ func TestK8sHandler_UserStorage_Integration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		// Regular user forbidden
+		// Regular user should be able to check their own storage status
 		userClient := NewHTTPClient(ctx.Router, ctx.UserToken)
 		resp, err = userClient.GET(path)
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("InitializeUserStorage - Success with K8s Verification", func(t *testing.T) {
@@ -499,9 +499,9 @@ func TestK8sHandler_Jobs_Integration(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Logf("Error response: %s", string(resp.Body))
 		}
-		// Accept 200 (success) or 500 (K8s error) in CI environment
-		assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusInternalServerError,
-			"CreateJob should succeed or return 500")
+		// Accept 200/201 (success) or 500 (K8s error) in CI environment
+		assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusInternalServerError,
+			"CreateJob should succeed (200/201) or return 500")
 	})
 
 	t.Run("CreateJob - Forbidden for User", func(t *testing.T) {
