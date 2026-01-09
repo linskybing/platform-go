@@ -46,7 +46,6 @@ type WebSocketIO struct {
 	sizeChan    chan remotecommand.TerminalSize
 	once        sync.Once
 	mu          sync.Mutex // Protects concurrent writes (Ping vs Stdout)
-	cancel      context.CancelFunc
 }
 
 type TerminalMessage struct {
