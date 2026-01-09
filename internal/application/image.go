@@ -537,7 +537,7 @@ func (s *ImageService) getPodLogsForJob(jobName string) string {
 		}
 
 		data, err := io.ReadAll(stream)
-		stream.Close()
+		_ = stream.Close()
 		if err != nil {
 			logBuilder.WriteString(fmt.Sprintf("Error reading logs: %v\n", err))
 			continue
