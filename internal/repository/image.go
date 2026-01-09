@@ -50,6 +50,13 @@ func (r *DBImageRepo) UpdateRequest(req *image.ImageRequest) error {
 }
 
 func (r *DBImageRepo) CreateAllowed(img *image.AllowedImage) error {
+	// If there already exists an allowed image with the same name+tag that
+	// has been pulled, mark the new record as pulled as well so create/update
+	// behave consistently across duplicate entries.
+	var existing image.AllowedImage
+	if err := db.DB.Where("name = ? AND tag = ? AND is_pulled = ?", img.Name, img.Tag, true).First(&existing).Error; err == nil {
+		img.IsPulled = true
+	}
 	return db.DB.Create(img).Error
 }
 
