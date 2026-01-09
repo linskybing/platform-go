@@ -38,13 +38,15 @@ import (
 )
 
 // WebSocketIO handles the conversion between WebSocket and io.Reader/Writer
+// It implements remotecommand.TerminalSizeQueue, io.Reader, and io.Writer
 type WebSocketIO struct {
 	conn        *websocket.Conn
 	stdinPipe   *io.PipeReader
 	stdinWriter *io.PipeWriter
 	sizeChan    chan remotecommand.TerminalSize
 	once        sync.Once
-	mu          sync.Mutex // [Added] Mutex to protect concurrent writes (Ping vs Stdout)
+	mu          sync.Mutex // Protects concurrent writes (Ping vs Stdout)
+	cancel      context.CancelFunc
 }
 
 type TerminalMessage struct {
@@ -64,9 +66,6 @@ var (
 )
 
 func InitTestCluster() {
-	// In test environment, we might not have a real K8s cluster.
-	// If KUBECONFIG is not set, we skip initialization or use a fake client if possible.
-	// For integration tests that don't strictly require K8s, we can make this optional.
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig == "" {
 		log.Println("KUBECONFIG is not set, using fake Kubernetes client for tests")
@@ -145,31 +144,37 @@ func Init() {
 // NewWebSocketIO creates a new WebSocketIO handler and starts loops
 func NewWebSocketIO(conn *websocket.Conn) *WebSocketIO {
 	pr, pw := io.Pipe()
+
+	// Context for internal coordination
+	// ctx, cancel := context.WithCancel(context.Background())
+
 	handler := &WebSocketIO{
 		conn:        conn,
 		stdinPipe:   pr,
 		stdinWriter: pw,
 		sizeChan:    make(chan remotecommand.TerminalSize),
+		// cancel:      cancel,
 	}
 
 	// Start the main read loop (Standard Input from user)
 	go handler.readLoop()
-	// [Added] Start the ping loop (Heartbeat to client)
+	// Start the ping loop (Heartbeat to client)
 	go handler.pingLoop()
 
 	return handler
 }
 
-// [Added] pingLoop sends periodic pings to keep the connection alive
+// pingLoop sends periodic pings to keep the connection alive
 func (h *WebSocketIO) pingLoop() {
-	// Define heartbeat intervals
-	pingPeriod := 54 * time.Second
+	// Must be shorter than pongWait (60s)
+	pingPeriod := 50 * time.Second
 	ticker := time.NewTicker(pingPeriod)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		// Lock before writing to prevent race condition with stdout
 		h.mu.Lock()
+		// Set write deadline to prevent hanging
 		if err := h.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
 			h.mu.Unlock()
 			h.Close()
@@ -179,7 +184,7 @@ func (h *WebSocketIO) pingLoop() {
 		h.mu.Unlock()
 
 		if err != nil {
-			// If ping fails, close connection. This will cause readLoop to exit too.
+			// If ping fails, connection is likely dead. Close handler.
 			h.Close()
 			return
 		}
@@ -201,10 +206,11 @@ func (h *WebSocketIO) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	// [Added] Critical: Lock mutex to ensure thread safety
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	// Update WriteDeadline before writing
+	_ = h.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	if err := h.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 		return 0, err
 	}
@@ -221,48 +227,47 @@ func (h *WebSocketIO) Next() *remotecommand.TerminalSize {
 }
 
 // Close cleans up resources
+// IMPORTANT: This method does NOT close sizeChan to avoid panics.
+// sizeChan is closed by readLoop.
 func (h *WebSocketIO) Close() {
 	h.once.Do(func() {
+		// Close stdinWriter to stop Read() calls if any
 		_ = h.stdinWriter.Close()
-		close(h.sizeChan)
+		// We do NOT close sizeChan here because readLoop might be trying to send to it.
+		// We do NOT close conn here immediately, we let readLoop handle the socket closure or wait for error.
 	})
 }
 
 // readLoop is the core logic, continuously reading WebSocket messages in the background
 func (h *WebSocketIO) readLoop() {
-	// 當此函數退出時，關閉所有相關資源 (Pipes, Channels)
-	defer h.Close()
+	// Cleanup when the loop exits
+	defer func() {
+		h.Close()          // Close pipes
+		close(h.sizeChan)  // Close channel safely (ONLY here)
+		_ = h.conn.Close() // Ensure underlying TCP connection is closed
+	}()
 
-	// 定義超時時間 (例如 60 秒)
-	// 必須配合 pingLoop 的發送頻率 (例如 54 秒)
 	const pongWait = 60 * time.Second
 
-	// 1. 設定讀取限制與初始 DeadLine
-	h.conn.SetReadLimit(512 * 1024) // 限制最大訊息大小，防止攻擊
+	h.conn.SetReadLimit(512 * 1024)
 	if err := h.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		return
 	}
 
-	// 2. 設定 Pong 處理器
-	// 當收到瀏覽器回傳的 Pong 時，重置死亡倒數
 	h.conn.SetPongHandler(func(string) error {
 		return h.conn.SetReadDeadline(time.Now().Add(pongWait))
 	})
 
 	for {
-		// 這裡會阻塞，直到收到訊息 或 超時(Client斷線)
 		_, message, err := h.conn.ReadMessage()
 		if err != nil {
-			// 如果是異常斷線，可以記錄 Log
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WebSocket error: %v", err)
 			}
-			// 退出迴圈 -> 觸發 defer h.Close()
 			return
 		}
 
-		// 3. 關鍵：收到任何訊息（使用者打字或 Resize）都視為「活著」
-		// 重置讀取超時時間
+		// Refresh deadline on any message
 		if err := h.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 			return
 		}
@@ -275,28 +280,24 @@ func (h *WebSocketIO) readLoop() {
 		switch msg.Type {
 		case "stdin":
 			if msg.Data != "" {
-				// 寫入數據到 Pod 的 stdin
 				if _, err := h.stdinWriter.Write([]byte(msg.Data)); err != nil {
 					log.Printf("Failed to write to stdin: %v", err)
 				}
 			}
 		case "resize":
-			// 發送 Resize 事件
-			// 使用 select 防止阻塞：如果沒有人聽 sizeChan，就不卡在這裡
+			// Non-blocking send to avoid hanging if SPDY executor isn't ready
+			// and to avoid panic if sizeChan is closed (though with defer structure it should be safe)
 			select {
 			case h.sizeChan <- remotecommand.TerminalSize{
 				Width:  uint16(msg.Cols),
 				Height: uint16(msg.Rows),
 			}:
 			default:
-				// 如果沒人接收 Resize 事件，則忽略，避免卡死 readLoop
+				// Drop resize event if channel buffer is full or no one listening
 			}
 		}
 	}
 }
-
-// WebSocketIO's code remains the same, it's correct.
-// ... NewWebSocketIO, Read, Write, Next, Close, readLoop ...
 
 func ExecToPodViaWebSocket(
 	conn *websocket.Conn,
@@ -306,19 +307,16 @@ func ExecToPodViaWebSocket(
 	command []string,
 	tty bool,
 ) error {
-	// Create our handler which implements all necessary interfaces.
 	wsIO := NewWebSocketIO(conn)
 
-	// CORE FIX: Remove the defer from the main goroutine.
-	// The responsibility of closing the channels is now solely
-	// within the readLoop goroutine. This eliminates the race condition.
-	// defer wsIO.Close()  <-- REMOVE THIS LINE
+	// DO NOT call defer wsIO.Close() here.
+	// Lifecycle is managed by NewWebSocketIO's goroutines.
 
 	execCmd := []string{
 		"env",
 		"TERM=xterm",
 	}
-	execCmd = append(execCmd, command...) // Append the original command (e.g., "/bin/sh")
+	execCmd = append(execCmd, command...)
 
 	req := clientset.CoreV1().RESTClient().
 		Post().
@@ -328,12 +326,11 @@ func ExecToPodViaWebSocket(
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: container,
-			// Use the modified command with the TERM variable.
-			Command: execCmd,
-			Stdin:   true,
-			Stdout:  true,
-			Stderr:  true,
-			TTY:     tty,
+			Command:   execCmd,
+			Stdin:     true,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       tty,
 		}, scheme.ParameterCodec)
 
 	executor, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
@@ -341,6 +338,7 @@ func ExecToPodViaWebSocket(
 		return err
 	}
 
+	// This blocks until the command finishes
 	return executor.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdin:             wsIO,
 		Stdout:            wsIO,
@@ -350,6 +348,7 @@ func ExecToPodViaWebSocket(
 	})
 }
 
+// WatchNamespaceResources monitors resources for a specific namespace
 func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, namespace string) {
 	gvrs := []schema.GroupVersionResource{
 		{Group: "", Version: "v1", Resource: "pods"},
@@ -360,10 +359,7 @@ func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, names
 	var wg sync.WaitGroup
 	for _, gvr := range gvrs {
 		wg.Add(1)
-
-		// [新增] 錯峰啟動：每個資源之間間隔 50ms
-		// 這能解決 "client rate limiter Wait returned an error"
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond) // Stagger start to be gentle on APIServer
 
 		go func(gvr schema.GroupVersionResource) {
 			defer wg.Done()
@@ -371,6 +367,7 @@ func WatchNamespaceResources(ctx context.Context, writeChan chan<- []byte, names
 		}(gvr)
 	}
 
+	// Wait for all watchers to finish (via context cancel) then close channel
 	go func() {
 		<-ctx.Done()
 		wg.Wait()
@@ -386,10 +383,7 @@ func WatchUserNamespaceResources(ctx context.Context, namespace string, writeCha
 		{Group: "apps", Version: "v1", Resource: "deployments"},
 	}
 
-	// Wait synchronously for all resource monitoring to finish
 	var wg sync.WaitGroup
-
-	// Start a monitoring goroutine for each resource
 	for _, gvr := range gvrs {
 		wg.Add(1)
 		go func(gvr schema.GroupVersionResource) {
@@ -398,7 +392,7 @@ func WatchUserNamespaceResources(ctx context.Context, namespace string, writeCha
 		}(gvr)
 	}
 
-	// Wait for all goroutines to finish
+	// Wait logic handled by caller or context
 	wg.Wait()
 }
 
@@ -415,40 +409,30 @@ func watchUserAndSend(ctx context.Context, namespace string, gvr schema.GroupVer
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
-		// Changed timeout from 10s to non-blocking (or very short timeout)
-		// If the channel is full, the client is likely slow or disconnected.
-		// Dropping the message prevents the server from hanging.
 		default:
+			// Prevent blocking if client is slow
 			return fmt.Errorf("client buffer full, dropping message for %s", obj.GetName())
 		}
 	}
 
-	// initial list of resources
 	list, err := DynamicClient.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	if err == nil {
 		for _, item := range list.Items {
-			if err := sendObject("ADDED", &item); err != nil {
-				fmt.Printf("Failed to send list item: %v\n", err)
-			}
+			_ = sendObject("ADDED", &item)
 		}
-	} else {
-		fmt.Printf("List error for %s.%s: %v\n", gvr.Resource, gvr.Group, err)
 	}
 
-	// watch loop
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Second * 30): // Reconnect every 30 seconds
-			// Reconnect watch every 30 seconds
+		case <-time.After(time.Second * 30):
+			// Simple reconnection logic
 			watcher, err := DynamicClient.Resource(gvr).Namespace(namespace).Watch(ctx, metav1.ListOptions{})
 			if err != nil {
-				fmt.Printf("Failed to start watch: %v\n", err)
 				continue
 			}
 
-			// Handle watcher channel
 			func() {
 				defer watcher.Stop()
 				for {
@@ -460,9 +444,7 @@ func watchUserAndSend(ctx context.Context, namespace string, gvr schema.GroupVer
 							return
 						}
 						if obj, ok := event.Object.(*unstructured.Unstructured); ok {
-							if err := sendObject(string(event.Type), obj); err != nil {
-								fmt.Printf("Failed to send watch event: %v\n", err)
-							}
+							_ = sendObject(string(event.Type), obj)
 						}
 					}
 				}
@@ -493,27 +475,21 @@ func watchAndSend(
 		}
 	}
 
-	// initial list
+	// Initial List
 	list, err := dynClient.Resource(gvr).Namespace(ns).List(ctx, metav1.ListOptions{})
 	if err == nil {
 		for _, item := range list.Items {
-			if err := sendObject("ADDED", &item); err != nil {
-				// 如果是 context canceled 就不印錯誤
-				if ctx.Err() != context.Canceled {
-					fmt.Printf("Failed to send list item: %v\n", err)
-				}
+			if err := sendObject("ADDED", &item); err != nil && ctx.Err() != context.Canceled {
+				fmt.Printf("Failed to send list item: %v\n", err)
 			}
 		}
+	} else if ctx.Err() == context.Canceled {
+		return
 	} else {
-		// [修改] 關鍵修改：如果是因為 Context Cancel 導致的錯誤，直接忽略
-		if ctx.Err() == context.Canceled {
-			return
-		}
-		// 只有真正的錯誤才印出來
 		fmt.Printf("List error for %s.%s: %v\n", gvr.Resource, gvr.Group, err)
 	}
 
-	// watch loop
+	// Watch Loop
 	for {
 		select {
 		case <-ctx.Done():
@@ -523,7 +499,6 @@ func watchAndSend(
 
 		watcher, err := dynClient.Resource(gvr).Namespace(ns).Watch(ctx, metav1.ListOptions{})
 		if err != nil {
-			// 同樣過濾 watch 的錯誤
 			if ctx.Err() == context.Canceled {
 				return
 			}
@@ -547,18 +522,14 @@ func watchAndSend(
 						continue
 					}
 
-					if err := sendObject(string(event.Type), obj); err != nil {
-						if ctx.Err() != context.Canceled {
-							fmt.Printf("Failed to send watch event: %v\n", err)
-						}
+					if err := sendObject(string(event.Type), obj); err != nil && ctx.Err() != context.Canceled {
+						fmt.Printf("Failed to send watch event: %v\n", err)
 					}
 				}
 			}
 		}()
 	}
 }
-
-// ... imports unchanged ...
 
 // buildDataMap extracts comprehensive details from K8s resources for the frontend
 func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]interface{} {
@@ -569,7 +540,6 @@ func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]i
 		"ns":   obj.GetNamespace(),
 	}
 
-	// [New] Extract Metadata (CreationTimestamp, Labels, DeletionTimestamp)
 	metadata := map[string]interface{}{}
 	if ts, found, _ := unstructured.NestedString(obj.Object, "metadata", "creationTimestamp"); found {
 		metadata["creationTimestamp"] = ts
@@ -582,14 +552,11 @@ func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]i
 	}
 	data["metadata"] = metadata
 
-	// [New] Extract Status fields (Phase, IPs, etc.)
 	for k, v := range extractStatusFields(obj) {
 		data[k] = v
 	}
 
-	// [New] Extract Pod specific details (Images, Container Names, Restart Counts)
 	if obj.GetKind() == "Pod" {
-		// 1. Get Containers and Images
 		if containers, found, _ := unstructured.NestedSlice(obj.Object, "spec", "containers"); found {
 			var containerNames []string
 			var images []string
@@ -611,7 +578,6 @@ func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]i
 			}
 		}
 
-		// 2. Get Total Restart Count from all containers
 		if containerStatuses, found, _ := unstructured.NestedSlice(obj.Object, "status", "containerStatuses"); found {
 			var totalRestarts int64 = 0
 			for _, cs := range containerStatuses {
@@ -625,8 +591,6 @@ func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]i
 		}
 	}
 
-	// Service logic remains the same (extracting NodePorts/IPs)
-	// Service logic
 	if isService(obj) {
 		if ips := extractServiceExternalIPs(obj); len(ips) > 0 {
 			data["externalIPs"] = ips
@@ -651,8 +615,8 @@ func extractServicePorts(obj *unstructured.Unstructured) []string {
 
 	for _, port := range ports {
 		if m, ok := port.(map[string]interface{}); ok {
-			p, okPort := m["port"].(int64)           // port number
-			proto, okProto := m["protocol"].(string) // TCP/UDP
+			p, okPort := m["port"].(int64)
+			proto, okProto := m["protocol"].(string)
 
 			if okPort {
 				portStr := fmt.Sprintf("%d", p)
@@ -870,8 +834,6 @@ func CreateJob(ctx context.Context, spec JobSpec) error {
 	if spec.CPURequest != "" {
 		if q, err := resource.ParseQuantity(spec.CPURequest); err == nil {
 			resources.Requests[corev1.ResourceCPU] = q
-			// Defaults limit to request if not specified, or leave unbounded (Burstable)
-			// For now, only setting request
 		}
 	}
 
@@ -917,8 +879,7 @@ func DeleteJob(ctx context.Context, namespace, name string) error {
 	return Clientset.BatchV1().Jobs(namespace).Delete(ctx, name, metav1.DeleteOptions{PropagationPolicy: &propagation})
 }
 
-// CreateFileBrowserPod creates a pod running filebrowser with multiple PVC mounts.
-// Each PVC is mounted at /srv/<pvcName>. readOnly applies to all mounts.
+// CreateFileBrowserPod creates a pod running filebrowser with multiple PVC mounts
 func CreateFileBrowserPod(ctx context.Context, ns string, pvcNames []string, readOnly bool, baseURL string) (string, error) {
 	if len(pvcNames) == 0 {
 		return "", fmt.Errorf("no PVCs provided for filebrowser")
@@ -926,10 +887,8 @@ func CreateFileBrowserPod(ctx context.Context, ns string, pvcNames []string, rea
 
 	podName := "filebrowser-project"
 
-	// Check if pod already exists
 	existingPod, err := Clientset.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
 	if err == nil {
-		// If existing pod readOnly setting matches desired, reuse it
 		matches := true
 		if len(existingPod.Spec.Containers) > 0 {
 			for _, m := range existingPod.Spec.Containers[0].VolumeMounts {
@@ -941,10 +900,9 @@ func CreateFileBrowserPod(ctx context.Context, ns string, pvcNames []string, rea
 		}
 
 		if matches {
-			return podName, nil // Already exists with correct access mode
+			return podName, nil
 		}
 
-		// Otherwise, delete and recreate to apply new readOnly flag
 		grace := int64(0)
 		_ = Clientset.CoreV1().Pods(ns).Delete(ctx, podName, metav1.DeleteOptions{GracePeriodSeconds: &grace})
 		_ = wait.PollUntilContextTimeout(ctx, 200*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
@@ -956,8 +914,6 @@ func CreateFileBrowserPod(ctx context.Context, ns string, pvcNames []string, rea
 		})
 	}
 
-	// Build volumes and mounts per PVC
-	// TODO: Support multiple project storage instances.
 	var volumes []corev1.Volume
 	var mounts []corev1.VolumeMount
 	for idx, pvc := range pvcNames {
@@ -970,7 +926,7 @@ func CreateFileBrowserPod(ctx context.Context, ns string, pvcNames []string, rea
 		})
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      volName,
-			MountPath: "/srv", //fmt.Sprintf("/srv", pvc)
+			MountPath: "/srv",
 			ReadOnly:  readOnly,
 		})
 	}
@@ -1012,14 +968,11 @@ func CreateFileBrowserPod(ctx context.Context, ns string, pvcNames []string, rea
 	return podName, nil
 }
 
-// CreateFileBrowserService creates a service for filebrowser
 func CreateFileBrowserService(ctx context.Context, ns string) (string, error) {
 	svcName := config.ProjectStorageBrowserSVCName
 
-	// Check if service already exists
 	svc, err := Clientset.CoreV1().Services(ns).Get(ctx, svcName, metav1.GetOptions{})
 	if err == nil {
-		// Return existing NodePort if available
 		if len(svc.Spec.Ports) > 0 {
 			return fmt.Sprintf("%d", svc.Spec.Ports[0].NodePort), nil
 		}
@@ -1058,18 +1011,15 @@ func CreateFileBrowserService(ctx context.Context, ns string) (string, error) {
 	return "", nil
 }
 
-// DeleteFileBrowserResources deletes the pod and service
 func DeleteFileBrowserResources(ctx context.Context, ns string) error {
 	podName := "filebrowser-project"
 	svcName := config.ProjectStorageBrowserSVCName
 
-	// Delete Service
 	err := Clientset.CoreV1().Services(ns).Delete(ctx, svcName, metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
-	// Delete Pod
 	err = Clientset.CoreV1().Pods(ns).Delete(ctx, podName, metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err

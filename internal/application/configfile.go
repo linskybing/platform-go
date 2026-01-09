@@ -540,12 +540,12 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 
 		// Apply ReadOnly restrictions if necessary
 		if shouldEnforceRO {
-			jsonBytes, err = s.enforceReadOnly(jsonBytes)
+			// Pass projectNfsServerAddress to specifically target project volumes
+			jsonBytes, err = s.enforceReadOnly(jsonBytes, projectNfsServerAddress)
 			if err != nil {
 				return err
 			}
 		}
-
 		// Validate and inject GPU configurations if GPU resources are requested
 		jsonBytes, err = s.ValidateAndInjectGPUConfig(jsonBytes, project)
 		if err != nil {
@@ -566,19 +566,17 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 	return nil
 }
 
-func (s *ConfigFileService) enforceReadOnly(jsonBytes []byte) ([]byte, error) {
+func (s *ConfigFileService) enforceReadOnly(jsonBytes []byte, targetNfsServer string) ([]byte, error) {
 	var obj map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &obj); err != nil {
 		return nil, err
 	}
 
-	kind, ok := obj["kind"].(string)
-	if !ok {
-		return jsonBytes, nil
-	}
-
+	// Identify resource kind
+	kind, _ := obj["kind"].(string)
 	var podSpec map[string]interface{}
 
+	// Extract PodSpec based on resource Kind
 	switch kind {
 	case "Pod":
 		if spec, ok := obj["spec"].(map[string]interface{}); ok {
@@ -598,48 +596,50 @@ func (s *ConfigFileService) enforceReadOnly(jsonBytes []byte) ([]byte, error) {
 		return jsonBytes, nil
 	}
 
-	// Find volumes and identify which are PVCs vs NFS
-	volumes, ok := podSpec["volumes"].([]interface{})
-	if !ok {
-		return jsonBytes, nil
-	}
+	// 1. Identify volumes pointing to the target Project NFS Server
+	// map[volumeName] -> isTargetProjectVolume
+	targetVolumes := make(map[string]bool)
 
-	// Map volume name to PVC claim name
-	pvcVolumes := make(map[string]string)
-	for _, v := range volumes {
-		if vol, ok := v.(map[string]interface{}); ok {
-			if name, ok := vol["name"].(string); ok {
-				// Check if it's a PVC volume
+	if volumes, ok := podSpec["volumes"].([]interface{}); ok {
+		for _, v := range volumes {
+			if vol, ok := v.(map[string]interface{}); ok {
+				name, _ := vol["name"].(string)
+
+				// Check for NFS configuration
+				if nfs, ok := vol["nfs"].(map[string]interface{}); ok {
+					server, _ := nfs["server"].(string)
+					// Mark as target if the NFS server matches the Project NFS IP
+					if server == targetNfsServer {
+						targetVolumes[name] = true
+					}
+				}
+
+				// Keep PVC logic if you still support PVCs for projects
 				if pvc, ok := vol["persistentVolumeClaim"].(map[string]interface{}); ok {
 					if claimName, ok := pvc["claimName"].(string); ok {
-						pvcVolumes[name] = claimName
+						// Add logic here if specific PVC names imply project storage
+						if claimName != config.DefaultStorageName {
+							targetVolumes[name] = true
+						}
 					}
 				}
 			}
 		}
 	}
 
-	// Iterate containers and modify volumeMounts
-	containers, ok := podSpec["containers"].([]interface{})
-	if !ok {
-		return jsonBytes, nil
-	}
+	// 2. Iterate containers and enforce ReadOnly on matched volumes
+	if containers, ok := podSpec["containers"].([]interface{}); ok {
+		for _, c := range containers {
+			if container, ok := c.(map[string]interface{}); ok {
+				if mounts, ok := container["volumeMounts"].([]interface{}); ok {
+					for _, m := range mounts {
+						if mount, ok := m.(map[string]interface{}); ok {
+							volName, _ := mount["name"].(string)
 
-	for _, c := range containers {
-		if container, ok := c.(map[string]interface{}); ok {
-			if mounts, ok := container["volumeMounts"].([]interface{}); ok {
-				for _, m := range mounts {
-					if mount, ok := m.(map[string]interface{}); ok {
-						if volName, ok := mount["name"].(string); ok {
-							// Only set readonly for PVC volumes (project storage)
-							// NFS volumes (user storage) remain writable
-							if claimName, isPVC := pvcVolumes[volName]; isPVC {
-								// Don't set readonly for default user storage PVC
-								if claimName != config.DefaultStorageName {
-									mount["readOnly"] = true
-								}
+							// If this mount points to Project Storage, force ReadOnly
+							if targetVolumes[volName] {
+								mount["readOnly"] = true
 							}
-							// NFS volumes are never set to readonly here
 						}
 					}
 				}
@@ -898,8 +898,8 @@ func (s *ConfigFileService) injectGeneralPodConfig(jsonBytes []byte) ([]byte, er
 
 	// ================= Configuration Section =================
 	// Define infrastructure-level parameters here.
-	const targetUID int64 = 1000
-	const targetGID int64 = 1000
+	const targetUID int64 = 0
+	const targetGID int64 = 0
 
 	// Set the common working directory (HOME).
 	// This is usually where your NFS/PVC is mounted.

@@ -39,9 +39,9 @@ func CreateFileBrowserPod(ctx context.Context, ns string, pvcName string) (*core
 		Spec: corev1.PodSpec{
 			// Set pod-level security context for consistent file permissions
 			SecurityContext: &corev1.PodSecurityContext{
-				RunAsUser:  int64Ptr(1000), // Non-root user
-				RunAsGroup: int64Ptr(1000), // Non-root group
-				FSGroup:    int64Ptr(1000), // All files created will belong to this group
+				RunAsUser:  int64Ptr(0), // Non-root user
+				RunAsGroup: int64Ptr(0), // Non-root group
+				FSGroup:    int64Ptr(0), // All files created will belong to this group
 			},
 			Containers: []corev1.Container{
 				{
