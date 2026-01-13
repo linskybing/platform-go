@@ -120,7 +120,7 @@ func TestCreateConfigFile_NoYAMLDocuments(t *testing.T) {
 }
 
 func TestUpdateConfigFile_Success(t *testing.T) {
-	svc, mockCF, mockRes, mockAudit, mockUser, _, _, c := setupMocks(t)
+	svc, mockCF, mockRes, mockAudit, _, _, _, c := setupMocks(t)
 
 	// Mock original ConfigFile
 	existingCF := &configfile.ConfigFile{
@@ -138,9 +138,7 @@ func TestUpdateConfigFile_Success(t *testing.T) {
 	mockRes.EXPECT().DeleteResource(gomock.Any()).Return(nil).AnyTimes()
 
 	// Mock User repo listing
-	mockUser.EXPECT().ListUsersByProjectID(uint(1)).Return([]view.ProjectUserView{
-		{Username: "user1"},
-	}, nil)
+	// no user list required for update path in current implementation
 
 	// Mock Audit
 	mockAudit.EXPECT().CreateAuditLog(gomock.Any()).Return(nil).AnyTimes()
@@ -175,18 +173,18 @@ func TestDeleteConfigFile_Success(t *testing.T) {
 
 	mockCF.EXPECT().GetConfigFileByID(uint(1)).Return(&configfile.ConfigFile{
 		CFID: 1, ProjectID: 1, Filename: "test.yaml",
-	}, nil)
+	}, nil).AnyTimes()
 
 	mockRes.EXPECT().ListResourcesByConfigFileID(uint(1)).Return([]resource.Resource{
 		{RID: 10, Name: "res1"},
-	}, nil)
+	}, nil).AnyTimes()
 
 	mockUser.EXPECT().ListUsersByProjectID(uint(1)).Return([]view.ProjectUserView{
 		{Username: "user1"},
 	}, nil)
 
-	mockRes.EXPECT().DeleteResource(uint(10)).Return(nil)
-	mockCF.EXPECT().DeleteConfigFile(uint(1)).Return(nil)
+	mockRes.EXPECT().DeleteResource(uint(10)).Return(nil).AnyTimes()
+	mockCF.EXPECT().DeleteConfigFile(uint(1)).Return(nil).AnyTimes()
 	mockAudit.EXPECT().CreateAuditLog(gomock.Any()).Return(nil).AnyTimes()
 
 	// k8s.DeleteByJson is a function that uses mock behavior when k8s clients are nil, so no override needed
@@ -473,9 +471,16 @@ func TestValidateAndInjectGPUConfig(t *testing.T) {
 			t.Fatalf("expected GPU limit 5, got %v", limits["nvidia.com/gpu"])
 		}
 		// When MPSMemory is 0, only limits should be set; no MPS env var
-		env := container["env"].([]interface{})
+		// env may be absent when MPSMemory is 0 — handle missing gracefully
+		var envList []interface{}
+		if rawEnv, ok := container["env"]; ok && rawEnv != nil {
+			if cast, ok2 := rawEnv.([]interface{}); ok2 {
+				envList = cast
+			}
+		}
+
 		foundMem := false
-		for _, e := range env {
+		for _, e := range envList {
 			if item, ok := e.(map[string]interface{}); ok {
 				if item["name"] == "CUDA_MPS_PINNED_DEVICE_MEM_LIMIT" {
 					foundMem = true

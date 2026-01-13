@@ -33,16 +33,21 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 	auth := r.Group("/")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
-		auth.GET("/ws/monitoring/:namespace", handlers.WatchNamespaceHandler)
-		auth.GET("/ws/jobs", handlers_instance.Job.StreamJobs)
-		auth.GET("/ws/jobs/:id/logs", handlers_instance.Job.StreamJobLogs)
-		// Image pull monitoring WebSocket
-		auth.GET("/ws/image-pull/:job_id", func(c *gin.Context) {
-			handlers.WatchImagePullHandler(c, services_instance.Image)
-		})
-		auth.GET("/ws/image-pull-all", func(c *gin.Context) {
-			handlers.WatchMultiplePullJobsHandler(c, services_instance.Image)
-		})
+		websockets := auth.Group("/ws")
+		{
+			websockets.GET("/monitoring/:namespace", handlers.WatchNamespaceHandler)
+			websockets.GET("/logs", handlers.PodLogHandler)
+			websockets.GET("/jobs", handlers_instance.Job.StreamJobs)
+			websockets.GET("/jobs/:id/logs", handlers_instance.Job.StreamJobLogs)
+			// Image pull monitoring WebSocket
+			websockets.GET("/image-pull/:job_id", func(c *gin.Context) {
+				handlers.WatchImagePullHandler(c, services_instance.Image)
+			})
+			websockets.GET("/image-pull-all", func(c *gin.Context) {
+				handlers.WatchMultiplePullJobsHandler(c, services_instance.Image)
+			})
+
+		}
 
 		imageReq := auth.Group("/image-requests")
 		{
@@ -133,14 +138,15 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 		}
 		k8s := auth.Group("/k8s")
 		{
-			k8s.POST("/jobs", authMiddleware.Admin(), handlers_instance.K8s.CreateJob)
-			k8s.GET("/jobs", handlers_instance.K8s.ListJobs)
-			k8s.GET("/jobs/:id", handlers_instance.K8s.GetJob)
-
+			Jobs := k8s.Group("/jobs")
+			{
+				Jobs.POST("", authMiddleware.Admin(), handlers_instance.K8s.CreateJob)
+				Jobs.GET("", handlers_instance.K8s.ListJobs)
+				Jobs.GET("/:id", handlers_instance.K8s.GetJob)
+			}
 			// Pod logs
 			k8s.GET("/namespaces/:ns/pods/:name/logs", handlers_instance.K8s.GetPodLogs)
 
-			// [NEW] Project Storage Management & Proxy
 			// Base URL: /k8s/storage/projects
 			projectStorage := k8s.Group("/storage/projects")
 			{
