@@ -112,7 +112,7 @@ func (s *ConfigFileService) extractAndValidateImages(jsonBytes []byte, projectID
 			return fmt.Errorf("failed to validate image %s: %v", img, err)
 		}
 		if !allowed {
-			return fmt.Errorf("Image '%s:%s' is not allowed for this project", imageName, imageTag)
+			return fmt.Errorf("image '%s:%s' is not allowed for this project", imageName, imageTag)
 		}
 	}
 
@@ -990,11 +990,4 @@ func findPodSpecs(obj map[string]interface{}) []map[string]interface{} {
 		}
 	}
 	return results
-}
-
-func getContainers(podSpec map[string]interface{}) []interface{} {
-	if containers, ok := podSpec["containers"].([]interface{}); ok {
-		return containers
-	}
-	return []interface{}{}
 }
