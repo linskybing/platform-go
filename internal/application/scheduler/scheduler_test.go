@@ -44,12 +44,15 @@ func TestNewScheduler(t *testing.T) {
 
 	if sched == nil {
 		t.Fatal("expected non-nil scheduler")
+		return
 	}
 	if sched.jobQueue == nil {
 		t.Fatal("expected jobQueue to be initialized")
+		return
 	}
 	if sched.running {
 		t.Fatal("expected scheduler not running initially")
+		return
 	}
 }
 
