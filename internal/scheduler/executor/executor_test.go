@@ -47,9 +47,11 @@ func TestNewExecutorRegistry(t *testing.T) {
 	registry := NewExecutorRegistry()
 	if registry == nil {
 		t.Fatal("expected non-nil registry")
+		return
 	}
 	if registry.executors == nil {
 		t.Fatal("expected executors map to be initialized")
+		return
 	}
 }
 
