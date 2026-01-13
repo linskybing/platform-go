@@ -112,7 +112,7 @@ func (s *ConfigFileService) extractAndValidateImages(jsonBytes []byte, projectID
 			return fmt.Errorf("failed to validate image %s: %v", img, err)
 		}
 		if !allowed {
-			return fmt.Errorf("Image '%s:%s' is not allowed for this project.", imageName, imageTag)
+			return fmt.Errorf("Image '%s:%s' is not allowed for this project", imageName, imageTag)
 		}
 	}
 

@@ -334,11 +334,6 @@ func (s *ImageService) AddProjectImage(userID uint, projectID uint, name, tag st
 
 func (s *ImageService) ValidateImageForProject(name, tag string, projectID *uint) (bool, error) {
 	fullName := name
-	if !strings.Contains(name, "/") {
-		// handle simple names like "nginx" implying "docker.io/library/nginx" logic handling or partial match
-		// For simplicity, we assume repo.FullName is stored fully.
-		// A robust implementation needs to normalize input name to match DB FullName.
-	}
 	return s.repo.CheckImageAllowed(projectID, fullName, tag)
 }
 
