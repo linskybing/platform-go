@@ -50,6 +50,11 @@ func (h *ImageHandler) SubmitRequest(c *gin.Context) {
 
 	req, err := h.service.SubmitRequest(uid, payload.Registry, payload.Name, payload.Tag, payload.ProjectID)
 	if err != nil {
+		// If image is already allowed, return 400 Bad Request so frontend can show a proper message
+		if strings.Contains(err.Error(), "already allowed") {
+			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
 	}

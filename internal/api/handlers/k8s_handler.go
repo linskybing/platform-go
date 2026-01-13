@@ -18,6 +18,10 @@ import (
 	"github.com/linskybing/platform-go/pkg/response"
 	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
+
+	"io"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 type K8sHandler struct {
@@ -247,6 +251,67 @@ func (h *K8sHandler) OpenMyDrive(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User file browser ready",
 	})
+}
+
+// @Summary Get Pod Logs
+// @Tags k8s
+// @Produce plain
+// @Param ns path string true "Namespace"
+// @Param name path string true "Pod name"
+// @Param container query string false "Container name"
+// @Param follow query bool false "Follow logs"
+// @Param tailLines query int false "Tail lines"
+// @Router /k8s/namespaces/{ns}/pods/{name}/logs [get]
+func (h *K8sHandler) GetPodLogs(c *gin.Context) {
+	ns := c.Param("ns")
+	name := c.Param("name")
+	container := c.Query("container")
+	follow := strings.ToLower(c.Query("follow")) == "true"
+	var tailLinesPtr *int64
+	if raw := c.Query("tailLines"); raw != "" {
+		if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			tailLinesPtr = &v
+		}
+	}
+
+	if k8s.Clientset == nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "kubernetes client not configured"})
+		return
+	}
+
+	req := k8s.Clientset.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{
+		Container: container,
+		Follow:    follow,
+		TailLines: tailLinesPtr,
+	})
+
+	stream, err := req.Stream(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+	defer func() { _ = stream.Close() }()
+
+	c.Writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	c.Status(http.StatusOK)
+	flusher, _ := c.Writer.(http.Flusher)
+	buf := make([]byte, 8192)
+	for {
+		n, err := stream.Read(buf)
+		if n > 0 {
+			_, _ = c.Writer.Write(buf[:n])
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				return
+			}
+			return
+		}
+	}
+
 }
 
 // StopMyDrive godoc

@@ -89,6 +89,9 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			projects.DELETE("/:id/images/:image_id", authMiddleware.GroupManager(middleware.FromIDParam(repos_instance.Project.GetGroupIDByProjectID)), handlers_instance.Image.RemoveProjectImage)
 			// Project-scoped image requests (list requests for a specific project)
 			projects.GET("/:id/image-requests", authMiddleware.GroupMember(middleware.FromIDParam(repos_instance.Project.GetGroupIDByProjectID)), handlers_instance.Image.ListRequestsByProject)
+
+			// Project-scoped Job creation: allow project members to submit jobs for this project
+			projects.POST("/:id/jobs", authMiddleware.GroupMember(middleware.FromIDParam(repos_instance.Project.GetGroupIDByProjectID)), handlers_instance.K8s.CreateJob)
 		}
 
 		audit := auth.Group("/audit/logs")
@@ -133,6 +136,9 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			k8s.POST("/jobs", authMiddleware.Admin(), handlers_instance.K8s.CreateJob)
 			k8s.GET("/jobs", handlers_instance.K8s.ListJobs)
 			k8s.GET("/jobs/:id", handlers_instance.K8s.GetJob)
+
+			// Pod logs
+			k8s.GET("/namespaces/:ns/pods/:name/logs", handlers_instance.K8s.GetPodLogs)
 
 			// [NEW] Project Storage Management & Proxy
 			// Base URL: /k8s/storage/projects

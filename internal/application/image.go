@@ -144,15 +144,26 @@ func NewImageService(repo repository.ImageRepo) *ImageService {
 }
 
 func (s *ImageService) SubmitRequest(userID uint, registry, name, tag string, projectID *uint) (*image.ImageRequest, error) {
-	if registry == "" {
-		registry = "docker.io"
+	// If caller didn't provide a registry, try to parse it out from the name
+	// (e.g. "192.168.110.1:30003/library/pros-cameraapi" -> registry: "192.168.110.1:30003", name: "library/pros-cameraapi").
+	// If no registry is found, leave InputRegistry empty to represent Docker Hub/default behavior.
+	parsedRegistry := registry
+	parsedName := name
+	if parsedRegistry == "" {
+		parts := strings.SplitN(name, "/", 2)
+		first := parts[0]
+		hasDomain := strings.Contains(first, ".") || strings.Contains(first, ":") || first == "localhost"
+		if hasDomain && len(parts) == 2 {
+			parsedRegistry = first
+			parsedName = parts[1]
+		}
 	}
 
 	req := &image.ImageRequest{
 		UserID:         userID,
 		ProjectID:      projectID,
-		InputRegistry:  registry,
-		InputImageName: name,
+		InputRegistry:  parsedRegistry,
+		InputImageName: parsedName,
 		InputTag:       tag,
 		Status:         "pending",
 	}
@@ -160,7 +171,28 @@ func (s *ImageService) SubmitRequest(userID uint, registry, name, tag string, pr
 	if warn := s.validateNameAndTag(name, tag); warn != "" {
 		log.Printf("[image-validate] warning: %s", warn)
 	}
-	return req, s.repo.CreateRequest(req)
+
+	// Build fullname for allow-list checks
+	fullName := parsedName
+	if parsedRegistry != "" && parsedRegistry != "docker.io" {
+		fullName = fmt.Sprintf("%s/%s", parsedRegistry, parsedName)
+	}
+
+	// If an enabled allow-list rule already exists (global or project-scoped),
+	// do not create a duplicate request.
+	allowed, err := s.repo.CheckImageAllowed(projectID, fullName, tag)
+	if err != nil {
+		return req, err
+	}
+	if allowed {
+		return nil, fmt.Errorf("image '%s:%s' is already allowed for this project", fullName, tag)
+	}
+
+	if err := s.repo.CreateRequest(req); err != nil {
+		return req, err
+	}
+
+	return req, nil
 }
 
 func (s *ImageService) ListRequests(projectID *uint, status string) ([]image.ImageRequest, error) {
@@ -234,7 +266,26 @@ func (s *ImageService) createCoreAndPolicyFromRequest(req *image.ImageRequest, a
 		IsEnabled:    true,
 	}
 
-	return s.repo.CreateAllowListRule(rule)
+	if err := s.repo.CreateAllowListRule(rule); err != nil {
+		return err
+	}
+
+	// If the image is already present in our Harbor private registry, mark it as pulled
+	// so that injection logic (injectHarborPrefix) and UI reflect the image as available.
+	fullNameLower := strings.ToLower(fullName)
+	harborPrefixLower := strings.ToLower(cfg.HarborPrivatePrefix)
+	if strings.HasPrefix(fullNameLower, harborPrefixLower) {
+		status := &image.ClusterImageStatus{
+			TagID:        tagEntity.ID,
+			IsPulled:     true,
+			LastPulledAt: ptrTime(time.Now()),
+		}
+		if err := s.repo.UpdateClusterStatus(status); err != nil {
+			log.Printf("Failed to mark image as pulled for %s:%s: %v", fullName, req.InputTag, err)
+		}
+	}
+
+	return nil
 }
 
 func (s *ImageService) RejectRequest(id uint, note string, approverID uint) (*image.ImageRequest, error) {
@@ -334,6 +385,17 @@ func (s *ImageService) AddProjectImage(userID uint, projectID uint, name, tag st
 
 func (s *ImageService) ValidateImageForProject(name, tag string, projectID *uint) (bool, error) {
 	fullName := name
+	// If the image already points to our Harbor private registry and the request
+	// is global (projectID == nil), consider it allowed automatically.
+	// For project-scoped requests (projectID != nil), do NOT auto-allow — require admin approval.
+	if cfg.HarborPrivatePrefix != "" {
+		lowerFull := strings.ToLower(fullName)
+		lowerPrefix := strings.ToLower(cfg.HarborPrivatePrefix)
+		if strings.HasPrefix(lowerFull, lowerPrefix) && projectID == nil {
+			return true, nil
+		}
+	}
+
 	return s.repo.CheckImageAllowed(projectID, fullName, tag)
 }
 

@@ -40,18 +40,35 @@ func (s *K8sService) CreateJob(ctx context.Context, userID uint, input job.JobSu
 	imageName := imageParts[0]
 	imageTag := imageParts[1]
 
-	// Parse Project ID from Namespace (format: pid-username)
-	parts := strings.Split(input.Namespace, "-")
+	// Parse Project ID from Namespace.
+	// Accepts either:
+	//  - proj-<pid>-<username>
+	//  - <pid>-<username> (legacy)
 	var projectID uint
-	if len(parts) >= 2 {
-		pidStr := parts[0]
-		pid, err := strconv.Atoi(pidStr)
-		if err != nil {
-			return fmt.Errorf("invalid namespace format: %w", err)
+	if strings.HasPrefix(input.Namespace, "proj-") {
+		parts := strings.Split(input.Namespace, "-")
+		if len(parts) >= 2 {
+			pidStr := parts[1]
+			pid, err := strconv.Atoi(pidStr)
+			if err != nil {
+				return fmt.Errorf("invalid namespace format: %w", err)
+			}
+			projectID = uint(pid)
+		} else {
+			return fmt.Errorf("invalid namespace format, expected proj-<pid>-<username>")
 		}
-		projectID = uint(pid)
 	} else {
-		return fmt.Errorf("invalid namespace format, expected pid-username")
+		parts := strings.Split(input.Namespace, "-")
+		if len(parts) >= 2 {
+			pidStr := parts[0]
+			pid, err := strconv.Atoi(pidStr)
+			if err != nil {
+				return fmt.Errorf("invalid namespace format: %w", err)
+			}
+			projectID = uint(pid)
+		} else {
+			return fmt.Errorf("invalid namespace format, expected proj-<pid>-<username> or pid-username")
+		}
 	}
 
 	// Check if image is in allowed list. If so, prepend Harbor private prefix.
@@ -213,7 +230,8 @@ func (s *K8sService) GetJob(id uint) (*job.Job, error) {
 }
 
 func (s *K8sService) CountProjectGPUUsage(ctx context.Context, projectID uint) (int, error) {
-	namespaces, err := k8s.GetFilteredNamespaces(fmt.Sprintf("%d-", projectID))
+	// Project namespaces are prefixed with "proj-<pid>-"; search for that pattern.
+	namespaces, err := k8s.GetFilteredNamespaces(fmt.Sprintf("proj-%d-", projectID))
 	if err != nil {
 		return 0, err
 	}
