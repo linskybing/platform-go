@@ -559,7 +559,7 @@ func (h *K8sHandler) CreateProjectStorage(c *gin.Context) {
 	// Convert request to VolumeSpec
 	volumeSpec := job.VolumeSpec{
 		ProjectID:        req.ProjectID,
-		ProjectName:      req.ProjectName,
+		ProjectName:      k8s.ToSafeK8sName(req.ProjectName),
 		Name:             req.Name,
 		Size:             fmt.Sprintf("%dGi", req.Capacity),
 		StorageClassName: req.StorageClass,
@@ -572,6 +572,7 @@ func (h *K8sHandler) CreateProjectStorage(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "Storage for this project already exists"})
 			return
 		}
+		fmt.Printf("Error creating project storage: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to provision storage",
 			"details": err.Error(),

@@ -36,26 +36,21 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 	}
 
 	// 3. Determine Deployment Strategy (Job-only vs Standard)
-	isJobOnly := s.configFileIsAllJobs(resources)
+	// isJobOnly := s.configFileIsAllJobs(resources)
 
 	// 4. Prepare Variables & Volumes
 	var templateValues map[string]string
 	var shouldEnforceRO bool
 	var projectPVCName string
 
-	if isJobOnly {
-		// Job-only configs usually have simpler templates and minimal volume binding
-		templateValues = s.buildJobTemplateValues(cf, ns, claims)
-	} else {
-		// Standard Deployment: Bind Volumes & Check Permissions
-		userPvc, projPvc := s.bindProjectAndUserVolumes(ns, proj, claims)
-		shouldEnforceRO, err = s.determineReadOnlyEnforcement(claims, proj)
-		if err != nil {
-			return err
-		}
-		projectPVCName = projPvc
-		templateValues = s.buildTemplateValues(cf, ns, userPvc, projPvc, claims)
+	// Standard Deployment: Bind Volumes & Check Permissions
+	userPvc, projPvc := s.bindProjectAndUserVolumes(ns, proj, claims)
+	shouldEnforceRO, err = s.determineReadOnlyEnforcement(claims, proj)
+	if err != nil {
+		return err
 	}
+	projectPVCName = projPvc
+	templateValues = s.buildTemplateValues(cf, ns, userPvc, projPvc, claims)
 
 	// 5. Processing Pipeline (The most compute-intensive part)
 	// We use pre-allocation to avoid slice resizing overhead
