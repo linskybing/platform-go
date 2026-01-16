@@ -593,6 +593,27 @@ func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]i
 		data[k] = v
 	}
 
+	// Provide helpful lifecycle hints for the frontend when events indicate creation/termination
+	// - DELETED: ensure deletionTimestamp exists and mark status as Terminating so UI can show it
+	// - ADDED for Pods: if phase is Pending or no status yet, mark as Creating
+	if eventType == "DELETED" {
+		if _, ok := metadata["deletionTimestamp"]; !ok {
+			metadata["deletionTimestamp"] = time.Now().Format(time.RFC3339)
+			data["metadata"] = metadata
+		}
+		// Only set status if not already set by extractStatusFields
+		if _, exists := data["status"]; !exists {
+			data["status"] = "Terminating"
+		}
+	}
+
+	if eventType == "ADDED" && obj.GetKind() == "Pod" {
+		// If status/phase is missing or Pending, surface a Creating hint
+		if s, ok := data["status"].(string); !ok || strings.EqualFold(s, "Pending") || s == "" {
+			data["status"] = "Creating"
+		}
+	}
+
 	if obj.GetKind() == "Pod" {
 		if containers, found, _ := unstructured.NestedSlice(obj.Object, "spec", "containers"); found {
 			var containerNames []string
@@ -625,6 +646,13 @@ func buildDataMap(eventType string, obj *unstructured.Unstructured) map[string]i
 				}
 			}
 			data["restartCount"] = totalRestarts
+		}
+	}
+
+	// Attach recent events for Pods to help frontend show `kubectl describe` style information
+	if obj.GetKind() == "Pod" {
+		if evs := fetchPodEvents(obj.GetNamespace(), obj.GetName()); len(evs) > 0 {
+			data["events"] = evs
 		}
 	}
 
@@ -865,6 +893,42 @@ func statusSnapshotString(obj *unstructured.Unstructured) string {
 	// Marshal into compact JSON string for easy equality checks
 	bs, _ := json.Marshal(m)
 	return string(bs)
+}
+
+// fetchPodEvents retrieves recent events related to a Pod (namespace/name).
+// Returns a compact serializable slice of event objects for frontend consumption.
+func fetchPodEvents(namespace, name string) []map[string]interface{} {
+	if Clientset == nil {
+		return nil
+	}
+
+	// Field selector on involvedObject.name (events are namespaced)
+	opts := metav1.ListOptions{FieldSelector: fmt.Sprintf("involvedObject.name=%s", name)}
+	list, err := Clientset.CoreV1().Events(namespace).List(context.TODO(), opts)
+	if err != nil || list == nil {
+		return nil
+	}
+
+	// Build a small array of events sorted by LastTimestamp ascending (older -> newer)
+	var evs []map[string]interface{}
+	for _, e := range list.Items {
+		ev := map[string]interface{}{
+			"type":           e.Type,
+			"reason":         e.Reason,
+			"message":        e.Message,
+			"count":          e.Count,
+			"firstTimestamp": e.FirstTimestamp.String(),
+			"lastTimestamp":  e.LastTimestamp.String(),
+			"source":         e.Source.Component,
+		}
+		evs = append(evs, ev)
+	}
+
+	// If there are many events, return the most recent 20
+	if len(evs) > 20 {
+		return evs[len(evs)-20:]
+	}
+	return evs
 }
 
 func GetFilteredNamespaces(filter string) ([]corev1.Namespace, error) {
