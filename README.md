@@ -1,8 +1,8 @@
 # Platform API (Go)
 
-RESTful API and Job Scheduler written in Go. Uses Gin (HTTP), PostgreSQL (database), and MinIO (storage). Includes full Kubernetes manifests and CI/CD pipeline.
+RESTful API server written in Go. A Scheduler component is planned but not yet implemented. Uses Gin (HTTP) and PostgreSQL. The backend includes an object-storage interface compatible with MinIO/S3, but MinIO is not deployed by default.
 
-**Status**: Production Ready
+**Status**: API Ready; Scheduler planned
 
 ## Documentation
 
@@ -35,6 +35,28 @@ make build-api
 # Build Scheduler only
 make build-scheduler
 ```
+
+## Notes
+
+- Read each helper script before running; some modify system state
+- Ensure PostgreSQL is running before deployment
+ - MinIO is not deployed by default. The backend can connect to an external S3/MinIO-compatible object storage; configure endpoint and credentials via Kubernetes Secret or environment variables.
+
+### Deployment & development cautions (important)
+
+- Initial database and `.env`: The project depends on `backend/infra/db/schema.sql` for database schema and seed data (for example, creating the initial `admin` user). Before starting or deploying the backend, provide a `.env` file (or Kubernetes Secret) with the correct database connection string, credentials, and required settings. Without proper DB credentials or permissions, initialization will fail.
+
+- `backend/scripts/build_image.sh` (update registry): This script helps build and push the backend image to a registry. Before deploying to your cluster, update the script's `HARBOR`/`REGISTRY`/`IMAGE`/`TAG` values or modify the script to accept environment variables so the image is pushed to a registry accessible by your cluster.
+
+- Development manifests using `hostPath`: Development manifests may mount local host files (for example certificates or configs) into Pods using `hostPath`. This is convenient for single-node testing but is insecure and non-portable for multi-node or production clusters. Replace `hostPath` with `Secret`, `ConfigMap`, or `PVC` before deploying to shared clusters.
+
+- Suggested deploy order: Build and push images, update manifest image strings, then apply manifests. Suggested order:
+
+  1. `kubectl apply -f ca.yaml` (if TLS/CA manifests are required)
+  2. `kubectl apply -f k8s/go-api.yaml` (or `go-api.yaml`)
+  3. `kubectl apply -f k8s/postgres.yaml`
+
+  The goal is to ensure Deployments reference images that exist in the registry and that any DB PV/PVC is ready.
 
 ### Kubernetes Deployment
 
@@ -118,21 +140,23 @@ See [Testing Report](docs/TESTING_REPORT.md) for details.
 ## Docker & Kubernetes
 
 ### Build Docker Images
+Build the API image. The Scheduler image target is present in the repo but the Scheduler component is not implemented yet.
 ```bash
 docker build -t platform-go-api:latest -f deploy/api.Dockerfile .
-docker build -t platform-go-scheduler:latest -f deploy/scheduler.Dockerfile .
+# docker build -t platform-go-scheduler:latest -f deploy/scheduler.Dockerfile .  # scheduler not implemented
 ```
 
 ### Kubernetes Deployment
+Apply API manifests and related resources. Scheduler manifests are provided as placeholders and should not be applied until the Scheduler is implemented.
 ```bash
-# Apply all manifests
+# Apply all manifests (API + resources)
 kubectl apply -f k8s/
 
 # Or apply individually
 kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/postgres.yaml
 kubectl apply -f k8s/go-api.yaml
-kubectl apply -f k8s/go-scheduler.yaml
+# kubectl apply -f k8s/go-scheduler.yaml  # scheduler not implemented
 ```
 
 ## Configuration
@@ -184,18 +208,14 @@ make test-verbose
 
 ## Architecture
 
-**Two Independent Services:**
 1. **API Server** (`cmd/api/`) - HTTP REST interface
  - Port 8080
  - Request/response handling
  - Business logic orchestration
 
-2. **Scheduler** (`cmd/scheduler/`) - Background job processor
- - No HTTP interface
- - Queue-based job processing
- - Priority-based resource allocation
+2. **Scheduler** - planned background job processor (not implemented)
 
-Both services share:
+Shared code areas:
 - Domain models (`internal/domain/`)
 - Business logic (`internal/application/`)
 - Data access layer (`internal/repository/`)
@@ -220,13 +240,6 @@ Both services share:
 - GPU resource management
 - Full audit logging
 - Project and configuration file management
-
-## Notes
-
-- Read each helper script before running; some modify system state
-- Ensure PostgreSQL is running before deployment
-- MinIO setup is optional for object storage
-- For detailed architecture, see [Project Structure Guide](docs/PROJECT_STRUCTURE.md)
 
 ## Contributing
 
