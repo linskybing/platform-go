@@ -65,10 +65,6 @@ func (s *ProjectService) GroupProjectsByGID(records []view.ProjectUserView) map[
 	return grouped
 }
 
-func (s *ProjectService) GetProjectsByGroupId(id uint) ([]project.Project, error) {
-	return s.Repos.Project.ListProjectsByGroup(id)
-}
-
 func (s *ProjectService) CreateProject(c *gin.Context, input project.CreateProjectDTO) (*project.Project, error) {
 	// Validate that the group exists
 	if _, err := s.Repos.Group.GetGroupByID(input.GID); err != nil {
@@ -186,22 +182,4 @@ func (s *ProjectService) RemoveProjectResources(projectID uint) error {
 	}
 
 	return nil
-}
-
-// GetUserRoleInProjectGroup determines the user's role by looking up the group associated with the project.
-func (s *ProjectService) GetUserRoleInProjectGroup(uid uint, pid uint) (string, error) {
-	// 1. Get GID from project ID
-	gid, err := s.Repos.Project.GetGroupIDByProjectID(pid)
-	if err != nil {
-		return "", err
-	}
-
-	// 2. Get role from UserGroupView via ViewRepo
-	role, err := s.Repos.UserGroup.GetUserRoleInGroup(uid, gid)
-	if err != nil {
-		// Default to "user" for safety if no specific role is found in that group
-		return "user", nil
-	}
-
-	return role, nil
 }
