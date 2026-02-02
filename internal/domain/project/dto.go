@@ -4,14 +4,14 @@ type CreateProjectDTO struct {
 	ProjectName string  `json:"project_name" form:"project_name" binding:"required"`
 	Description *string `json:"description,omitempty" form:"description,omitempty"`
 	GID         uint    `json:"gid" form:"g_id" binding:"required"`
-	GPUQuota    *int    `json:"gpu_quota,omitempty" form:"gpu_quota,omitempty"`         // GPU quota in integer units
+	GPUQuota    *int    `json:"gpu_quota,omitempty" form:"gpu_quota,omitempty"` // GPU quota in integer units
 }
 
 type UpdateProjectDTO struct {
 	ProjectName *string `json:"project_name,omitempty" form:"project_name,omitempty"`
 	Description *string `json:"description,omitempty" form:"description,omitempty"`
 	GID         *uint   `json:"gid,omitempty" form:"g_id,omitempty"`
-	GPUQuota    *int    `json:"gpu_quota,omitempty" form:"gpu_quota,omitempty"`        // GPU quota in integer units
+	GPUQuota    *int    `json:"gpu_quota,omitempty" form:"gpu_quota,omitempty"` // GPU quota in integer units
 }
 
 type CreateGroupPVCDTO struct {

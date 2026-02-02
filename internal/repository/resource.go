@@ -8,6 +8,7 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/view"
 	"gorm.io/gorm"
 )
+
 type ResourceRepo interface {
 	CreateResource(resource *resource.Resource) error
 	GetResourceByID(rid uint) (*resource.Resource, error)

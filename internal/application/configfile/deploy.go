@@ -121,7 +121,9 @@ func (s *ConfigFileService) DeleteInstance(c *gin.Context, id uint) error {
 	for _, val := range data {
 		if err := k8s.DeleteByJson(val.ParsedYAML, ns); err != nil {
 			// Continue deleting other resources even if one fails
-			fmt.Printf("[Error] Failed to delete resource %s: %v\n", val.Name, err)
+			slog.Error("failed to delete resource",
+				"resource", val.Name,
+				"error", err)
 		}
 	}
 	return nil
@@ -148,7 +150,10 @@ func (s *ConfigFileService) DeleteConfigFileInstance(id uint) error {
 		ns := k8s.FormatNamespaceName(configfile.ProjectID, safeUsername)
 		for _, res := range resources {
 			if err := k8s.DeleteByJson(res.ParsedYAML, ns); err != nil {
-				fmt.Printf("[Warning] Failed to delete instance for user %s: %v\n", user.Username, err)
+				slog.Warn("failed to delete instance for user",
+					"username", user.Username,
+					"namespace", ns,
+					"error", err)
 			}
 		}
 	}
@@ -183,12 +188,18 @@ func (s *ConfigFileService) bindProjectAndUserVolumes(targetNs string, project p
 
 	targetUserPvcName := userPvcName
 	if err := k8s.MountExistingVolumeToProject(userStorageNs, userPvcName, targetNs, targetUserPvcName); err != nil {
-		fmt.Printf("[Warning] Failed to bind user volume: %v\n", err)
+		slog.Warn("failed to bind user volume",
+			"username", claims.Username,
+			"namespace", userStorageNs,
+			"error", err)
 	}
 
 	targetGroupPvcName := groupPvcName
 	if err := k8s.MountExistingVolumeToProject(groupStorageNs, groupPvcName, targetNs, targetGroupPvcName); err != nil {
-		fmt.Printf("[Warning] Failed to bind group volume: %v\n", err)
+		slog.Warn("failed to bind group volume",
+			"project_id", project.PID,
+			"namespace", groupStorageNs,
+			"error", err)
 	}
 
 	return targetUserPvcName, targetGroupPvcName

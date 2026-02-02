@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/application/image"
@@ -138,7 +139,9 @@ func (s *ConfigFileService) DeleteConfigFile(c *gin.Context, id uint) error {
 	// 1. Clean up K8s resources
 	if err := s.DeleteConfigFileInstance(id); err != nil {
 		// Log warning but proceed to delete DB records if possible, or return error depending on policy
-		fmt.Printf("[Warning] Failed to cleanup K8s resources for CF %d: %v\n", id, err)
+		slog.Warn("failed to cleanup K8s resources for config file",
+			"config_id", id,
+			"error", err)
 	}
 
 	// 2. Clean up DB resources

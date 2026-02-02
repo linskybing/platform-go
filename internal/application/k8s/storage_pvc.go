@@ -17,7 +17,7 @@ import (
 // CreateGroupPVC creates a new PVC for a group with performance logging.
 func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID uint, req *storage.CreateGroupStorageRequest, createdByID uint) (*storage.GroupPVC, error) {
 	startTime := time.Now()
-	
+
 	if k8sclient.Clientset == nil {
 		slog.Warn("k8s client not initialized, using mock PVC",
 			"group_id", groupID,
@@ -103,7 +103,7 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID uint, req 
 	}
 
 	sm.invalidateCache(groupID)
-	
+
 	elapsed := time.Since(startTime)
 	slog.Info("PVC created successfully",
 		"group_id", groupID,
@@ -112,7 +112,7 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID uint, req 
 		"capacity_gi", req.Capacity,
 		"duration_ms", elapsed.Milliseconds(),
 		"storage_class", scName)
-	
+
 	return groupPVC, nil
 }
 
@@ -121,7 +121,7 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID uint, req 
 // Cache miss path: O(n) with ~100-500ms depending on K8s API latency
 func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID uint) ([]storage.GroupPVC, error) {
 	startTime := time.Now()
-	
+
 	// Try cache first
 	if cached, ok := sm.getCachedPVCs(groupID); ok {
 		elapsed := time.Since(startTime)
@@ -177,13 +177,13 @@ func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID uint) ([]st
 	}
 
 	sm.setCachedPVCs(groupID, result, 5*time.Minute)
-	
+
 	elapsed := time.Since(startTime)
 	slog.Info("PVC list retrieved from k8s API",
 		"group_id", groupID,
 		"count", len(result),
 		"duration_ms", elapsed.Milliseconds(),
 		"cache_ttl_seconds", 300)
-	
+
 	return result, nil
 }

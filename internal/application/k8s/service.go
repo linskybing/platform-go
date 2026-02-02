@@ -40,6 +40,6 @@ func NewK8sService(repos *repository.Repos, imageValidator ImageValidator) (*K8s
 }
 
 // Accessors for manager dependencies.
-func (s *K8sService) StorageMgr() *StorageManager           { return s.storageManager }
-func (s *K8sService) FileBrowserMgr() *FileBrowserManager   { return s.fileBrowserManager }
-func (s *K8sService) UserStorageMgr() *UserStorageManager   { return s.userStorageManager }
+func (s *K8sService) StorageMgr() *StorageManager         { return s.storageManager }
+func (s *K8sService) FileBrowserMgr() *FileBrowserManager { return s.fileBrowserManager }
+func (s *K8sService) UserStorageMgr() *UserStorageManager { return s.userStorageManager }

@@ -50,7 +50,7 @@ func (sm *StorageManager) setCachedPVCs(groupID uint, pvcs []storage.GroupPVC, t
 		Timestamp: time.Now(),
 		TTL:       ttl,
 	}
-	
+
 	slog.Debug("cached PVCs for group", "group_id", groupID, "count", len(pvcs), "ttl_seconds", ttl.Seconds())
 }
 

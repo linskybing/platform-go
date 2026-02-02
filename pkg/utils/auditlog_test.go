@@ -45,16 +45,16 @@ func (m *mockAuditRepo) WithTx(tx *gorm.DB) repository.AuditRepo {
 // TestLogAudit - Table-driven tests
 func TestLogAudit(t *testing.T) {
 	tests := []struct {
-		name        string
-		userID      uint
-		ip          string
-		ua          string
-		action      string
+		name         string
+		userID       uint
+		ip           string
+		ua           string
+		action       string
 		resourceType string
-		resourceID  string
-		before      interface{}
-		after       interface{}
-		description string
+		resourceID   string
+		before       interface{}
+		after        interface{}
+		description  string
 	}{
 		{
 			name:         "create action",
@@ -111,7 +111,7 @@ func TestLogAudit(t *testing.T) {
 			resourceID:   "rep_001",
 			before:       nil,
 			after:        nil,
-			description: "should handle missing before/after",
+			description:  "should handle missing before/after",
 		},
 		{
 			name:         "complex nested data",

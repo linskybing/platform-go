@@ -139,11 +139,11 @@ func TestBucketNameValidation(t *testing.T) {
 // TestCredentialsValidation tests credential structure
 func TestCredentialsValidation(t *testing.T) {
 	tests := []struct {
-		name       string
-		accessKey  string
-		secretKey  string
-		verify     func(string, string) bool
-		scenario   string
+		name      string
+		accessKey string
+		secretKey string
+		verify    func(string, string) bool
+		scenario  string
 	}{
 		{
 			name:      "valid_credentials",
@@ -204,48 +204,48 @@ func TestCredentialsValidation(t *testing.T) {
 // TestBucketOperationScenarios tests bucket operation scenarios
 func TestBucketOperationScenarios(t *testing.T) {
 	tests := []struct {
-		name             string
-		bucketName       string
-		shouldExist      bool
-		shouldCreate     bool
-		verifyOperation  func(string, bool, bool) bool
-		scenario         string
+		name            string
+		bucketName      string
+		shouldExist     bool
+		shouldCreate    bool
+		verifyOperation func(string, bool, bool) bool
+		scenario        string
 	}{
 		{
-			name:            "bucket_already_exists",
-			bucketName:      "existing-bucket",
-			shouldExist:     true,
-			shouldCreate:    false,
+			name:         "bucket_already_exists",
+			bucketName:   "existing-bucket",
+			shouldExist:  true,
+			shouldCreate: false,
 			verifyOperation: func(b string, exist, create bool) bool {
 				return exist && !create
 			},
 			scenario: "Bucket already exists, no creation needed",
 		},
 		{
-			name:            "bucket_does_not_exist",
-			bucketName:      "new-bucket",
-			shouldExist:     false,
-			shouldCreate:    true,
+			name:         "bucket_does_not_exist",
+			bucketName:   "new-bucket",
+			shouldExist:  false,
+			shouldCreate: true,
 			verifyOperation: func(b string, exist, create bool) bool {
 				return !exist && create
 			},
 			scenario: "Bucket does not exist, should be created",
 		},
 		{
-			name:            "bucket_exists_no_recreation",
-			bucketName:      "persistent-bucket",
-			shouldExist:     true,
-			shouldCreate:    false,
+			name:         "bucket_exists_no_recreation",
+			bucketName:   "persistent-bucket",
+			shouldExist:  true,
+			shouldCreate: false,
 			verifyOperation: func(b string, exist, create bool) bool {
 				return exist && !create
 			},
 			scenario: "Existing bucket not recreated",
 		},
 		{
-			name:            "new_bucket_creation",
-			bucketName:      "fresh-bucket",
-			shouldExist:     false,
-			shouldCreate:    true,
+			name:         "new_bucket_creation",
+			bucketName:   "fresh-bucket",
+			shouldExist:  false,
+			shouldCreate: true,
 			verifyOperation: func(b string, exist, create bool) bool {
 				return !exist && create && len(b) > 0
 			},
