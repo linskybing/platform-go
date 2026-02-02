@@ -1,7 +1,7 @@
 package cron
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/linskybing/platform-go/internal/application"
@@ -9,11 +9,11 @@ import (
 
 func StartCleanupTask(auditService *application.AuditService) {
 	go func() {
-		log.Println("Starting background cleanup task (retention: 30 days)")
+		slog.Info("starting background cleanup task", "retention_days", 30)
 
 		// Run immediately on startup
 		if err := auditService.CleanupOldLogs(30); err != nil {
-			log.Printf("Failed to cleanup old audit logs: %v", err)
+			slog.Error("failed to cleanup old audit logs", "error", err)
 		}
 
 		// Then run every 24 hours
@@ -21,11 +21,11 @@ func StartCleanupTask(auditService *application.AuditService) {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			log.Println("Running scheduled audit log cleanup...")
+			slog.Info("running scheduled audit log cleanup")
 			if err := auditService.CleanupOldLogs(30); err != nil {
-				log.Printf("Failed to cleanup old audit logs: %v", err)
+				slog.Error("failed to cleanup old audit logs", "error", err)
 			} else {
-				log.Println("Audit log cleanup completed successfully")
+				slog.Info("audit log cleanup completed successfully")
 			}
 		}
 	}()

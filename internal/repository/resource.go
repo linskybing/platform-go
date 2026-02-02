@@ -2,12 +2,12 @@ package repository
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/internal/domain/view"
 	"gorm.io/gorm"
 )
-
 type ResourceRepo interface {
 	CreateResource(resource *resource.Resource) error
 	GetResourceByID(rid uint) (*resource.Resource, error)
@@ -47,9 +47,12 @@ func (r *DBResourceRepo) GetResourceByID(rid uint) (*resource.Resource, error) {
 
 func (r *DBResourceRepo) UpdateResource(resource *resource.Resource) error {
 	if resource.RID == 0 {
-		return errors.New("resource RID is required")
+		return fmt.Errorf("resource RID is required: validation failed")
 	}
-	return r.db.Save(resource).Error
+	if err := r.db.Save(resource).Error; err != nil {
+		return fmt.Errorf("failed to update resource: %w", err)
+	}
+	return nil
 }
 
 func (r *DBResourceRepo) DeleteResource(rid uint) error {

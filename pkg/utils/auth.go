@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/config"
@@ -22,12 +23,12 @@ func IsSuperAdmin(uid uint, repos repository.UserGroupRepo) (bool, error) {
 var GetUserIDFromContext = func(c *gin.Context) (uint, error) {
 	claimsVal, exists := c.Get("claims")
 	if !exists {
-		return 0, errors.New("user claims not found in context")
+		return 0, fmt.Errorf("user claims not found in context: missing claims")
 	}
 
 	claims, ok := claimsVal.(*types.Claims)
 	if !ok {
-		return 0, errors.New("invalid user claims type")
+		return 0, fmt.Errorf("invalid user claims type (expected *types.Claims): type assertion failed")
 	}
 
 	return claims.UserID, nil
@@ -36,12 +37,12 @@ var GetUserIDFromContext = func(c *gin.Context) (uint, error) {
 var GetUserNameFromContext = func(c *gin.Context) (string, error) {
 	claimsVal, exists := c.Get("claims")
 	if !exists {
-		return "", errors.New("user claims not found in context")
+		return "", fmt.Errorf("user claims not found in context: missing claims")
 	}
 
 	claims, ok := claimsVal.(*types.Claims)
 	if !ok {
-		return "", errors.New("invalid user claims type")
+		return "", fmt.Errorf("invalid user claims type (expected *types.Claims): type assertion failed")
 	}
 
 	return claims.Username, nil
@@ -80,19 +81,19 @@ func CheckGroupPermission(UID uint, GID uint, repos repository.UserGroupRepo) (b
 
 	isSuper, err := repos.IsSuperAdmin(UID)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check super admin status: %w", err)
 	}
 	if isSuper {
 		return true, nil
 	}
 
-	return false, errors.New("permission denied")
+	return false, fmt.Errorf("user %d is not a group member: permission denied", UID)
 }
 
 func CheckGroupManagePermission(UID uint, GID uint, repos repository.UserGroupRepo) (bool, error) {
 	isManager, err := HasGroupRole(UID, GID, config.GroupUpdateRoles)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check group manager role: %w", err)
 	}
 	if isManager {
 		return true, nil
@@ -100,19 +101,19 @@ func CheckGroupManagePermission(UID uint, GID uint, repos repository.UserGroupRe
 
 	isSuper, err := repos.IsSuperAdmin(UID)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check super admin status: %w", err)
 	}
 	if isSuper {
 		return true, nil
 	}
 
-	return false, errors.New("permission denied")
+	return false, fmt.Errorf("user %d cannot manage group %d: permission denied", UID, GID)
 }
 
 func CheckGroupAdminPermission(UID uint, GID uint, repos repository.UserGroupRepo) (bool, error) {
 	isManager, err := HasGroupRole(UID, GID, config.GroupAdminRoles)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check group admin role: %w", err)
 	}
 	if isManager {
 		return true, nil
@@ -120,11 +121,11 @@ func CheckGroupAdminPermission(UID uint, GID uint, repos repository.UserGroupRep
 
 	isSuper, err := repos.IsSuperAdmin(UID)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check super admin status: %w", err)
 	}
 	if isSuper {
 		return true, nil
 	}
 
-	return false, errors.New("permission denied")
+	return false, fmt.Errorf("user %d cannot administer group %d: permission denied", UID, GID)
 }

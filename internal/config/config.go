@@ -46,8 +46,8 @@ var (
 	UserStoragePVC = "user-%s-disk"    // user-{username}-disk
 	// K8s Service Names
 	PersonalStorageServiceName   string
-	ProjectStorageServiceName    string
-	ProjectStorageBrowserSVCName string
+	GroupStorageServiceName    string
+	GroupStorageBrowserSVCName string
 	ProjectNfsServiceName        string
 	HarborPrivatePrefix          string
 )
@@ -81,8 +81,8 @@ func LoadConfig() {
 
 	// K8s Service Names
 	PersonalStorageServiceName = getEnv("PERSONAL_STORAGE_SERVICE_NAME", "storage-svc")
-	ProjectStorageServiceName = getEnv("PROJECT_STORAGE_SERVICE_NAME", "storage-svc")
-	ProjectStorageBrowserSVCName = getEnv("PROJECT_STORAGE_BROWSER_SVC_NAME", "filebrowser-project-svc")
+	GroupStorageServiceName = getEnv("GROUP_STORAGE_SERVICE_NAME", "storage-svc")
+	GroupStorageBrowserSVCName = getEnv("GROUP_STORAGE_BROWSER_SVC_NAME", "filebrowser-group-svc")
 	ProjectNfsServiceName = getEnv("PROJECT_NFS_SERVICE_NAME", "storage-svc")
 	HarborPrivatePrefix = getEnv("HARBOR_PRIVATE_PREFIX", "192.168.110.1:30003/library/")
 }

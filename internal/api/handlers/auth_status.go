@@ -1,10 +1,8 @@
 package handlers
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
-	"github.com/linskybing/platform-go/pkg/response"
+	"github.com/linskybing/platform-go/internal/api/response"
 	"github.com/linskybing/platform-go/pkg/utils"
 )
 
@@ -12,8 +10,11 @@ import (
 func AuthStatusHandler(c *gin.Context) {
 	uid, err := utils.GetUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "token expired"})
+		response.Unauthorized(c, "token expired")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"status": "valid", "user_id": uid})
+	response.Success(c, map[string]interface{}{
+		"status":  "valid",
+		"user_id": uid,
+	}, "Token is valid")
 }

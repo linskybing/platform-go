@@ -1,4 +1,4 @@
-package application
+package application_test
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
+	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/repository"
@@ -14,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupUserGroupMocks(t *testing.T) (*UserGroupService,
+func setupUserGroupMocks(t *testing.T) (*application.UserGroupService,
 	*mock.MockUserGroupRepo,
 	*mock.MockUserRepo,
 	*mock.MockProjectRepo,
@@ -39,7 +40,7 @@ func setupUserGroupMocks(t *testing.T) (*UserGroupService,
 		Audit:     mockAudit,
 	}
 
-	service := NewUserGroupService(repos)
+	service := application.NewUserGroupService(repos)
 	ctx, _ := gin.CreateTestContext(nil)
 
 	// override utils (k8s package uses mock behavior when Clientset is nil)

@@ -2,7 +2,8 @@ package cron
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"time"
 
 	"github.com/linskybing/platform-go/pkg/k8s"
 	batchv1 "k8s.io/api/batch/v1"
@@ -71,37 +72,43 @@ func CreateDockerCleanupCronJob() error {
 	}
 
 	// Check if CronJob already exists
-	existing, err := k8s.Clientset.BatchV1().CronJobs("default").Get(context.TODO(), "docker-image-cleanup", metav1.GetOptions{})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	existing, err := k8s.Clientset.BatchV1().CronJobs("default").Get(ctx, "docker-image-cleanup", metav1.GetOptions{})
 	if err == nil && existing != nil {
 		// CronJob already exists, update it
-		_, err = k8s.Clientset.BatchV1().CronJobs("default").Update(context.TODO(), cronJob, metav1.UpdateOptions{})
+		_, err = k8s.Clientset.BatchV1().CronJobs("default").Update(ctx, cronJob, metav1.UpdateOptions{})
 		if err != nil {
-			log.Printf("Failed to update Docker cleanup CronJob: %v", err)
+			slog.Error("failed to update docker cleanup cron job", "error", err)
 			return err
 		}
-		log.Println("Updated Docker cleanup CronJob successfully")
+		slog.Info("docker cleanup cron job updated successfully")
 		return nil
 	}
 
 	// Create new CronJob
-	_, err = k8s.Clientset.BatchV1().CronJobs("default").Create(context.TODO(), cronJob, metav1.CreateOptions{})
+	_, err = k8s.Clientset.BatchV1().CronJobs("default").Create(ctx, cronJob, metav1.CreateOptions{})
 	if err != nil {
-		log.Printf("Failed to create Docker cleanup CronJob: %v", err)
+		slog.Error("failed to create docker cleanup cron job", "error", err)
 		return err
 	}
 
-	log.Println("Created Docker cleanup CronJob successfully")
+	slog.Info("docker cleanup cron job created successfully")
 	return nil
 }
 
 // DeleteDockerCleanupCronJob deletes the Docker cleanup CronJob
 func DeleteDockerCleanupCronJob() error {
-	err := k8s.Clientset.BatchV1().CronJobs("default").Delete(context.TODO(), "docker-image-cleanup", metav1.DeleteOptions{})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := k8s.Clientset.BatchV1().CronJobs("default").Delete(ctx, "docker-image-cleanup", metav1.DeleteOptions{})
 	if err != nil {
-		log.Printf("Failed to delete Docker cleanup CronJob: %v", err)
+		slog.Error("failed to delete docker cleanup cron job", "error", err)
 		return err
 	}
 
-	log.Println("Deleted Docker cleanup CronJob successfully")
+	slog.Info("deleted docker cleanup cron job successfully")
 	return nil
 }
