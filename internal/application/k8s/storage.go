@@ -66,11 +66,26 @@ func (s *K8sService) DeleteGroupPVC(ctx context.Context, pvcID string) error {
 	return nil
 }
 
-// DeleteProjectAllPVC deletes all PVCs for a project (legacy support).
-// DEPRECATED: Project-based storage model is deprecated in favor of group-based storage.
-// This function returns an error to prevent usage. Callers should use group storage APIs.
-func (s *K8sService) DeleteProjectAllPVC(ctx context.Context, projectName string, projectID uint) error {
-	return fmt.Errorf("project storage is deprecated, use group storage: %w", ErrDeprecated)
+// DeleteGroupStorage deletes all storage resources for a group.
+func (s *K8sService) DeleteGroupStorage(ctx context.Context, groupID uint) error {
+	if groupID == 0 {
+		return fmt.Errorf("invalid group ID: %w", ErrInvalidID)
+	}
+
+	// List all PVCs for the group
+	pvcs, err := s.ListGroupPVCs(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to list PVCs for group %d: %w", groupID, err)
+	}
+
+	// Delete each PVC
+	for _, pvc := range pvcs {
+		if err := s.DeleteGroupPVC(ctx, pvc.ID); err != nil {
+			return fmt.Errorf("failed to delete PVC %s for group %d: %w", pvc.ID, groupID, err)
+		}
+	}
+
+	return nil
 }
 
 // ListAllGroupStorages returns all group storage resources (for backward compatibility with handlers).

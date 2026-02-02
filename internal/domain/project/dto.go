@@ -19,9 +19,6 @@ type CreateGroupPVCDTO struct {
 	Size string `json:"size" binding:"required"`
 }
 
-// CreateProjectPVCDTO is deprecated. Use CreateGroupPVCDTO instead.
-type CreateProjectPVCDTO = CreateGroupPVCDTO
-
 type GIDGetter interface {
 	GetGID() uint
 }

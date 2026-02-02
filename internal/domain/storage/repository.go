@@ -8,8 +8,6 @@ type Repository interface {
 	GetPVCByName(namespace, name string) (*PersistentVolumeClaim, error)
 	ListPVCs(namespace string) ([]PersistentVolumeClaim, error)
 	ListGroupPVCs(groupID uint) ([]PersistentVolumeClaim, error)
-	// ListProjectPVCs is deprecated. Use ListGroupPVCs instead.
-	ListProjectPVCs(projectID uint) ([]PersistentVolumeClaim, error)
 	UpdatePVC(pvc *PersistentVolumeClaim) error
 	DeletePVC(id uint) error
 	DeletePVCByName(namespace, name string) error

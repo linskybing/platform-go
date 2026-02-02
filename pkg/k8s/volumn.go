@@ -158,7 +158,9 @@ func CreateStorageHub(ns string, pvcName string) error {
 	return nil
 }
 
-func MountExistingVolumeToProject(sourceNs, sourcePvcName, targetNs, targetPvcName string) error {
+// MountExistingVolumeToNamespace mounts an existing PVC from one namespace to another.
+// This is typically used to share user or group storage with application namespaces.
+func MountExistingVolumeToNamespace(sourceNs, sourcePvcName, targetNs, targetPvcName string) error {
 	ctx := context.TODO()
 
 	_, err := Clientset.CoreV1().PersistentVolumeClaims(targetNs).Get(ctx, targetPvcName, metav1.GetOptions{})
@@ -350,7 +352,7 @@ func cleanUpSinglePVCTree(ctx context.Context, ns string, pvcName string) error 
 	volumeHandle := sourcePV.Spec.CSI.VolumeHandle
 
 	// 3. Find all Pointer PVs referencing this Handle
-	// LabelSelector must match what we set in MountExistingVolumeToProject
+	// LabelSelector must match what we set in MountExistingVolumeToNamespace
 	labelSelector := fmt.Sprintf("source-vol=%s,created-by=k8s-platform-share", volumeHandle)
 
 	pointerPVs, err := Clientset.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{

@@ -48,9 +48,3 @@ func (s *K8sService) GetGroupPVCNames(ctx context.Context, namespace string) ([]
 	}
 	return names, nil
 }
-
-// GetProjectPVCNames returns PVC names for a project namespace (legacy support).
-// Delegates to GetGroupPVCNames.
-func (s *K8sService) GetProjectPVCNames(ctx context.Context, namespace string) ([]string, error) {
-	return s.GetGroupPVCNames(ctx, namespace)
-}
