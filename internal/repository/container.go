@@ -13,7 +13,6 @@ type Repos struct {
 	User       UserRepo
 	Audit      AuditRepo
 	Form       FormRepo
-	Job        JobRepo
 	Image      ImageRepo
 
 	db *gorm.DB
@@ -29,7 +28,6 @@ func NewRepositories(db *gorm.DB) *Repos {
 		User:       NewUserRepo(db),
 		Audit:      NewAuditRepo(db),
 		Form:       NewFormRepo(db),
-		Job:        NewJobRepo(db),
 		Image:      NewImageRepo(db),
 		db:         db,
 	}
@@ -49,7 +47,6 @@ func (r *Repos) WithTx(tx *gorm.DB) *Repos {
 		User:       r.User.WithTx(tx),
 		Audit:      r.Audit.WithTx(tx),
 		Form:       r.Form.WithTx(tx),
-		Job:        r.Job.WithTx(tx),
 		Image:      r.Image.WithTx(tx),
 		db:         tx,
 	}

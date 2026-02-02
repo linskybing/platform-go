@@ -2,11 +2,21 @@ package db
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/linskybing/platform-go/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+)
+
+const (
+	// Database view names
+	viewProjectGroup    = "project_group_views"
+	viewProjectResource = "project_resource_views"
+	viewGroupResource   = "group_resource_views"
+	viewUsersSuperadmin = "users_with_superadmin"
+	viewUserGroup       = "user_group_views"
+	viewProjectUser     = "project_user_views"
 )
 
 var DB *gorm.DB
@@ -21,7 +31,9 @@ func createEnums() {
 
 	for _, enum := range enums {
 		if err := DB.Exec(enum).Error; err != nil {
-			log.Printf("Failed to create enum: %s, error: %v", enum, err)
+			slog.Error("failed to create enum",
+				"enum", enum,
+				"error", err)
 		}
 	}
 }
@@ -39,7 +51,12 @@ func Init() {
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Failed to connect to DB:", err)
+		slog.Error("failed to connect to database",
+			"host", config.DbHost,
+			"port", config.DbPort,
+			"dbname", config.DbName,
+			"error", err)
+		panic(fmt.Sprintf("failed to connect to DB: %v", err))
 	}
 
 	dropViews()
@@ -50,7 +67,7 @@ func Init() {
 	// Note: AutoMigrate moved to cmd/api/main.go to avoid import cycles
 	// Note: createViews() is called after AutoMigrate in cmd/api/main.go and test setup
 
-	log.Println("Database connected and migrated")
+	slog.Info("database connected and migrated")
 }
 
 func InitWithGormDB(gormDB *gorm.DB) {
@@ -59,23 +76,25 @@ func InitWithGormDB(gormDB *gorm.DB) {
 
 func dropViews() {
 	views := []string{
-		"project_group_views",
-		"project_resource_views",
-		"group_resource_views",
-		"users_with_superadmin",
-		"user_group_views",
-		"project_user_views",
+		viewProjectGroup,
+		viewProjectResource,
+		viewGroupResource,
+		viewUsersSuperadmin,
+		viewUserGroup,
+		viewProjectUser,
 	}
 
 	for _, view := range views {
 		if err := DB.Exec(fmt.Sprintf("DROP VIEW IF EXISTS %s CASCADE", view)).Error; err != nil {
-			log.Printf("Failed to drop view %s: %v", view, err)
+			slog.Error("failed to drop view",
+				"view", view,
+				"error", err)
 		}
 	}
 }
 
 func CreateViews() {
-	log.Println("Creating database views...")
+	slog.Info("creating database views")
 	views := []string{
 		`CREATE OR REPLACE VIEW project_group_views AS
 		SELECT
@@ -165,10 +184,14 @@ func CreateViews() {
 	successCount := 0
 	for i, view := range views {
 		if err := DB.Exec(view).Error; err != nil {
-			log.Printf("Failed to create view %d: %v", i+1, err)
+			slog.Error("failed to create database view",
+				"view_number", i+1,
+				"error", err)
 		} else {
 			successCount++
 		}
 	}
-	log.Printf("Database views created (%d/%d successful)", successCount, len(views))
+	slog.Info("database views created",
+		"successful", successCount,
+		"total", len(views))
 }

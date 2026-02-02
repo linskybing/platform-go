@@ -261,12 +261,12 @@ func MountExistingVolumeToProject(sourceNs, sourcePvcName, targetNs, targetPvcNa
 	return nil
 }
 
-// DeleteProjectStorageCompletely handles the cleanup for a project.
-// It iterates over ALL PVCs in the project namespace to ensure all shared pointers are removed.
-func DeleteProjectStorageCompletely(ctx context.Context, projectName string, projectID uint) error {
-	nsName := GenerateSafeResourceName("project", projectName, projectID)
+// DeleteGroupStorageCompletely handles the cleanup for a group.
+// It iterates over ALL PVCs in the group namespace to ensure all shared pointers are removed.
+func DeleteGroupStorageCompletely(ctx context.Context, projectName string, projectID uint) error {
+	nsName := GenerateSafeResourceName("group", projectName, projectID)
 
-	fmt.Printf("[Cleanup] Starting cleanup for project: %s (ns: %s)\n", projectName, nsName)
+	fmt.Printf("[Cleanup] Starting cleanup for group: %s (ns: %s)\n", projectName, nsName)
 
 	// 1. List ALL PVCs in the project namespace
 	// We don't guess names like "project-disk", we find whatever exists.

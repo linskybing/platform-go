@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"gorm.io/gorm"
@@ -42,9 +42,12 @@ func (r *DBConfigFileRepo) GetConfigFileByID(id uint) (*configfile.ConfigFile, e
 
 func (r *DBConfigFileRepo) UpdateConfigFile(cf *configfile.ConfigFile) error {
 	if cf.CFID == 0 {
-		return errors.New("missing ConfigFile ID")
+		return fmt.Errorf("missing ConfigFile ID: validation failed")
 	}
-	return r.db.Save(cf).Error
+	if err := r.db.Save(cf).Error; err != nil {
+		return fmt.Errorf("failed to update config file: %w", err)
+	}
+	return nil
 }
 
 func (r *DBConfigFileRepo) DeleteConfigFile(id uint) error {

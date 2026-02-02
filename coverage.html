@@ -1,0 +1,832 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>configfile: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/linskybing/platform-go/internal/domain/configfile/dto.go (0.0%)</option>
+				
+				<option value="file1">github.com/linskybing/platform-go/internal/domain/course/model.go (0.0%)</option>
+				
+				<option value="file2">github.com/linskybing/platform-go/internal/domain/group/dto.go (0.0%)</option>
+				
+				<option value="file3">github.com/linskybing/platform-go/internal/domain/group/model.go (0.0%)</option>
+				
+				<option value="file4">github.com/linskybing/platform-go/internal/domain/job/model.go (0.0%)</option>
+				
+				<option value="file5">github.com/linskybing/platform-go/internal/domain/project/dto.go (0.0%)</option>
+				
+				<option value="file6">github.com/linskybing/platform-go/internal/domain/project/model.go (0.0%)</option>
+				
+				<option value="file7">github.com/linskybing/platform-go/internal/domain/resource/model.go (0.0%)</option>
+				
+				<option value="file8">github.com/linskybing/platform-go/internal/domain/storage/model.go (0.0%)</option>
+				
+				<option value="file9">github.com/linskybing/platform-go/internal/domain/user/model.go (0.0%)</option>
+				
+				<option value="file10">github.com/linskybing/platform-go/internal/domain/view/model.go (0.0%)</option>
+				
+				<option value="file11">github.com/linskybing/platform-go/pkg/storage/client.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package configfile
+
+type ConfigFileUpdateDTO struct {
+        Filename *string `form:"filename"`
+        RawYaml  *string `form:"raw_yaml"`
+}
+
+type CreateConfigFileInput struct {
+        Filename  string `form:"filename" binding:"required"`
+        RawYaml   string `form:"raw_yaml" binding:"required"`
+        ProjectID uint   `form:"project_id" binding:"required"`
+}
+
+// GetProjectID returns the project ID for GID lookup
+func (d CreateConfigFileInput) GetProjectID() uint <span class="cov0" title="0">{
+        return d.ProjectID
+}</span>
+
+type ProjectGetter interface {
+        GetGroupIDByProjectID(projectID uint) uint
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package course
+
+import "time"
+
+// CourseWorkloadStatus represents the status of a course workload (pod)
+type CourseWorkloadStatus string
+
+const (
+        StatusPending   CourseWorkloadStatus = "Pending"   // Waiting to be scheduled
+        StatusRunning   CourseWorkloadStatus = "Running"   // Currently running
+        StatusSucceeded CourseWorkloadStatus = "Succeeded" // Completed successfully
+        StatusFailed    CourseWorkloadStatus = "Failed"    // Failed to run
+        StatusUnknown   CourseWorkloadStatus = "Unknown"   // Status unknown
+)
+
+// CoursePriority defines the priority level for course workloads
+const (
+        CoursePriority = 1000 // High priority for course pods
+)
+
+// CourseWorkload represents a high-priority course pod
+type CourseWorkload struct {
+        ID          uint                 `gorm:"primaryKey;column:id"`
+        UserID      uint                 `gorm:"not null;column:user_id"`
+        ProjectID   uint                 `gorm:"not null;column:project_id"`
+        Name        string               `gorm:"size:100;not null"`
+        Namespace   string               `gorm:"size:100;not null"`
+        Image       string               `gorm:"size:255;not null"`
+        Status      CourseWorkloadStatus `gorm:"size:50;default:'Pending'"`
+        K8sPodName  string               `gorm:"size:100;not null;column:k8s_pod_name"`
+        Priority    int                  `gorm:"default:1000"`
+        ResourceCPU string               `gorm:"size:50;column:resource_cpu"`
+        ResourceMem string               `gorm:"size:50;column:resource_mem"`
+        ResourceGPU *int                 `gorm:"column:resource_gpu"`
+        CreatedAt   time.Time            `gorm:"column:created_at;autoCreateTime"`
+        UpdatedAt   time.Time            `gorm:"column:updated_at;autoUpdateTime"`
+        StartedAt   *time.Time           `gorm:"column:started_at"`
+}
+
+// TableName specifies the database table name
+func (CourseWorkload) TableName() string <span class="cov0" title="0">{
+        return "course_workloads"
+}</span>
+
+// RequiresGPU checks if this workload requires GPU resources
+func (c *CourseWorkload) RequiresGPU() bool <span class="cov0" title="0">{
+        return c.ResourceGPU != nil &amp;&amp; *c.ResourceGPU &gt; 0
+}</span>
+
+// IsRunning checks if the workload is currently running
+func (c *CourseWorkload) IsRunning() bool <span class="cov0" title="0">{
+        return c.Status == StatusRunning
+}</span>
+
+// IsPending checks if the workload is waiting to be scheduled
+func (c *CourseWorkload) IsPending() bool <span class="cov0" title="0">{
+        return c.Status == StatusPending
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package group
+
+type GroupUpdateDTO struct {
+        GroupName   *string `json:"group_name" form:"group_name"`
+        Description *string `json:"description" form:"description"`
+}
+
+type GroupCreateDTO struct {
+        GroupName   string  `json:"group_name" form:"group_name" binding:"required"`
+        Description *string `json:"description" form:"description"`
+}
+
+type UserGroupInputDTO struct {
+        UID  uint   `json:"uid" form:"u_id" binding:"required"`
+        GID  uint   `json:"gid" form:"g_id" binding:"required"`
+        Role string `json:"role" form:"role" binding:"required,oneof=admin manager user"`
+}
+
+type UserGroupDeleteDTO struct {
+        UID uint `json:"uid" form:"u_id" binding:"required"`
+        GID uint `json:"gid" form:"g_id" binding:"required"`
+}
+
+func (d UserGroupInputDTO) GetGID() uint <span class="cov0" title="0">{
+        return d.GID
+}</span>
+
+func (d UserGroupDeleteDTO) GetGID() uint <span class="cov0" title="0">{
+        return d.GID
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package group
+
+import "time"
+
+type Group struct {
+        GID         uint      `gorm:"primaryKey;column:g_id"`
+        GroupName   string    `gorm:"size:100;not null"`
+        Description string    `gorm:"type:text"`
+        CreatedAt   time.Time `gorm:"column:create_at"`
+        UpdatedAt   time.Time `gorm:"column:update_at"`
+}
+
+func (Group) TableName() string <span class="cov0" title="0">{
+        return "group_list"
+}</span>
+
+type UserGroup struct {
+        UID       uint      `gorm:"primaryKey;column:u_id"`
+        GID       uint      `gorm:"primaryKey;column:g_id"`
+        Role      string    `gorm:"type:user_role;default:user;not null"` // ENUM
+        CreatedAt time.Time `gorm:"column:create_at"`
+        UpdatedAt time.Time `gorm:"column:update_at"`
+}
+
+func (UserGroup) TableName() string <span class="cov0" title="0">{
+        return "user_group"
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package job
+
+import "time"
+
+// JobType defines the type of job execution
+type JobType string
+
+const (
+        JobTypeNormal JobType = "normal" // Standard containerized job
+        JobTypeMPI    JobType = "mpi"    // MPI distributed computing job
+        JobTypeGPU    JobType = "gpu"    // GPU-accelerated job
+)
+
+// JobStatus represents the current state of a job
+type JobStatus string
+
+const (
+        JobStatusQueued     JobStatus = "queued"     // Waiting in queue
+        JobStatusScheduling JobStatus = "scheduling" // Being scheduled
+        JobStatusRunning    JobStatus = "running"    // Currently executing
+        JobStatusCompleted  JobStatus = "completed"  // Finished successfully
+        JobStatusFailed     JobStatus = "failed"     // Execution failed
+        JobStatusPreempted  JobStatus = "preempted"  // Terminated by higher priority
+)
+
+// Status aliases for backward compatibility
+const (
+        StatusPending    JobStatus = "pending"
+        StatusRunning    JobStatus = "running"
+        StatusCompleted  JobStatus = "completed"
+        StatusFailed     JobStatus = "failed"
+        StatusCancelled  JobStatus = "cancelled"
+        StatusQueued     JobStatus = JobStatusQueued
+        StatusScheduling JobStatus = JobStatusScheduling
+        StatusPreempted  JobStatus = JobStatusPreempted
+)
+
+// Priority constants
+const (
+        PriorityHigh   = "high"
+        PriorityLow    = "low"
+        PriorityMedium = "medium"
+)
+
+// GPU type constants
+const (
+        GPUTypeDedicated = "dedicated"
+        GPUTypeShared    = "shared"
+)
+
+// VolumeMount represents a volume mount configuration
+type VolumeMount struct {
+        Name      string `json:"name"`
+        MountPath string `json:"mount_path"`
+        ReadOnly  bool   `json:"read_only"`
+}
+
+// JobLog represents a job's log entry
+type JobLog struct {
+        ID      uint   `gorm:"primaryKey;column:id"`
+        JobID   uint   `gorm:"not null;column:job_id"`
+        Content string `gorm:"type:text"`
+}
+
+// JobCheckpoint represents a job's checkpoint data
+type JobCheckpoint struct {
+        ID            uint      `gorm:"primaryKey;column:id"`
+        JobID         uint      `gorm:"not null;column:job_id"`
+        CheckpointNum int       `gorm:"default:0"`
+        Path          string    `gorm:"type:text"`
+        CreatedAt     time.Time `gorm:"column:created_at;autoCreateTime"`
+}
+
+// Job represents a batch job execution request
+type Job struct {
+        ID                 uint       `gorm:"primaryKey;column:id"`
+        UserID             uint       `gorm:"not null;column:user_id"`
+        ProjectID          *uint      `gorm:"column:project_id"`
+        Name               string     `gorm:"size:100;not null"`
+        Namespace          string     `gorm:"size:100;not null"`
+        Image              string     `gorm:"size:255;not null"`
+        Status             string     `gorm:"size:50;default:'pending'"`
+        JobType            JobType    `gorm:"size:20;default:'normal'"`
+        Priority           string     `gorm:"size:20;default:'low'"`
+        K8sJobName         string     `gorm:"size:100;not null"`
+        Command            string     `gorm:"type:text"`
+        Args               string     `gorm:"type:text"`
+        WorkingDir         string     `gorm:"size:255"`
+        EnvVars            string     `gorm:"type:text"`
+        GPUCount           int        `gorm:"default:0"`
+        GPUType            string     `gorm:"size:50"`
+        CPURequest         string     `gorm:"size:50"`
+        MemoryRequest      string     `gorm:"size:50"`
+        MPIProcesses       int        `gorm:"default:0"`
+        OutputPath         string     `gorm:"type:text"`
+        CheckpointPath     string     `gorm:"type:text"`
+        LogPath            string     `gorm:"type:text"`
+        EnableCheckpoint   bool       `gorm:"default:false"`
+        CheckpointInterval int        `gorm:"default:0"`
+        Volumes            string     `gorm:"type:text"`
+        RestartCount       int        `gorm:"default:0"`
+        ExitCode           *int       `gorm:"column:exit_code"`
+        ErrorMessage       string     `gorm:"type:text"`
+        CreatedAt          time.Time  `gorm:"column:created_at;autoCreateTime"`
+        UpdatedAt          time.Time  `gorm:"column:updated_at;autoUpdateTime"`
+        StartedAt          *time.Time `gorm:"column:started_at"`
+        CompletedAt        *time.Time `gorm:"column:completed_at"`
+}
+
+// TableName specifies the database table name
+func (Job) TableName() string <span class="cov0" title="0">{
+        return "jobs"
+}</span>
+
+// IsMPI checks if this is an MPI job
+func (j *Job) IsMPI() bool <span class="cov0" title="0">{
+        return j.JobType == JobTypeMPI
+}</span>
+
+// RequiresGPU checks if this job requires GPU resources
+func (j *Job) RequiresGPU() bool <span class="cov0" title="0">{
+        return j.JobType == JobTypeGPU || j.GPUCount &gt; 0
+}</span>
+
+// UsesMPS checks if this job uses MPS GPU sharing
+func (j *Job) UsesMPS() bool <span class="cov0" title="0">{
+        return j.GPUType == "shared"
+}</span>
+
+// IsPreemptible checks if this job can be preempted
+func (j *Job) IsPreemptible() bool <span class="cov0" title="0">{
+        return j.Priority != "high"
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package project
+
+type CreateProjectDTO struct {
+        ProjectName string  `json:"project_name" form:"project_name" binding:"required"`
+        Description *string `json:"description,omitempty" form:"description,omitempty"`
+        GID         uint    `json:"gid" form:"g_id" binding:"required"`
+        GPUQuota    *int    `json:"gpu_quota,omitempty" form:"gpu_quota,omitempty"` // GPU quota in integer units
+        GPUAccess   *string `json:"gpu_access,omitempty" form:"gpu_access,omitempty"`
+        MPSMemory   *int    `json:"mps_memory,omitempty" form:"mps_memory,omitempty"` // MPS memory limit in MB (optional)
+}
+
+type UpdateProjectDTO struct {
+        ProjectName *string `json:"project_name,omitempty" form:"project_name,omitempty"`
+        Description *string `json:"description,omitempty" form:"description,omitempty"`
+        GID         *uint   `json:"gid,omitempty" form:"g_id,omitempty"`
+        GPUQuota    *int    `json:"gpu_quota,omitempty" form:"gpu_quota,omitempty"` // GPU quota in integer units
+        GPUAccess   *string `json:"gpu_access,omitempty" form:"gpu_access,omitempty"`
+        MPSMemory   *int    `json:"mps_memory,omitempty" form:"mps_memory,omitempty"` // MPS memory limit in MB (optional)
+}
+
+type CreateProjectPVCDTO struct {
+        Name string `json:"name" binding:"required"`
+        Size string `json:"size" binding:"required"`
+}
+
+type GIDGetter interface {
+        GetGID() uint
+}
+
+func (d CreateProjectDTO) GetGID() uint <span class="cov0" title="0">{
+        return d.GID
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package project
+
+import "time"
+
+// GPUAccessType defines the type of GPU access allowed for a project
+type GPUAccessType string
+
+const (
+        GPUAccessNone      GPUAccessType = "none"      // No GPU access
+        GPUAccessShared    GPUAccessType = "shared"    // Shared GPU via MPS
+        GPUAccessDedicated GPUAccessType = "dedicated" // Dedicated GPU
+)
+
+// Project represents a user project with resource quotas
+type Project struct {
+        PID         uint      `gorm:"primaryKey;column:p_id;autoIncrement"`
+        ProjectName string    `gorm:"size:100;not null"`
+        Description string    `gorm:"type:text"`
+        GID         uint      `gorm:"not null"`                   // Group ID
+        GPUQuota    int       `gorm:"default:0;column:gpu_quota"` // GPU quota in integer units (system auto-injects CUDA_MPS_ACTIVE_THREAD_PERCENTAGE)
+        GPUAccess   string    `gorm:"default:'shared';column:gpu_access"`
+        MPSMemory   int       `gorm:"default:0;column:mps_memory"` // MPS memory limit in MB (optional)
+        CreatedAt   time.Time `gorm:"column:create_at;autoCreateTime"`
+        UpdatedAt   time.Time `gorm:"column:update_at;autoUpdateTime"`
+}
+
+// TableName specifies the database table name
+func (Project) TableName() string <span class="cov0" title="0">{
+        return "project_list"
+}</span>
+
+// CanUseDedicatedGPU checks if project can use dedicated GPU
+func (p *Project) CanUseDedicatedGPU() bool <span class="cov0" title="0">{
+        return p.hasAccessType(GPUAccessDedicated)
+}</span>
+
+// CanUseMPS checks if project can use MPS GPU sharing
+func (p *Project) CanUseMPS() bool <span class="cov0" title="0">{
+        return p.hasAccessType(GPUAccessShared)
+}</span>
+
+// hasAccessType checks if project has specific GPU access type
+func (p *Project) hasAccessType(accessType GPUAccessType) bool <span class="cov0" title="0">{
+        access := p.GPUAccess
+        if access == string(accessType) </span><span class="cov0" title="0">{
+                return true
+        }</span>
+        // Check if it's in CSV format
+        <span class="cov0" title="0">for i := 0; i &lt; len(access); </span><span class="cov0" title="0">{
+                end := i
+                for end &lt; len(access) &amp;&amp; access[end] != ',' </span><span class="cov0" title="0">{
+                        end++
+                }</span>
+                <span class="cov0" title="0">if access[i:end] == string(accessType) </span><span class="cov0" title="0">{
+                        return true
+                }</span>
+                <span class="cov0" title="0">i = end + 1</span>
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
+// HasGPUQuota checks if project has GPU quota available
+func (p *Project) HasGPUQuota() bool <span class="cov0" title="0">{
+        return p.GPUQuota &gt; 0
+}</span>
+
+// GetMPSUnits converts GPU quota to MPS units (1 dedicated GPU = 10 MPS units)
+func (p *Project) GetMPSUnits() int <span class="cov0" title="0">{
+        return p.GPUQuota * 10
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package resource
+
+import (
+        "gorm.io/datatypes"
+        "time"
+)
+
+// ResourceType defines the type of Kubernetes resource
+type ResourceType string
+
+const (
+        ResourcePod        ResourceType = "pod"        // Kubernetes Pod
+        ResourceService    ResourceType = "service"    // Kubernetes Service
+        ResourceDeployment ResourceType = "deployment" // Kubernetes Deployment
+        ResourceConfigMap  ResourceType = "configmap"  // Kubernetes ConfigMap
+        ResourceIngress    ResourceType = "ingress"    // Kubernetes Ingress
+        ResourceJob        ResourceType = "job"        // Kubernetes Job
+)
+
+// Resource represents a Kubernetes resource configuration
+type Resource struct {
+        RID         uint           `gorm:"primaryKey;column:r_id"`
+        CFID        uint           `gorm:"not null;column:cf_id"` // ConfigFile ID
+        Type        ResourceType   `gorm:"type:resource_type;not null"`
+        Name        string         `gorm:"size:50;not null"`
+        ParsedYAML  datatypes.JSON `gorm:"type:jsonb;not null;"`
+        Description *string        `gorm:"type:text"`
+        CreatedAt   time.Time      `gorm:"column:create_at;autoCreateTime"`
+}
+
+// TableName specifies the database table name
+func (Resource) TableName() string <span class="cov0" title="0">{
+        return "resource_list"
+}</span>
+
+// IsPod checks if resource is a Pod
+func (r *Resource) IsPod() bool <span class="cov0" title="0">{
+        return r.Type == ResourcePod
+}</span>
+
+// IsJob checks if resource is a Job
+func (r *Resource) IsJob() bool <span class="cov0" title="0">{
+        return r.Type == ResourceJob
+}</span>
+
+// IsDeployment checks if resource is a Deployment
+func (r *Resource) IsDeployment() bool <span class="cov0" title="0">{
+        return r.Type == ResourceDeployment
+}</span>
+
+type ResourceSwagger struct {
+        RID         uint                   `json:"r_id"`
+        CFID        uint                   `json:"cf_id"`
+        Type        string                 `json:"type"`
+        Name        string                 `json:"name"`
+        ParsedYAML  map[string]interface{} `json:"parsedYAML" swaggertype:"object"`
+        Description *string                `json:"description"`
+        CreateAt    time.Time              `json:"create_at"`
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package storage
+
+import "time"
+
+// GroupPVC represents a group's persistent volume claim
+type GroupPVC struct {
+        ID              string    `gorm:"primaryKey;column:id;size:100"`      // Format: group-{gid}-{uuid}
+        Name            string    `gorm:"size:100;not null;index"`            // Display name
+        GroupID         uint      `gorm:"not null;index"`                     // Foreign key to group
+        Namespace       string    `gorm:"size:100;not null"`                  // K8s namespace
+        PVCName         string    `gorm:"size:100;not null;uniqueIndex:uidx_pvc"` // K8s PVC name
+        Size            string    `gorm:"size:50;not null"`                   // Size in Gi format (e.g., "100Gi")
+        Capacity        int       `gorm:"not null"`                           // Capacity in Gi (numeric)
+        StorageClass    string    `gorm:"size:100;default:'longhorn'"`        // Storage class name
+        AccessMode      string    `gorm:"size:50;default:'ReadWriteMany'"`    // RWX, RWO, etc
+        Status          string    `gorm:"size:50;default:'Pending'"`          // K8s PVC status
+        CreatedBy       uint      `gorm:"not null"`                           // User ID who created
+        CreatedAt       time.Time `gorm:"column:created_at;autoCreateTime;index"`
+        UpdatedAt       time.Time `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+// TableName specifies the database table name
+func (GroupPVC) TableName() string <span class="cov0" title="0">{
+        return "group_pvcs"
+}</span>
+
+// StorageHub represents a storage access point (pod that mounts volumes)
+type StorageHub struct {
+        ID            uint      `gorm:"primaryKey;column:id"`
+        Name          string    `gorm:"size:100;not null"`
+        Namespace     string    `gorm:"size:100;not null"`
+        PVCName       string    `gorm:"size:100;not null"`
+        MountPath     string    `gorm:"size:255;default:'/data'"`
+        Type          string    `gorm:"size:50;default:'group'"`  // 'group' or 'user'
+        Owner         string    `gorm:"size:100"`                 // group ID or username
+        Status        string    `gorm:"size:50;default:'Pending'"`
+        CreatedAt     time.Time `gorm:"column:created_at;autoCreateTime"`
+        UpdatedAt     time.Time `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+// TableName specifies the database table name
+func (StorageHub) TableName() string <span class="cov0" title="0">{
+        return "storage_hubs"
+}</span>
+
+// PersistentVolumeClaim represents a Kubernetes PVC resource (legacy)
+type PersistentVolumeClaim struct {
+        ID               uint      `gorm:"primaryKey;column:id"`
+        Name             string    `gorm:"size:100;not null"`
+        Namespace        string    `gorm:"size:100;not null"`
+        Size             string    `gorm:"size:50"`
+        Status           string    `gorm:"size:50;default:'Pending'"`
+        StorageClassName string    `gorm:"size:100"`
+        AccessMode       string    `gorm:"size:50;default:'ReadWriteMany'"`
+        ProjectID        *uint     `gorm:"column:project_id"`
+        ProjectName      *string   `gorm:"size:255"`
+        IsGlobal         bool      `gorm:"default:false"`
+        CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
+        UpdatedAt        time.Time `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+// TableName specifies the database table name
+func (PersistentVolumeClaim) TableName() string <span class="cov0" title="0">{
+        return "persistent_volume_claims"
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package user
+
+import "time"
+
+type UserStatus string
+
+const (
+        UserStatusOnline  UserStatus = "online"
+        UserStatusOffline UserStatus = "offline"
+        UserStatusDelete  UserStatus = "delete"
+)
+
+type UserType string
+
+const (
+        UserTypeOrigin UserType = "origin"
+        UserTypeOauth2 UserType = "oauth2"
+)
+
+type UserRole string
+
+const (
+        UserRoleAdmin   UserRole = "admin"
+        UserRoleManager UserRole = "manager"
+        UserRoleUser    UserRole = "user"
+)
+
+type User struct {
+        UID       uint      `gorm:"primaryKey;column:u_id"`
+        Username  string    `gorm:"size:50;not null;unique" json:"Username"`
+        Password  string    `gorm:"size:255;not null" json:"-"`
+        Email     *string   `gorm:"size:100"`
+        FullName  *string   `gorm:"size:50"`
+        Type      string    `gorm:"type:user_type;default:'origin';not null"`
+        Status    string    `gorm:"type:user_status;default:'offline';not null"`
+        CreatedAt time.Time `gorm:"column:create_at;autoCreateTime"`
+        UpdatedAt time.Time `gorm:"column:update_at;autoUpdateTime"`
+}
+
+type UserWithSuperAdmin struct {
+        UID          uint      `gorm:"column:u_id" json:"UID"`
+        Username     string    `gorm:"column:username" json:"Username"`
+        Password     string    `gorm:"column:password" json:"-"`
+        Email        string    `gorm:"column:email" json:"Email"`
+        FullName     string    `gorm:"column:full_name" json:"FullName"`
+        Type         string    `gorm:"column:type" json:"Type"`
+        Status       string    `gorm:"column:status" json:"Status"`
+        CreatedAt    time.Time `gorm:"column:create_at" json:"CreatedAt"`
+        UpdatedAt    time.Time `gorm:"column:update_at" json:"UpdatedAt"`
+        IsSuperAdmin bool      `gorm:"column:is_super_admin" json:"IsSuperAdmin"`
+}
+
+// TableName specifies the table name for UserWithSuperAdmin
+func (UserWithSuperAdmin) TableName() string <span class="cov0" title="0">{
+        return "users"
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package view
+
+import "time"
+
+type ProjectGroupView struct {
+        GID           uint   `gorm:"column:g_id" json:"GID"`
+        GroupName     string `gorm:"column:group_name" json:"GroupName"`
+        ProjectCount  int64  `gorm:"column:project_count" json:"ProjectCount"`
+        ResourceCount int64  `gorm:"column:resource_count" json:"ResourceCount"`
+        GroupCreateAt string `gorm:"column:group_create_at" json:"GroupCreateAt"`
+        GroupUpdateAt string `gorm:"column:group_update_at" json:"GroupUpdateAt"`
+}
+
+type ProjectResourceView struct {
+        PID              uint   `gorm:"column:p_id" json:"PID"`
+        ProjectName      string `gorm:"column:project_name" json:"ProjectName"`
+        RID              uint   `gorm:"column:r_id" json:"RID"`
+        Type             string `gorm:"column:type" json:"Type"`
+        Name             string `gorm:"column:name" json:"Name"`
+        Filename         string `gorm:"column:filename" json:"Filename"`
+        ResourceCreateAt string `gorm:"column:resource_create_at" json:"ResourceCreateAt"`
+        ResourceUpdateAt string `gorm:"column:resource_update_at" json:"ResourceUpdateAt"`
+}
+
+type GroupResourceView struct {
+        GID              uint   `gorm:"column:g_id" json:"GID"`
+        GroupName        string `gorm:"column:group_name" json:"GroupName"`
+        PID              uint   `gorm:"column:p_id" json:"PID"`
+        ProjectName      string `gorm:"column:project_name" json:"ProjectName"`
+        RID              uint   `gorm:"column:r_id" json:"RID"`
+        ResourceType     string `gorm:"column:resource_type" json:"ResourceType"`
+        ResourceName     string `gorm:"column:resource_name" json:"ResourceName"`
+        Filename         string `gorm:"column:filename" json:"Filename"`
+        ResourceCreateAt string `gorm:"column:resource_create_at" json:"ResourceCreateAt"`
+        ResourceUpdateAt string `gorm:"column:resource_update_at" json:"ResourceUpdateAt"`
+}
+
+type UserGroupView struct {
+        UID       uint   `gorm:"column:u_id" json:"UID"`
+        Username  string `gorm:"column:username" json:"Username"`
+        GID       uint   `gorm:"column:g_id" json:"GID"`
+        GroupName string `gorm:"column:group_name" json:"GroupName"`
+        Role      string `gorm:"column:role" json:"Role"`
+}
+
+type UserWithSuperAdmin struct {
+        UID          uint      `gorm:"column:u_id" json:"UID"`
+        Username     string    `gorm:"column:username" json:"Username"`
+        Password     string    `gorm:"column:password" json:"-"`
+        Email        string    `gorm:"column:email" json:"Email"`
+        FullName     string    `gorm:"column:full_name" json:"FullName"`
+        Type         string    `gorm:"column:type" json:"Type"`
+        Status       string    `gorm:"column:status" json:"Status"`
+        CreatedAt    time.Time `gorm:"column:create_at" json:"CreatedAt"`
+        UpdatedAt    time.Time `gorm:"column:update_at" json:"UpdatedAt"`
+        IsSuperAdmin bool      `gorm:"column:is_super_admin" json:"IsSuperAdmin"`
+}
+
+type ProjectUserView struct {
+        PID         uint   `gorm:"column:p_id" json:"PID"`
+        ProjectName string `gorm:"column:project_name" json:"ProjectName"`
+        GID         uint   `gorm:"column:g_id" json:"GID"`
+        GroupName   string `gorm:"column:group_name" json:"GroupName"`
+        Role        string `gorm:"column:role" json:"Role"`
+        UID         uint   `gorm:"column:u_id" json:"UID"`
+        Username    string `gorm:"column:username" json:"Username"`
+}
+
+func (ProjectUserView) TableName() string <span class="cov0" title="0">{
+        return "project_user_views"
+}</span>
+func (UserWithSuperAdmin) TableName() string <span class="cov0" title="0">{
+        return "users_with_superadmin"
+}</span>
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package storage
+
+import (
+        "context"
+        "crypto/tls"
+        "github.com/linskybing/platform-go/internal/config"
+        minioSDK "github.com/minio/minio-go/v7"
+        "github.com/minio/minio-go/v7/pkg/credentials"
+        "log"
+        "net/http"
+)
+
+var Client *minioSDK.Client
+var BucketName string
+
+func InitMinio() <span class="cov0" title="0">{
+        endpoint := config.MinioEndpoint
+        accessKey := config.MinioAccessKey
+        secretKey := config.MinioSecretKey
+        useSSL := config.MinioUseSSL
+        BucketName = config.MinioBucket
+
+        // Initialize MinIO client
+        transport := &amp;http.Transport{
+                TLSClientConfig: &amp;tls.Config{
+                        InsecureSkipVerify: true,
+                },
+        }
+
+        // Initialize MinIO client with custom transport
+        minioClient, err := minioSDK.New(endpoint, &amp;minioSDK.Options{
+                Creds:     credentials.NewStaticV4(accessKey, secretKey, ""),
+                Secure:    useSSL,
+                Transport: transport,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf(" Failed to connect to MinIO: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">log.Println(" Successfully connected to MinIO")
+
+        // Check if bucket exists, create if not
+        ctx := context.Background()
+        exists, err := minioClient.BucketExists(ctx, BucketName)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf(" Failed to check bucket existence: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                err := minioClient.MakeBucket(ctx, BucketName, minioSDK.MakeBucketOptions{})
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Fatalf(" Failed to create bucket: %v", err)
+                }</span>
+                <span class="cov0" title="0">log.Printf(" Bucket created: %s\n", BucketName)</span>
+        } else<span class="cov0" title="0"> {
+                log.Printf("️ Bucket already exists: %s\n", BucketName)
+        }</span>
+
+        <span class="cov0" title="0">Client = minioClient</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

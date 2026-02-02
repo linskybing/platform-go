@@ -14,7 +14,6 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/form"
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"github.com/linskybing/platform-go/internal/domain/image"
-	"github.com/linskybing/platform-go/internal/domain/job"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/internal/domain/user"
@@ -43,9 +42,6 @@ func main() {
 		&project.Project{},
 		&configfile.ConfigFile{},
 		&resource.Resource{},
-		&job.Job{},
-		&job.JobLog{},
-		&job.JobCheckpoint{},
 		&form.Form{},
 		&form.FormMessage{},
 		&audit.AuditLog{},

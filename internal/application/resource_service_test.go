@@ -1,4 +1,4 @@
-package application
+package application_test
 
 import (
 	"net/http"
@@ -7,13 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
+	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/internal/repository/mock"
 	"github.com/linskybing/platform-go/pkg/utils"
 )
 
-func setupResourceMocks(t *testing.T) (*ResourceService,
+func setupResourceMocks(t *testing.T) (*application.ResourceService,
 	*mock.MockResourceRepo,
 	*mock.MockAuditRepo,
 	*gin.Context) {
@@ -29,7 +30,7 @@ func setupResourceMocks(t *testing.T) (*ResourceService,
 		Audit:    mockAudit,
 	}
 
-	svc := NewResourceService(repos)
+	svc := application.NewResourceService(repos)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
