@@ -27,7 +27,7 @@ func (sm *StorageManager) ExpandGroupPVC(ctx context.Context, pvcName string, ne
 	}
 
 	newSize := fmt.Sprintf("%dGi", newCapacity)
-	
+
 	if err := k8sclient.ExpandPVC(namespace, pvcName, newSize); err != nil {
 		slog.Error("failed to expand PVC",
 			"pvc_name", pvcName,
@@ -39,12 +39,12 @@ func (sm *StorageManager) ExpandGroupPVC(ctx context.Context, pvcName string, ne
 
 	// Invalidate cache for this group
 	sm.invalidateCache(groupID)
-	
+
 	slog.Info("PVC expanded successfully",
 		"pvc_name", pvcName,
 		"new_capacity_gi", newCapacity,
 		"group_id", groupID)
-	
+
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (sm *StorageManager) DeleteGroupPVC(ctx context.Context, pvcName string) er
 		"pvc_name", pvcName,
 		"namespace", namespace,
 		"group_id", groupID)
-	
+
 	return nil
 }
 
@@ -93,20 +93,20 @@ func parseGroupPVCName(pvcName string) (groupID uint, namespace string, err erro
 	if len(parts) < 4 || parts[0] != "group" {
 		return 0, "", fmt.Errorf("invalid PVC name format, expected: group-{gid}-{namespace}-pvc")
 	}
-	
+
 	// Parse group ID
 	if _, err := fmt.Sscanf(parts[1], "%d", &groupID); err != nil {
 		return 0, "", fmt.Errorf("invalid group ID in PVC name: %w", err)
 	}
-	
+
 	// Reconstruct namespace (handles namespaces with hyphens)
 	// Join all parts except first, second, and last
 	namespaceParts := parts[2 : len(parts)-1]
 	namespace = strings.Join(namespaceParts, "-")
-	
+
 	if namespace == "" {
 		return 0, "", fmt.Errorf("unable to extract namespace from PVC name")
 	}
-	
+
 	return groupID, namespace, nil
 }

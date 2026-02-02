@@ -28,8 +28,8 @@ const (
 // Context timeout durations
 const (
 	// K8s operation timeouts
-	K8sQuickOpTimeout    = 10  // seconds - for quick K8s operations
-	K8sStandardOpTimeout = 30  // seconds - for standard K8s operations
+	K8sQuickOpTimeout    = 10   // seconds - for quick K8s operations
+	K8sStandardOpTimeout = 30   // seconds - for standard K8s operations
 	K8sImagePullTimeout  = 1200 // seconds (20 minutes) - for image pull operations
 
 	// Database operation timeouts

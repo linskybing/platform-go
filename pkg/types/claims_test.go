@@ -10,10 +10,10 @@ import (
 // TestClaimsStructure verifies Claims struct initialization
 func TestClaimsStructure(t *testing.T) {
 	tests := []struct {
-		name     string
+		name       string
 		setupClaim func() Claims
-		verify   func(Claims) bool
-		scenario string
+		verify     func(Claims) bool
+		scenario   string
 	}{
 		{
 			name: "admin_claims",
@@ -211,10 +211,10 @@ func TestClaimsFieldValidation(t *testing.T) {
 // TestClaimsRegisteredClaimsValidation tests JWT registered claims
 func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 	tests := []struct {
-		name     string
+		name       string
 		setupClaim func() Claims
-		verify   func(Claims) bool
-		scenario string
+		verify     func(Claims) bool
+		scenario   string
 	}{
 		{
 			name: "claims_with_issued_at",

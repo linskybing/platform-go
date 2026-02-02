@@ -67,17 +67,19 @@ func (s *K8sService) DeleteGroupPVC(ctx context.Context, pvcID string) error {
 }
 
 // DeleteProjectAllPVC deletes all PVCs for a project (legacy support).
-// TODO: Migrate to group-based storage model.
+// DEPRECATED: Project-based storage model is deprecated in favor of group-based storage.
+// This function returns an error to prevent usage. Callers should use group storage APIs.
 func (s *K8sService) DeleteProjectAllPVC(ctx context.Context, projectName string, projectID uint) error {
-	return fmt.Errorf("project storage is deprecated: %w", ErrDeprecated)
+	return fmt.Errorf("project storage is deprecated, use group storage: %w", ErrDeprecated)
 }
 
 // ListAllGroupStorages returns all group storage resources (for backward compatibility with handlers).
 // Returns interface{} for handler flexibility.
 func (s *K8sService) ListAllGroupStorages(ctx context.Context) (interface{}, error) {
-	// TODO: Implement full group storage listing across all namespaces
-	// For now, return empty list indicating feature is pending
-	return []interface{}{}, fmt.Errorf("group storage listing is pending full implementation: %w", ErrDeprecated)
+	// Note: Full implementation requires listing all group namespaces and aggregating PVCs.
+	// Current limitation: Returns error until namespace discovery is implemented.
+	// Workaround: Use per-group storage queries with known group IDs.
+	return []interface{}{}, fmt.Errorf("group storage listing requires namespace discovery: %w", ErrDeprecated)
 }
 
 // CreateGroupPVC creates a new PVC for a group (handler-compatible wrapper).
@@ -95,12 +97,12 @@ func (s *K8sService) CreateGroupPVCFromParams(ctx context.Context, groupID uint,
 		StorageClass: storageClass,
 	}
 
-	// Use default creator ID of 0 for now (TODO: get from context)
+	// Note: Creator ID defaults to 0 (system). Future: Extract from context.Context user claims.
 	pvc, err := s.CreateGroupPVC(ctx, groupID, req, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PVC for group %d: %w", groupID, err)
 	}
-	
+
 	// Return the PVC name for handler compatibility
 	if pvc != nil {
 		return pvc.Name, nil

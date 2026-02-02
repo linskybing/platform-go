@@ -3,6 +3,7 @@ package configfile
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -147,7 +148,9 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 			val.ParsedYAML = newRes.ParsedYAML
 			val.Type = newRes.Type // Ensure type is updated if kind changed (rare but possible)
 
-			fmt.Printf("Updating resource for document %d: %s\n", i+1, name)
+			slog.Debug("updating resource for document",
+				"document_index", i+1,
+				"resource_name", name)
 			if err := s.Repos.Resource.UpdateResource(&val); err != nil {
 				return fmt.Errorf("failed to update resource %s: %w", name, err)
 			}
@@ -155,7 +158,9 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 		} else {
 			// Create
 			newRes.CFID = cf.CFID
-			fmt.Printf("Creating resource for document %d: %s\n", i+1, name)
+			slog.Debug("creating resource for document",
+				"document_index", i+1,
+				"resource_name", name)
 			if err := s.Repos.Resource.CreateResource(newRes); err != nil {
 				return fmt.Errorf("failed to create resource %s: %w", name, err)
 			}

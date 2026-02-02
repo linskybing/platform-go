@@ -11,7 +11,7 @@ import (
 const (
 	// PVC ID generation constants
 	uuidShortLength = 8
-	
+
 	// Namespace naming patterns
 	groupNamespacePattern = "group-%d-storage"
 	groupPVCIDPattern     = "group-%d-%s"

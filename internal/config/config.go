@@ -45,11 +45,11 @@ var (
 	UserStorageNs  = "user-%s-storage" // user-{username}-storage
 	UserStoragePVC = "user-%s-disk"    // user-{username}-disk
 	// K8s Service Names
-	PersonalStorageServiceName   string
+	PersonalStorageServiceName string
 	GroupStorageServiceName    string
 	GroupStorageBrowserSVCName string
-	ProjectNfsServiceName        string
-	HarborPrivatePrefix          string
+	ProjectNfsServiceName      string
+	HarborPrivatePrefix        string
 )
 
 func LoadConfig() {

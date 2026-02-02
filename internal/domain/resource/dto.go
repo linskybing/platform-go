@@ -43,21 +43,21 @@ type PVC struct {
 type CreateGroupStorageRequest struct {
 	GroupID   uint   `json:"groupId" binding:"required"`
 	GroupName string `json:"groupName" binding:"required"`
-	Capacity    int    `json:"capacity" binding:"required,min=1"` // In Gi
-	Name        string `json:"name" binding:"required"`
+	Capacity  int    `json:"capacity" binding:"required,min=1"` // In Gi
+	Name      string `json:"name" binding:"required"`
 }
 
 // GroupPVCOutput defines the response structure for listing storages.
 type GroupPVCOutput struct {
-	ID          string    `json:"id"`          // The Group ID (string format to prevent frontend conversion issues)
-	PVCName     string    `json:"pvcName"`     // The K8s PVC Name
-	GroupName string    `json:"groupName"` // Human readable name
-	Namespace   string    `json:"namespace"`   // K8s Namespace
-	Capacity    string    `json:"capacity"`    // e.g., "10Gi"
-	Status      string    `json:"status"`      // e.g., "Bound"
-	Role        string    `json:"role"`        // [NEW] User's role in the group (admin/manager/member)
-	AccessMode  string    `json:"accessmode"`
-	CreatedAt   time.Time `json:"createdAt"` // Creation timestamp
+	ID         string    `json:"id"`        // The Group ID (string format to prevent frontend conversion issues)
+	PVCName    string    `json:"pvcName"`   // The K8s PVC Name
+	GroupName  string    `json:"groupName"` // Human readable name
+	Namespace  string    `json:"namespace"` // K8s Namespace
+	Capacity   string    `json:"capacity"`  // e.g., "10Gi"
+	Status     string    `json:"status"`    // e.g., "Bound"
+	Role       string    `json:"role"`      // [NEW] User's role in the group (admin/manager/member)
+	AccessMode string    `json:"accessmode"`
+	CreatedAt  time.Time `json:"createdAt"` // Creation timestamp
 }
 
 type StartFileBrowserDTO struct {

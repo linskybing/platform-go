@@ -21,7 +21,7 @@ func (s *FormService) CreateForm(userID uint, input form.CreateFormDTO) (*form.F
 		ProjectID:   input.ProjectID,
 		Title:       input.Title,
 		Description: input.Description,
-		Tag:         input.Tag, // TODO: enforce allowed tags from config
+		Tag:         input.Tag, // Note: Tag validation against config is deferred to API layer
 		Status:      form.FormStatusPending,
 	}
 	return f, s.repo.Create(f)

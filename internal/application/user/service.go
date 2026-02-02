@@ -174,7 +174,7 @@ func (s *UserService) RemoveUser(id uint) error {
 // validateUsername checks if username meets requirements
 func validateUsername(username string) error {
 	username = strings.TrimSpace(username)
-	
+
 	if len(username) < constants.MinUsernameLength || len(username) > constants.MaxUsernameLength {
 		return ErrInvalidUsername
 	}

@@ -312,13 +312,13 @@ func TestMPSConfigValidate(t *testing.T) {
 // TestMPSConfigToEnvVars - Comprehensive environment variable conversion
 func TestMPSConfigToEnvVars(t *testing.T) {
 	tests := []struct {
-		name            string
-		gpuQuota        int
-		memoryLimitMB   int
-		wantGPUQuota    bool
-		wantMemory      bool
-		expectedMemory  int64
-		description     string
+		name           string
+		gpuQuota       int
+		memoryLimitMB  int
+		wantGPUQuota   bool
+		wantMemory     bool
+		expectedMemory int64
+		description    string
 	}{
 		{
 			name:           "both set",
@@ -330,12 +330,12 @@ func TestMPSConfigToEnvVars(t *testing.T) {
 			description:    "both GPU and memory should be set",
 		},
 		{
-			name:           "only GPU quota",
-			gpuQuota:       50,
-			memoryLimitMB:  0,
-			wantGPUQuota:   true,
-			wantMemory:     false,
-			description:    "only GPU quota should be set",
+			name:          "only GPU quota",
+			gpuQuota:      50,
+			memoryLimitMB: 0,
+			wantGPUQuota:  true,
+			wantMemory:    false,
+			description:   "only GPU quota should be set",
 		},
 		{
 			name:           "only memory limit",
@@ -347,20 +347,20 @@ func TestMPSConfigToEnvVars(t *testing.T) {
 			description:    "only memory limit should be set",
 		},
 		{
-			name:           "nothing set",
-			gpuQuota:       0,
-			memoryLimitMB:  0,
-			wantGPUQuota:   false,
-			wantMemory:     false,
-			description:    "no env vars should be set",
+			name:          "nothing set",
+			gpuQuota:      0,
+			memoryLimitMB: 0,
+			wantGPUQuota:  false,
+			wantMemory:    false,
+			description:   "no env vars should be set",
 		},
 		{
-			name:           "large GPU quota",
-			gpuQuota:       1000,
-			memoryLimitMB:  0,
-			wantGPUQuota:   true,
-			wantMemory:     false,
-			description:    "large GPU quota should convert correctly",
+			name:          "large GPU quota",
+			gpuQuota:      1000,
+			memoryLimitMB: 0,
+			wantGPUQuota:  true,
+			wantMemory:    false,
+			description:   "large GPU quota should convert correctly",
 		},
 		{
 			name:           "large memory",

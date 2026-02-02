@@ -69,24 +69,24 @@ func TestGPURequestTypeConstants(t *testing.T) {
 // TestGPURequestStructure verifies GPURequest struct initialization
 func TestGPURequestStructure(t *testing.T) {
 	tests := []struct {
-		name      string
-		setupReq  func() GPURequest
-		verify    func(GPURequest) bool
-		scenario  string
+		name     string
+		setupReq func() GPURequest
+		verify   func(GPURequest) bool
+		scenario string
 	}{
 		{
 			name: "quota_request_minimal",
 			setupReq: func() GPURequest {
 				return GPURequest{
-					ID:            1,
-					ProjectID:     100,
-					RequesterID:   200,
-					Type:          GPURequestTypeQuota,
+					ID:             1,
+					ProjectID:      100,
+					RequesterID:    200,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 8,
-					Reason:        "Need GPU for training",
-					Status:        GPURequestStatusPending,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					Reason:         "Need GPU for training",
+					Status:         GPURequestStatusPending,
+					CreatedAt:      time.Now(),
+					UpdatedAt:      time.Now(),
 				}
 			},
 			verify: func(r GPURequest) bool {
@@ -122,15 +122,15 @@ func TestGPURequestStructure(t *testing.T) {
 			name: "approved_gpu_request",
 			setupReq: func() GPURequest {
 				return GPURequest{
-					ID:            3,
-					ProjectID:     102,
-					RequesterID:   202,
-					Type:          GPURequestTypeQuota,
+					ID:             3,
+					ProjectID:      102,
+					RequesterID:    202,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 4,
-					Reason:        "Model inference",
-					Status:        GPURequestStatusApproved,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					Reason:         "Model inference",
+					Status:         GPURequestStatusApproved,
+					CreatedAt:      time.Now(),
+					UpdatedAt:      time.Now(),
 				}
 			},
 			verify: func(r GPURequest) bool {
@@ -142,15 +142,15 @@ func TestGPURequestStructure(t *testing.T) {
 			name: "rejected_gpu_request",
 			setupReq: func() GPURequest {
 				return GPURequest{
-					ID:            4,
-					ProjectID:     103,
-					RequesterID:   203,
-					Type:          GPURequestTypeQuota,
+					ID:             4,
+					ProjectID:      103,
+					RequesterID:    203,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 16,
-					Reason:        "Request quota too high",
-					Status:        GPURequestStatusRejected,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					Reason:         "Request quota too high",
+					Status:         GPURequestStatusRejected,
+					CreatedAt:      time.Now(),
+					UpdatedAt:      time.Now(),
 				}
 			},
 			verify: func(r GPURequest) bool {
@@ -162,15 +162,15 @@ func TestGPURequestStructure(t *testing.T) {
 			name: "zero_quota_request",
 			setupReq: func() GPURequest {
 				return GPURequest{
-					ID:            5,
-					ProjectID:     104,
-					RequesterID:   204,
-					Type:          GPURequestTypeQuota,
+					ID:             5,
+					ProjectID:      104,
+					RequesterID:    204,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 0,
-					Reason:        "Checking availability",
-					Status:        GPURequestStatusPending,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					Reason:         "Checking availability",
+					Status:         GPURequestStatusPending,
+					CreatedAt:      time.Now(),
+					UpdatedAt:      time.Now(),
 				}
 			},
 			verify: func(r GPURequest) bool {
@@ -182,15 +182,15 @@ func TestGPURequestStructure(t *testing.T) {
 			name: "large_quota_request",
 			setupReq: func() GPURequest {
 				return GPURequest{
-					ID:            6,
-					ProjectID:     105,
-					RequesterID:   205,
-					Type:          GPURequestTypeQuota,
+					ID:             6,
+					ProjectID:      105,
+					RequesterID:    205,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 1000,
-					Reason:        "Large scale training",
-					Status:        GPURequestStatusPending,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					Reason:         "Large scale training",
+					Status:         GPURequestStatusPending,
+					CreatedAt:      time.Now(),
+					UpdatedAt:      time.Now(),
 				}
 			},
 			verify: func(r GPURequest) bool {
@@ -203,15 +203,15 @@ func TestGPURequestStructure(t *testing.T) {
 			setupReq: func() GPURequest {
 				longReason := "This is a detailed reason explaining why the GPU quota is needed for the project. It includes information about the use case, expected duration, and importance to the project."
 				return GPURequest{
-					ID:            7,
-					ProjectID:     106,
-					RequesterID:   206,
-					Type:          GPURequestTypeQuota,
+					ID:             7,
+					ProjectID:      106,
+					RequesterID:    206,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 4,
-					Reason:        longReason,
-					Status:        GPURequestStatusPending,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					Reason:         longReason,
+					Status:         GPURequestStatusPending,
+					CreatedAt:      time.Now(),
+					UpdatedAt:      time.Now(),
 				}
 			},
 			verify: func(r GPURequest) bool {
@@ -224,15 +224,15 @@ func TestGPURequestStructure(t *testing.T) {
 			setupReq: func() GPURequest {
 				now := time.Now()
 				return GPURequest{
-					ID:            8,
-					ProjectID:     107,
-					RequesterID:   207,
-					Type:          GPURequestTypeQuota,
+					ID:             8,
+					ProjectID:      107,
+					RequesterID:    207,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 2,
-					Reason:        "Quick training",
-					Status:        GPURequestStatusPending,
-					CreatedAt:     now,
-					UpdatedAt:     now,
+					Reason:         "Quick training",
+					Status:         GPURequestStatusPending,
+					CreatedAt:      now,
+					UpdatedAt:      now,
 				}
 			},
 			verify: func(r GPURequest) bool {
@@ -304,15 +304,15 @@ func TestGPURequestFieldBoundaries(t *testing.T) {
 			name: "empty_reason",
 			setupReq: func() GPURequest {
 				return GPURequest{
-					ID:            3,
-					ProjectID:     1,
-					RequesterID:   1,
-					Type:          GPURequestTypeQuota,
+					ID:             3,
+					ProjectID:      1,
+					RequesterID:    1,
+					Type:           GPURequestTypeQuota,
 					RequestedQuota: 1,
-					Reason:        "",
-					Status:        GPURequestStatusPending,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					Reason:         "",
+					Status:         GPURequestStatusPending,
+					CreatedAt:      time.Now(),
+					UpdatedAt:      time.Now(),
 				}
 			},
 			verify: func(r GPURequest) bool {

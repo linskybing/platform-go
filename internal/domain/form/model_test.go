@@ -198,10 +198,10 @@ func TestFormStructure(t *testing.T) {
 // TestFormMessageStructure verifies FormMessage struct
 func TestFormMessageStructure(t *testing.T) {
 	tests := []struct {
-		name      string
-		setupMsg  func() FormMessage
-		verify    func(FormMessage) bool
-		scenario  string
+		name     string
+		setupMsg func() FormMessage
+		verify   func(FormMessage) bool
+		scenario string
 	}{
 		{
 			name: "message_minimal",
