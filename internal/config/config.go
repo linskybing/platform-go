@@ -48,7 +48,6 @@ var (
 	PersonalStorageServiceName string
 	GroupStorageServiceName    string
 	GroupStorageBrowserSVCName string
-	ProjectNfsServiceName      string
 	HarborPrivatePrefix        string
 )
 
@@ -83,7 +82,6 @@ func LoadConfig() {
 	PersonalStorageServiceName = getEnv("PERSONAL_STORAGE_SERVICE_NAME", "storage-svc")
 	GroupStorageServiceName = getEnv("GROUP_STORAGE_SERVICE_NAME", "storage-svc")
 	GroupStorageBrowserSVCName = getEnv("GROUP_STORAGE_BROWSER_SVC_NAME", "filebrowser-group-svc")
-	ProjectNfsServiceName = getEnv("PROJECT_NFS_SERVICE_NAME", "storage-svc")
 	HarborPrivatePrefix = getEnv("HARBOR_PRIVATE_PREFIX", "192.168.110.1:30003/library/")
 }
 

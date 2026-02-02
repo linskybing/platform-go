@@ -187,7 +187,7 @@ func (s *ConfigFileService) bindProjectAndUserVolumes(targetNs string, project p
 	groupPvcName := fmt.Sprintf("group-%d-disk", project.PID)
 
 	targetUserPvcName := userPvcName
-	if err := k8s.MountExistingVolumeToProject(userStorageNs, userPvcName, targetNs, targetUserPvcName); err != nil {
+	if err := k8s.MountExistingVolumeToNamespace(userStorageNs, userPvcName, targetNs, targetUserPvcName); err != nil {
 		slog.Warn("failed to bind user volume",
 			"username", claims.Username,
 			"namespace", userStorageNs,
@@ -195,7 +195,7 @@ func (s *ConfigFileService) bindProjectAndUserVolumes(targetNs string, project p
 	}
 
 	targetGroupPvcName := groupPvcName
-	if err := k8s.MountExistingVolumeToProject(groupStorageNs, groupPvcName, targetNs, targetGroupPvcName); err != nil {
+	if err := k8s.MountExistingVolumeToNamespace(groupStorageNs, groupPvcName, targetNs, targetGroupPvcName); err != nil {
 		slog.Warn("failed to bind group volume",
 			"project_id", project.PID,
 			"namespace", groupStorageNs,
@@ -219,7 +219,7 @@ func (s *ConfigFileService) determineReadOnlyEnforcement(claims *types.Claims, p
 	return ug.Role != "manager" && ug.Role != "admin", nil
 }
 
-func (s *ConfigFileService) buildTemplateValues(cf *configfile.ConfigFile, namespace, userPvc, projectPvc string, claims *types.Claims) map[string]string {
+func (s *ConfigFileService) buildTemplateValues(cf *configfile.ConfigFile, namespace, userPvc, groupPvc string, claims *types.Claims) map[string]string {
 	return map[string]string{
 		"username":         k8s.ToSafeK8sName(claims.Username),
 		"originalUsername": claims.Username,
@@ -227,7 +227,7 @@ func (s *ConfigFileService) buildTemplateValues(cf *configfile.ConfigFile, names
 		"namespace":        namespace,
 		"projectId":        fmt.Sprintf("%d", cf.ProjectID),
 		"userVolume":       userPvc,
-		"projectVolume":    projectPvc,
+		"groupVolume":      groupPvc,
 	}
 }
 
