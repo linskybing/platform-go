@@ -35,16 +35,3 @@ func (s *K8sService) StopFileBrowser(ctx context.Context, ns string) error {
 	}
 	return nil
 }
-
-// GetGroupPVCNames returns the list of all PVC names available in a namespace.
-func (s *K8sService) GetGroupPVCNames(ctx context.Context, namespace string) ([]string, error) {
-	if namespace == "" {
-		return nil, fmt.Errorf("namespace is required: %w", ErrMissingField)
-	}
-
-	names, err := s.fileBrowserManager.GetPVCNames(ctx, namespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get PVC names for namespace %s: %w", namespace, err)
-	}
-	return names, nil
-}

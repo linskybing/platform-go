@@ -62,29 +62,3 @@ func (sm *StorageManager) invalidateCache(groupID uint) {
 	delete(sm.pvcCache, groupID)
 	slog.Debug("invalidated cache for group", "group_id", groupID)
 }
-
-// invalidateAllCache clears all cached PVCs.
-func (sm *StorageManager) invalidateAllCache() {
-	sm.cacheMutex.Lock()
-	defer sm.cacheMutex.Unlock()
-
-	size := len(sm.pvcCache)
-	sm.pvcCache = make(map[uint]*CacheEntry)
-	slog.Debug("cleared all PVC cache", "cleared_entries", size)
-}
-
-// GetCacheStats returns cache statistics for monitoring.
-func (sm *StorageManager) GetCacheStats() map[string]interface{} {
-	sm.cacheMutex.RLock()
-	defer sm.cacheMutex.RUnlock()
-
-	totalCached := 0
-	for _, entry := range sm.pvcCache {
-		totalCached += len(entry.PVCs)
-	}
-
-	return map[string]interface{}{
-		"cached_groups": len(sm.pvcCache),
-		"total_pvcs":    totalCached,
-	}
-}

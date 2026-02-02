@@ -16,7 +16,6 @@ type Handlers struct {
 	Group           *GroupHandler
 	Project         *project.QueryHandler
 	ProjectMutate   *project.MutateHandler
-	Resource        *ResourceHandler
 	UserGroup       *user.GroupHandler
 	UserGroupMutate *user.GroupMutateHandler
 	User            *user.CrudHandler
@@ -37,7 +36,6 @@ func New(svc *application.Services, repos *repository.Repos, router *gin.Engine)
 		Group:           NewGroupHandler(svc.Group),
 		Project:         project.NewQueryHandler(svc.Project),
 		ProjectMutate:   project.NewMutateHandler(svc.Project),
-		Resource:        NewResourceHandler(svc.Resource),
 		UserGroup:       user.NewGroupHandler(svc.UserGroup),
 		UserGroupMutate: user.NewGroupMutateHandler(svc.UserGroup),
 		User:            user.NewCrudHandler(svc.User),

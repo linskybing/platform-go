@@ -39,21 +39,6 @@ func (s *K8sService) ListGroupPVCs(ctx context.Context, groupID uint) ([]storage
 	return pvcs, nil
 }
 
-// ExpandGroupPVC increases the capacity of an existing group PVC.
-func (s *K8sService) ExpandGroupPVC(ctx context.Context, pvcID string, newCapacity int) error {
-	if pvcID == "" {
-		return fmt.Errorf("PVC ID is required: %w", ErrMissingField)
-	}
-	if newCapacity <= 0 {
-		return fmt.Errorf("new capacity must be positive: %w", ErrInvalidInput)
-	}
-
-	if err := s.storageManager.ExpandGroupPVC(ctx, pvcID, newCapacity); err != nil {
-		return fmt.Errorf("failed to expand PVC %s to %dGi: %w", pvcID, newCapacity, err)
-	}
-	return nil
-}
-
 // DeleteGroupPVC deletes a persistent volume claim from a group.
 func (s *K8sService) DeleteGroupPVC(ctx context.Context, pvcID string) error {
 	if pvcID == "" {
