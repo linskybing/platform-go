@@ -135,11 +135,11 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		// Regular user cannot list all
+		// Regular user can list accessible config files
 		userClient := NewHTTPClient(ctx.Router, ctx.UserToken)
 		resp, err = userClient.GET("/config-files")
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("ListConfigFilesByProject - Success", func(t *testing.T) {

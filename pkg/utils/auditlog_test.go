@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 )
 
 type mockAuditRepo struct {
+	mu          sync.Mutex
 	createdLogs []*audit.AuditLog
 	shouldErr   bool
 }
@@ -23,6 +25,8 @@ func (m *mockAuditRepo) CreateAuditLog(log *audit.AuditLog) error {
 	if m.shouldErr {
 		return nil // Simulating error (we ignore it in LogAudit)
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.createdLogs == nil {
 		m.createdLogs = make([]*audit.AuditLog, 0)
 	}
@@ -411,6 +415,9 @@ func TestLogAuditConcurrency(t *testing.T) {
 		<-done
 	}
 
-	// All logs should be created
-	assert.Equal(t, numGoroutines, len(repo.createdLogs))
+	// All logs should be created (with mutex protection)
+	repo.mu.Lock()
+	actual := len(repo.createdLogs)
+	repo.mu.Unlock()
+	assert.Equal(t, numGoroutines, actual)
 }

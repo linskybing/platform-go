@@ -1,15 +1,43 @@
 # cmd/
 
-Application entry points.
+Application entry points for the platform-go project.
 
-## Structure
+## Table of Contents
 
-- `api/` - HTTP API server entry point
-- `scheduler/` - Job scheduler service entry point
+1. [Overview](#overview)
+2. [Structure](#structure)
+3. [Subdirectories](#subdirectories)
 
-## Purpose
+---
+
+## Overview
 
 Contains main applications for the platform. Each subdirectory has its own `main.go` that serves as an executable entry point.
 
-- **api**: Starts the HTTP server with REST API endpoints
-- **scheduler**: Runs the job scheduling service with priority-based resource allocation
+## Structure
+
+```
+cmd/
+├─ api/         - HTTP API server entry point
+└─ scheduler/   - Job scheduler service entry point
+```
+
+## Subdirectories
+
+### api/
+
+HTTP REST API server implementation.
+
+- Starts the HTTP server with REST API endpoints
+- Listens on port 8080 by default
+- Handles all RESTful API requests
+- Integrated with PostgreSQL database
+
+### scheduler/
+
+Job scheduling service implementation.
+
+- Runs the job scheduling service
+- Implements priority-based resource allocation
+- Manages job queues and execution
+- Monitors job completion

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/linskybing/platform-go/internal/repository"
+	"github.com/linskybing/platform-go/pkg/cache"
 )
 
 // ImageValidator defines the contract used to validate image access by project.
@@ -15,13 +16,14 @@ type ImageValidator interface {
 // It delegates to specialized managers for specific concerns.
 type K8sService struct {
 	repos              *repository.Repos
-	storageManager     *StorageManager
-	fileBrowserManager *FileBrowserManager
+	StorageManager     *StorageManager
+	FileBrowserManager *FileBrowserManager
+	PVCBindingManager  *PVCBindingManager
 	userStorageManager *UserStorageManager
 }
 
 // NewK8sService creates a new K8sService with all manager dependencies initialized.
-func NewK8sService(repos *repository.Repos, imageValidator ImageValidator) (*K8sService, error) {
+func NewK8sService(repos *repository.Repos, imageValidator ImageValidator, cacheSvc *cache.Service) (*K8sService, error) {
 	if repos == nil {
 		return nil, fmt.Errorf("failed to initialize K8sService: %w", ErrNilRepository)
 	}
@@ -31,15 +33,11 @@ func NewK8sService(repos *repository.Repos, imageValidator ImageValidator) (*K8s
 
 	service := &K8sService{
 		repos:              repos,
-		fileBrowserManager: NewFileBrowserManager(),
+		FileBrowserManager: NewFileBrowserManager(),
+		PVCBindingManager:  NewPVCBindingManager(repos, cacheSvc),
 		userStorageManager: NewUserStorageManager(),
-		storageManager:     NewStorageManager(repos),
+		StorageManager:     NewStorageManager(repos, cacheSvc),
 	}
 
 	return service, nil
 }
-
-// Accessors for manager dependencies.
-func (s *K8sService) StorageMgr() *StorageManager         { return s.storageManager }
-func (s *K8sService) FileBrowserMgr() *FileBrowserManager { return s.fileBrowserManager }
-func (s *K8sService) UserStorageMgr() *UserStorageManager { return s.userStorageManager }

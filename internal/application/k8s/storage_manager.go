@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/linskybing/platform-go/internal/repository"
+	"github.com/linskybing/platform-go/pkg/cache"
 )
 
 const (
@@ -19,13 +20,15 @@ const (
 
 type StorageManager struct {
 	repos      *repository.Repos
+	cache      *cache.Service
 	pvcCache   map[uint]*CacheEntry // Updated type to use CacheEntry
 	cacheMutex sync.RWMutex
 }
 
-func NewStorageManager(repos *repository.Repos) *StorageManager {
+func NewStorageManager(repos *repository.Repos, cacheSvc *cache.Service) *StorageManager {
 	return &StorageManager{
 		repos:    repos,
+		cache:    cacheSvc,
 		pvcCache: make(map[uint]*CacheEntry),
 	}
 }

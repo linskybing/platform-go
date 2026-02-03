@@ -1,4 +1,4 @@
 package job
 
-// Errors are not currently implemented.
-// This file is reserved for future job error definitions.
+// Deprecated: Job errors have been removed.
+// Job functionality is not supported in this version.

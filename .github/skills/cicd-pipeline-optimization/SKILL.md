@@ -199,6 +199,68 @@ jobs:
         run: go test -race -short ./...
 ```
 
+### 3a. Kubernetes Integration Tests with KinD
+
+For testing Kubernetes integration, use KinD (Kubernetes in Docker):
+
+```yaml
+# .github/workflows/integration-test.yml (K8s job)
+jobs:
+  integration-test-k8s:
+    name: K8s Integration Tests (KinD)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Install KinD
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
+      - name: Create KinD cluster
+        run: |
+          chmod +x test/integration/scripts/setup-kind.sh
+          ./test/integration/scripts/setup-kind.sh
+
+      - name: Run K8s integration tests
+        run: go test -v -timeout 20m ./test/integration/k8s*.go
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl get all -A
+          kind export logs /tmp/kind-logs
+
+      - name: Cleanup
+        if: always()
+        run: kind delete cluster --name platform-test
+```
+
+**KinD Benefits:**
+- Real Kubernetes environment in Docker container
+- Fast cluster creation (30-60 seconds)
+- No external cluster required
+- Reproducible test environment
+- Multi-node cluster support if needed
+- Full K8s API compatibility
+```
+
 ### 4. Security Scanning Workflow
 
 ```yaml
@@ -444,12 +506,14 @@ jobs:
 
 - [ ] Unit tests run with coverage reporting (target 70%+)
 - [ ] Integration tests run on separate schedule
+- [ ] K8s integration tests using KinD in Docker containers
 - [ ] Code linting with golangci-lint configured
 - [ ] Race detector enabled for concurrent code testing
 - [ ] Go modules cached to speed up builds
 - [ ] Security scanning enabled (gosec, trufflehog)
 - [ ] Docker image built with multi-stage for optimization
 - [ ] Artifacts uploaded for failed builds (for debugging)
+- [ ] KinD logs exported on test failures
 - [ ] Deployment automated for tagged releases
 - [ ] Environment secrets properly managed
 - [ ] Workflow status badges added to README
@@ -474,6 +538,12 @@ jobs:
 go test -v -race -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
 
+# Run K8s integration tests locally
+./test/integration/scripts/setup-kind.sh
+export KUBECONFIG=~/.kube/config
+go test -v ./test/integration/k8s*.go
+./test/integration/scripts/cleanup-kind.sh
+
 # Build Docker image like CI
 docker build -t platform-go:local .
 
@@ -492,3 +562,94 @@ nancy sleuth
 # Build for release
 GOOS=linux GOARCH=amd64 go build -o bin/api ./cmd/api
 ```
+
+## K8s Integration Testing Best Practices
+
+### Setup KinD for Local Testing
+
+```bash
+# Install KinD
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+
+# Create cluster with config
+kind create cluster --name test --config test/integration/scripts/kind-config.yaml
+
+# Run tests
+KUBECONFIG=~/.kube/config go test -v ./test/integration/k8s*.go
+
+# Cleanup
+kind delete cluster --name test
+```
+
+### KinD Configuration
+
+```yaml
+# test/integration/scripts/kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30000
+    hostPort: 30000
+```
+
+### Test Utilities
+
+```go
+// test/integration/k8stest/cluster.go
+package k8stest
+
+import (
+    "context"
+    "testing"
+    "k8s.io/client-go/kubernetes"
+    "k8s.io/client-go/tools/clientcmd"
+)
+
+type TestCluster struct {
+    Client    *kubernetes.Clientset
+    Namespace string
+    Cleanup   []func() error
+}
+
+func SetupTestCluster(t *testing.T) *TestCluster {
+    // Initialize K8s client from kubeconfig
+    // Create unique test namespace
+    // Register cleanup handlers
+    // Return configured test cluster
+}
+```
+
+### Writing K8s Integration Tests
+
+```go
+func TestPodCreation(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping K8s integration test")
+    }
+
+    tc := k8stest.SetupTestCluster(t)
+    ctx := context.Background()
+
+    // Create pod
+    pod := createTestPod(tc.Namespace, "test-pod")
+    _, err := tc.Client.CoreV1().Pods(tc.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+    require.NoError(t, err)
+
+    // Wait for pod ready
+    err = tc.WaitForPodReady(ctx, tc.Namespace, "test-pod", 60*time.Second)
+    require.NoError(t, err)
+
+    // Verify pod state
+    runningPod, err := tc.Client.CoreV1().Pods(tc.Namespace).Get(ctx, "test-pod", metav1.GetOptions{})
+    assert.Equal(t, corev1.PodRunning, runningPod.Status.Phase)
+}
+```
+
+---
+
+Last Updated: 2026-02-02

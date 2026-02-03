@@ -51,9 +51,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      - name: Download dependencies
-        run: go mod download
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
       - name: Run application layer tests
         run: go test -v -race -coverprofile=coverage-app.out ./internal/application/...
       - name: Upload coverage
@@ -74,9 +74,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      - name: Download dependencies
-        run: go mod download
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
       - name: Run domain layer tests
         run: go test -v -race -coverprofile=coverage-domain.out ./internal/domain/...
       - name: Upload coverage
@@ -97,9 +97,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      - name: Download dependencies
-        run: go mod download
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
       - name: Run package tests
         run: go test -v -race -coverprofile=coverage-pkg.out ./pkg/...
       - name: Upload coverage
@@ -120,9 +120,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      - name: Download dependencies
-        run: go mod download
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
       - name: Run repository layer tests
         run: go test -v -race -coverprofile=coverage-repo.out ./internal/repository/...
       - name: Upload coverage

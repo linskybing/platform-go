@@ -7,6 +7,33 @@ description: Markdown documentation standards, file organization, and formatting
 
 This skill ensures all documentation follows consistent formatting, structure, and best practices. All documentation must be written in English without emoji or special characters.
 
+## Table of Contents
+
+1. [When to Use](#when-to-use)
+2. [Quick Rules](#quick-rules)
+   - [File Organization](#file-organization)
+   - [Header Structure](#header-structure)
+   - [Formatting Rules](#formatting-rules)
+   - [Link Format](#link-format)
+   - [Content Structure](#content-structure)
+3. [Best Practices](#best-practices)
+   - [No Unnecessary Elements](#no-unnecessary-elements)
+   - [Code Examples](#code-examples)
+   - [Table Format](#table-format)
+   - [Line Length](#line-length)
+   - [Paragraph Structure](#paragraph-structure)
+   - [File Naming](#file-naming)
+4. [Common Sections](#common-sections)
+   - [Prerequisites](#prerequisites)
+   - [Installation](#installation)
+   - [Configuration](#configuration)
+   - [Examples](#examples)
+   - [Troubleshooting](#troubleshooting)
+5. [Documentation Checklist](#documentation-checklist)
+6. [Keep It Simple](#keep-it-simple)
+
+---
+
 ## When to Use
 
 Apply this skill when:
@@ -17,6 +44,8 @@ Apply this skill when:
 - Documenting configuration
 - Writing troubleshooting guides
 - Creating architectural documentation
+
+---
 
 ## Quick Rules
 
@@ -127,6 +156,10 @@ Common issues and solutions.
 - [Link 2](./file2.md)
 ```
 
+---
+
+## Best Practices
+
 ### No Unnecessary Elements
 
 - **No emoji** - Professional documentation only
@@ -185,9 +218,12 @@ Use lowercase with hyphens:
 - Good: `deployment-guide.md`, `api-reference.md`
 - Bad: `DeploymentGuide.md`, `API_Reference.md`, `api reference.md`
 
-### Common Sections
+---
 
-#### Prerequisites
+## Common Sections
+
+### Prerequisites
+
 ```markdown
 ## Prerequisites
 
@@ -196,7 +232,8 @@ Use lowercase with hyphens:
 - PostgreSQL 13+
 ```
 
-#### Installation
+### Installation
+
 ```markdown
 ## Installation
 
@@ -206,14 +243,16 @@ Use lowercase with hyphens:
 4. Run setup
 ```
 
-#### Configuration
+### Configuration
+
 ```markdown
 ## Configuration
 
 Key configuration options with defaults.
 ```
 
-#### Examples
+### Examples
+
 ```markdown
 ## Examples
 
@@ -223,7 +262,8 @@ Key configuration options with defaults.
 ...
 ```
 
-#### Troubleshooting
+### Troubleshooting
+
 ```markdown
 ## Troubleshooting
 
@@ -234,7 +274,9 @@ Key configuration options with defaults.
 **Solution**: Verify credentials...
 ```
 
-### Documentation Checklist
+---
+
+## Documentation Checklist
 
 Before publishing documentation:
 
@@ -252,7 +294,9 @@ Before publishing documentation:
 - [ ] No emoji or special characters
 - [ ] Related links section complete
 
-### Keep It Simple
+---
+
+## Keep It Simple
 
 Goal: Clear, scannable, maintainable documentation.
 
