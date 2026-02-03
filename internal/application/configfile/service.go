@@ -1,16 +1,19 @@
 package configfile
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/application/image"
 	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/repository"
+	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/utils"
 )
 
@@ -26,25 +29,75 @@ var (
 type ConfigFileService struct {
 	Repos        *repository.Repos
 	imageService *image.ImageService
+	cache        *cache.Service
 }
 
 func NewConfigFileService(repos *repository.Repos) *ConfigFileService {
+	return NewConfigFileServiceWithCache(repos, nil)
+}
+
+func NewConfigFileServiceWithCache(repos *repository.Repos, cacheSvc *cache.Service) *ConfigFileService {
 	return &ConfigFileService{
 		Repos:        repos,
 		imageService: image.NewImageService(repos.Image),
+		cache:        cacheSvc,
 	}
 }
 
+const configFileCacheTTL = 5 * time.Minute
+
 func (s *ConfigFileService) ListConfigFiles() ([]configfile.ConfigFile, error) {
-	return s.Repos.ConfigFile.ListConfigFiles()
+	if s.cache != nil && s.cache.Enabled() {
+		var cached []configfile.ConfigFile
+		if err := s.cache.GetJSON(context.Background(), configFileListKey(), &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	files, err := s.Repos.ConfigFile.ListConfigFiles()
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil && s.cache.Enabled() {
+		_ = s.cache.AsyncSetJSON(context.Background(), configFileListKey(), files, configFileCacheTTL)
+	}
+	return files, nil
 }
 
 func (s *ConfigFileService) GetConfigFile(id uint) (*configfile.ConfigFile, error) {
-	return s.Repos.ConfigFile.GetConfigFileByID(id)
+	if s.cache != nil && s.cache.Enabled() {
+		var cached configfile.ConfigFile
+		if err := s.cache.GetJSON(context.Background(), configFileByIDKey(id), &cached); err == nil {
+			return &cached, nil
+		}
+	}
+
+	cf, err := s.Repos.ConfigFile.GetConfigFileByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil && s.cache.Enabled() {
+		_ = s.cache.AsyncSetJSON(context.Background(), configFileByIDKey(id), cf, configFileCacheTTL)
+	}
+	return cf, nil
 }
 
 func (s *ConfigFileService) ListConfigFilesByProjectID(projectID uint) ([]configfile.ConfigFile, error) {
-	return s.Repos.ConfigFile.GetConfigFilesByProjectID(projectID)
+	if s.cache != nil && s.cache.Enabled() {
+		var cached []configfile.ConfigFile
+		if err := s.cache.GetJSON(context.Background(), configFileByProjectKey(projectID), &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	files, err := s.Repos.ConfigFile.GetConfigFilesByProjectID(projectID)
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil && s.cache.Enabled() {
+		_ = s.cache.AsyncSetJSON(context.Background(), configFileByProjectKey(projectID), files, configFileCacheTTL)
+	}
+	return files, nil
 }
 
 func (s *ConfigFileService) CreateConfigFile(c *gin.Context, cf configfile.CreateConfigFileInput) (*configfile.ConfigFile, error) {
@@ -89,6 +142,7 @@ func (s *ConfigFileService) CreateConfigFile(c *gin.Context, cf configfile.Creat
 	go func(fn func(*gin.Context, string, string, string, interface{}, interface{}, string, repository.AuditRepo)) {
 		fn(c, "create", "config_file", fmt.Sprintf("cf_id=%d", createdCF.CFID), nil, *createdCF, "", s.Repos.Audit)
 	}(logFn)
+	s.invalidateConfigFileCache(createdCF.CFID, createdCF.ProjectID)
 
 	return createdCF, nil
 }
@@ -124,6 +178,7 @@ func (s *ConfigFileService) UpdateConfigFile(c *gin.Context, id uint, input conf
 	if err != nil {
 		return nil, err
 	}
+	s.invalidateConfigFileCache(existing.CFID, existing.ProjectID)
 
 	utils.LogAuditWithConsole(c, "update", "config_file", fmt.Sprintf("cf_id=%d", existing.CFID), oldCF, *existing, "", s.Repos.Audit)
 
@@ -160,9 +215,30 @@ func (s *ConfigFileService) DeleteConfigFile(c *gin.Context, id uint) error {
 	if err := s.Repos.ConfigFile.DeleteConfigFile(id); err != nil {
 		return err
 	}
+	s.invalidateConfigFileCache(cf.CFID, cf.ProjectID)
 
 	utils.LogAuditWithConsole(c, "delete", "config_file", fmt.Sprintf("cf_id=%d", cf.CFID), *cf, nil, "", s.Repos.Audit)
 	return nil
+}
+
+func configFileListKey() string {
+	return "cache:configfile:list"
+}
+
+func configFileByIDKey(id uint) string {
+	return fmt.Sprintf("cache:configfile:by-id:%d", id)
+}
+
+func configFileByProjectKey(projectID uint) string {
+	return fmt.Sprintf("cache:configfile:by-project:%d", projectID)
+}
+
+func (s *ConfigFileService) invalidateConfigFileCache(id, projectID uint) {
+	if s.cache == nil || !s.cache.Enabled() {
+		return
+	}
+	ctx := context.Background()
+	_ = s.cache.Invalidate(ctx, configFileListKey(), configFileByIDKey(id), configFileByProjectKey(projectID))
 }
 
 // ValidateAndInjectGPUConfig is a thin compatibility wrapper used by unit tests.

@@ -2,7 +2,21 @@
 
 Complete set of production-grade Agent Skills for platform-go project in VS Code.
 
-## Quick Start: Using Skills & Scripts
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Skills Overview](#skills-overview)
+   - [Foundation Skills](#foundation-skills)
+   - [Implementation Skills](#implementation-skills)
+   - [Production Skills](#production-skills)
+   - [Documentation Skills](#documentation-skills)
+3. [Quick Reference](#quick-reference)
+
+---
+
+## Quick Start
+
+### Using Skills & Scripts
 
 Each skill includes its own validation scripts in a `scripts/` subdirectory:
 
@@ -28,26 +42,36 @@ bash .github/skills/golang-production-standards/scripts/lint-check.sh
 bash .github/skills/golang-production-standards/scripts/compile-check.sh
 ```
 
-**Workflow Recommendation**:
+### Workflow Recommendation
+
 1. Write your code
 2. Run validation scripts from the relevant skill
 3. Fix any issues found
 4. Commit when all checks pass
 
+---
+
 ## Skills Overview
 
 This directory contains comprehensive skills that enforce production standards, Golang best practices, and project-specific patterns for the platform-go project.
 
-Skills are organized into three categories:
+Skills are organized into four categories:
 
-**Foundation Skills** (Core Standards):
-- golang-production-standards
-- file-structure-guidelines
+### Foundation Skills
 
-**Implementation Skills** (Feature Development):
-- api-design-patterns
-- database-best-practices
-- kubernetes-integration
+Core standards for all development:
+
+- **golang-production-standards** - Production-grade Go code standards
+- **file-structure-guidelines** - Code organization and modular design
+- **code-validation-standards** - Pre-commit checks and validation
+
+### Implementation Skills
+
+Feature development and architecture:
+
+- **api-design-patterns** - RESTful API design and Gin framework patterns
+- **database-best-practices** - PostgreSQL, GORM, and query optimization
+- **kubernetes-integration** - Client-go usage and resource management
 - error-handling-guide
 
 **Quality Skills** (Testing & Deployment):

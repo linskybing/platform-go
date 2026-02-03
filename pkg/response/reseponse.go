@@ -1,6 +1,7 @@
 package response
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/domain/group"
 )
 
@@ -28,4 +29,25 @@ type SuccessResponse struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
+}
+
+// Success returns a success response with data
+func Success(c *gin.Context, data interface{}, message string) {
+	c.JSON(200, SuccessResponse{
+		Code:    200,
+		Message: message,
+		Data:    data,
+	})
+}
+
+// Error returns an error response
+func Error(c *gin.Context, statusCode int, message string) {
+	c.JSON(statusCode, ErrorResponse{
+		Error: message,
+	})
+}
+
+// Unauthorized returns a 401 unauthorized response
+func Unauthorized(c *gin.Context, message string) {
+	Error(c, 401, message)
 }

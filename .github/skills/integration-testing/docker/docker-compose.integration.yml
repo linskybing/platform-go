@@ -1,0 +1,84 @@
+version: '3.9'
+
+services:
+  # PostgreSQL for database tests
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: testdb
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis for caching tests
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Database Integration Tests
+  db-integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+      target: db-test-final
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://testuser:testpass@postgres:5432/testdb?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      TEST_ENV: integration
+    volumes:
+      - ./test:/app/test
+      - ./internal:/app/internal
+      - ./cmd:/app/cmd
+      - ./pkg:/app/pkg
+      - ./.github:/app/.github
+    command: >
+      bash -c "
+        echo '[INFO] Running database integration tests...' &&
+        chmod +x .github/skills/cicd-pipeline-optimization/scripts/db-integration-test.sh &&
+        .github/skills/cicd-pipeline-optimization/scripts/db-integration-test.sh
+      "
+
+  # Kubernetes Integration Tests (with Docker-in-Docker)
+  k8s-integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+      target: k8s-test-final
+    privileged: true
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./test:/app/test
+      - ./internal:/app/internal
+      - ./cmd:/app/cmd
+      - ./pkg:/app/pkg
+      - ./.github:/app/.github
+    command: >
+      bash -c "
+        echo '[INFO] Running Kubernetes integration tests...' &&
+        chmod +x .github/skills/cicd-pipeline-optimization/scripts/k8s-integration-test.sh &&
+        .github/skills/cicd-pipeline-optimization/scripts/k8s-integration-test.sh
+      "
+
+volumes:
+  postgres_data:

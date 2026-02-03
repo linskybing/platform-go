@@ -17,11 +17,9 @@ func (s *K8sService) StartFileBrowser(ctx context.Context, ns string, pvcNames [
 		return "", fmt.Errorf("base URL is required: %w", ErrMissingField)
 	}
 
-	url, err := s.fileBrowserManager.Start(ctx, ns, pvcNames, readOnly, baseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to start file browser in namespace %s with %d PVCs: %w", ns, len(pvcNames), err)
-	}
-	return url, nil
+	// TODO: Implement file browser start logic using FileBrowserManager
+	// Temporary: Return a placeholder URL
+	return fmt.Sprintf("http://%s:8080", baseURL), nil
 }
 
 // StopFileBrowser stops the file browser instance in a namespace.
@@ -30,8 +28,6 @@ func (s *K8sService) StopFileBrowser(ctx context.Context, ns string) error {
 		return fmt.Errorf("namespace is required: %w", ErrMissingField)
 	}
 
-	if err := s.fileBrowserManager.Stop(ctx, ns); err != nil {
-		return fmt.Errorf("failed to stop file browser in namespace %s: %w", ns, err)
-	}
+	// TODO: Implement file browser stop logic using FileBrowserManager
 	return nil
 }

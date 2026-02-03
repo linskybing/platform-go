@@ -72,7 +72,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Check code format
         run: |
@@ -97,10 +99,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-
-      - name: Download dependencies
-        run: go mod download
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Run go vet
         run: go vet ./...
@@ -123,10 +124,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-
-      - name: Download dependencies
-        run: go mod download
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Build API server
         run: go build -o platform-api ./cmd/api

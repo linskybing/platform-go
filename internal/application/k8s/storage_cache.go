@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -61,4 +63,19 @@ func (sm *StorageManager) invalidateCache(groupID uint) {
 
 	delete(sm.pvcCache, groupID)
 	slog.Debug("invalidated cache for group", "group_id", groupID)
+}
+
+func (sm *StorageManager) pvcCacheKey(groupID uint) string {
+	return fmt.Sprintf("cache:k8s:group:pvc:%d", groupID)
+}
+
+func (sm *StorageManager) invalidatePVCsCache(ctx context.Context, groupID uint) {
+	sm.invalidateCache(groupID)
+	if sm.cache != nil && sm.cache.Enabled() {
+		if err := sm.cache.Invalidate(ctx, sm.pvcCacheKey(groupID)); err != nil {
+			slog.Warn("failed to invalidate redis pvc cache",
+				"group_id", groupID,
+				"error", err)
+		}
+	}
 }

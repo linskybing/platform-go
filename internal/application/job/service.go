@@ -1,4 +1,4 @@
 package job
 
-// Service is not currently implemented.
-// This package is reserved for future job management functionality.
+// Deprecated: Job service has been removed.
+// Job management functionality is not supported in this version.

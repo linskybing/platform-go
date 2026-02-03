@@ -1,4 +1,4 @@
 package repository
 
-// Job repository is not currently implemented.
-// This file is reserved for future job management functionality.
+// Deprecated: Job repository has been removed.
+// Job management functionality is not supported in this version.

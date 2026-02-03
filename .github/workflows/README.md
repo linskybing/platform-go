@@ -2,6 +2,22 @@
 
 This directory contains optimized CI/CD workflows that run tests selectively based on changed files.
 
+## Table of Contents
+
+1. [Workflows Overview](#workflows-overview)
+   - [CI - Lint & Build](#1-ci---lint--build-ciyml)
+   - [Unit Tests](#2-unit-tests-unit_testyml)
+   - [Integration Tests](#3-integration-tests-integration-testyml)
+2. [How It Works](#how-it-works)
+3. [Example Scenarios](#example-scenarios)
+4. [Manual Triggers](#manual-triggers)
+5. [Performance Metrics](#performance-metrics)
+6. [Best Practices](#best-practices)
+7. [Troubleshooting](#troubleshooting)
+8. [Future Improvements](#future-improvements)
+
+---
+
 ## Workflows Overview
 
 ### 1. CI - Lint & Build (`ci.yml`)

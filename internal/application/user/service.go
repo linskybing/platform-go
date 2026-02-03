@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/linskybing/platform-go/internal/constants"
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"github.com/linskybing/platform-go/internal/repository"
+	"github.com/linskybing/platform-go/pkg/cache"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -28,13 +30,21 @@ var (
 
 type UserService struct {
 	Repos *repository.Repos
+	cache *cache.Service
 }
 
 func NewUserService(repos *repository.Repos) *UserService {
+	return NewUserServiceWithCache(repos, nil)
+}
+
+func NewUserServiceWithCache(repos *repository.Repos, cacheSvc *cache.Service) *UserService {
 	return &UserService{
 		Repos: repos,
+		cache: cacheSvc,
 	}
 }
+
+const userCacheTTL = 5 * time.Minute
 
 func (s *UserService) RegisterUser(input user.CreateUserInput) error {
 	// Validate username
@@ -75,7 +85,11 @@ func (s *UserService) RegisterUser(input user.CreateUserInput) error {
 	if input.Status != nil {
 		usr.Status = *input.Status
 	}
-	return s.Repos.User.SaveUser(&usr)
+	if err := s.Repos.User.SaveUser(&usr); err != nil {
+		return err
+	}
+	s.invalidateUserListCache()
+	return nil
 }
 
 func (s *UserService) LoginUser(username, password string) (user.User, string, bool, error) {
@@ -96,15 +110,57 @@ func (s *UserService) LoginUser(username, password string) (user.User, string, b
 }
 
 func (s *UserService) ListUsers() ([]user.UserWithSuperAdmin, error) {
-	return s.Repos.User.GetAllUsers()
+	if s.cache != nil && s.cache.Enabled() {
+		var cached []user.UserWithSuperAdmin
+		if err := s.cache.GetJSON(context.Background(), userListKey(), &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	users, err := s.Repos.User.GetAllUsers()
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil && s.cache.Enabled() {
+		_ = s.cache.AsyncSetJSON(context.Background(), userListKey(), users, userCacheTTL)
+	}
+	return users, nil
 }
 
 func (s *UserService) ListUserByPaging(page, limit int) ([]user.UserWithSuperAdmin, error) {
-	return s.Repos.User.ListUsersPaging(page, limit)
+	if s.cache != nil && s.cache.Enabled() {
+		var cached []user.UserWithSuperAdmin
+		if err := s.cache.GetJSON(context.Background(), userListPagingKey(page, limit), &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	users, err := s.Repos.User.ListUsersPaging(page, limit)
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil && s.cache.Enabled() {
+		_ = s.cache.AsyncSetJSON(context.Background(), userListPagingKey(page, limit), users, userCacheTTL)
+	}
+	return users, nil
 }
 
 func (s *UserService) FindUserByID(id uint) (user.UserWithSuperAdmin, error) {
-	return s.Repos.User.GetUserByID(id)
+	if s.cache != nil && s.cache.Enabled() {
+		var cached user.UserWithSuperAdmin
+		if err := s.cache.GetJSON(context.Background(), userByIDKey(id), &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	usr, err := s.Repos.User.GetUserByID(id)
+	if err != nil {
+		return user.UserWithSuperAdmin{}, err
+	}
+	if s.cache != nil && s.cache.Enabled() {
+		_ = s.cache.AsyncSetJSON(context.Background(), userByIDKey(id), usr, userCacheTTL)
+	}
+	return usr, nil
 }
 
 func (s *UserService) UpdateUser(id uint, input user.UpdateUserInput) (user.User, error) {
@@ -154,6 +210,7 @@ func (s *UserService) UpdateUser(id uint, input user.UpdateUserInput) (user.User
 	if err := s.Repos.User.SaveUser(&usr); err != nil {
 		return user.User{}, err
 	}
+	s.invalidateUserCache(id)
 	return usr, nil
 }
 
@@ -168,7 +225,11 @@ func (s *UserService) RemoveUser(id uint) error {
 		return ErrReservedAdminUser
 	}
 
-	return s.Repos.User.DeleteUser(id)
+	if err := s.Repos.User.DeleteUser(id); err != nil {
+		return err
+	}
+	s.invalidateUserCache(id)
+	return nil
 }
 
 // validateUsername checks if username meets requirements
@@ -195,4 +256,34 @@ func validatePassword(password string) error {
 		return ErrInvalidPassword
 	}
 	return nil
+}
+
+func userListKey() string {
+	return "cache:user:list"
+}
+
+func userListPagingKey(page, limit int) string {
+	return fmt.Sprintf("cache:user:list:%d:%d", page, limit)
+}
+
+func userByIDKey(id uint) string {
+	return fmt.Sprintf("cache:user:by-id:%d", id)
+}
+
+func (s *UserService) invalidateUserCache(id uint) {
+	if s.cache == nil || !s.cache.Enabled() {
+		return
+	}
+	ctx := context.Background()
+	_ = s.cache.Invalidate(ctx, userByIDKey(id), userListKey())
+	_ = s.cache.InvalidatePrefix(ctx, "cache:user:list:")
+}
+
+func (s *UserService) invalidateUserListCache() {
+	if s.cache == nil || !s.cache.Enabled() {
+		return
+	}
+	ctx := context.Background()
+	_ = s.cache.Invalidate(ctx, userListKey())
+	_ = s.cache.InvalidatePrefix(ctx, "cache:user:list:")
 }
