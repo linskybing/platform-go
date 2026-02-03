@@ -68,21 +68,6 @@ func (m *mockUserGroupRepo) WithTx(tx *gorm.DB) repository.UserGroupRepo {
 	return m
 }
 
-// Test helpers
-func newTestGinContextWithClaims(userID uint, username string) (*gin.Context, *httptest.ResponseRecorder) {
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/", nil)
-
-	gin.SetMode(gin.TestMode)
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
-	c.Set("claims", &types.Claims{
-		UserID:   userID,
-		Username: username,
-	})
-	return c, w
-}
-
 // TestIsSuperAdmin
 func TestIsSuperAdmin(t *testing.T) {
 	tests := []struct {
