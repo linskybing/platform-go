@@ -25,8 +25,6 @@ class Config:
         _DB = os.environ.get('PG_DB', 'platform')
         if _USER and _PASS:
             DATABASE_URL = f'postgres://{_USER}:{_PASS}@{_HOST}:{_PORT}/{_DB}'
-        else:
-            pass
 
     WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET')
     ALLOW_TRUSTED_IP_BYPASS = os.environ.get('ALLOW_TRUSTED_IP_BYPASS', 'false').lower() in ('true', '1', 'yes')
