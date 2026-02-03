@@ -82,20 +82,92 @@ jobs:
           echo "Test run completed at $(date)" >> $GITHUB_STEP_SUMMARY
 
   integration-test-k8s:
-    name: K8s Integration Tests (Docker)
+    name: K8s Integration Tests (Lightweight)
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: Run K8s integration tests in Docker
+      - name: Set up KinD
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: platform-test
+          config: test/integration/scripts/kind-config.yaml
+          kubectl_version: v1.28.0
+          wait: 5m
+
+      - name: Verify cluster
         run: |
-          chmod +x .github/skills/cicd-pipeline-optimization/scripts/docker-k8s-integration-test.sh
-          .github/skills/cicd-pipeline-optimization/scripts/docker-k8s-integration-test.sh "." "5m"
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Create test namespace and RBAC
+        run: |
+          kubectl create namespace platform-test
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: platform-test-sa
+            namespace: platform-test
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: platform-test-role
+          rules:
+          - apiGroups: [""]
+            resources: ["pods", "persistentvolumeclaims", "namespaces", "services"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: ["apps"]
+            resources: ["deployments", "statefulsets"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: ["batch"]
+            resources: ["jobs"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: platform-test-binding
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: platform-test-role
+          subjects:
+          - kind: ServiceAccount
+            name: platform-test-sa
+            namespace: platform-test
+          EOF
+
+      - name: Run K8s integration tests
+        run: go test -v -timeout 5m -tags=k8s ./pkg/k8s/...
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+          K8S_NAMESPACE: platform-test
+
+      - name: Export cluster logs on failure
+        if: failure()
+        run: |
+          kubectl get all -A
+          kubectl describe nodes
+          kind export logs /tmp/kind-logs --name platform-test
+
+      - name: Upload cluster logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kind-logs
+          path: /tmp/kind-logs
+          retention-days: 7
 
       - name: Generate K8s test report
         if: always()
