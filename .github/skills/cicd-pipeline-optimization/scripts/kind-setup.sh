@@ -72,11 +72,11 @@ done
 
 # Create test namespace
 log_info "Creating test namespace..."
-kubectl create namespace platform-test --dry-run=client -o yaml | kubectl apply -f - || true
+kubectl create namespace platform-test --dry-run=client -o yaml | kubectl apply --validate=false -f - || true
 
 # Apply RBAC for tests
 log_info "Applying RBAC..."
-cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply --validate=false -f -
 apiVersion: v1
 kind: ServiceAccount
 metadata:
