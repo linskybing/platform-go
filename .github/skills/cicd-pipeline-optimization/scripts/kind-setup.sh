@@ -61,22 +61,43 @@ kind create cluster --name "$CLUSTER_NAME" --config "$CONFIG_FILE" --image "kind
 
 # Wait for cluster to be ready
 log_info "Waiting for cluster to be ready..."
-for i in {1..30}; do
-    if kubectl wait --for=condition=Ready nodes --all --timeout=10s 2>/dev/null; then
-        log_info "Cluster is ready!"
+
+# First wait for API server to be responsive
+for i in {1..60}; do
+    if kubectl cluster-info 2>/dev/null | grep -q "control plane"; then
+        log_info "API server is responsive"
         break
     fi
-    log_info "Waiting... ($i/30)"
+    log_info "Waiting for API server... ($i/60)"
+    sleep 1
+done
+
+# Then wait for all nodes to be ready
+for i in {1..30}; do
+    ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -c "Ready" || echo 0)
+    total_nodes=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo 0)
+    
+    if [ "$total_nodes" -gt 0 ] && [ "$ready_nodes" -eq "$total_nodes" ]; then
+        log_info "All $total_nodes nodes are ready!"
+        break
+    fi
+    log_info "Waiting for nodes... ($i/30) - Ready: $ready_nodes/$total_nodes"
     sleep 2
 done
 
 # Create test namespace
 log_info "Creating test namespace..."
-kubectl create namespace platform-test --dry-run=client -o yaml | kubectl apply --validate=false -f - || true
+kubectl create namespace platform-test --dry-run=client -o yaml | kubectl apply --validate=false -f - || {
+    log_error "Failed to create test namespace"
+    exit 1
+}
 
 # Apply RBAC for tests
 log_info "Applying RBAC..."
-cat <<EOF | kubectl apply --validate=false -f -
+cat <<EOF | kubectl apply --validate=false -f - || {
+    log_error "Failed to apply RBAC"
+    exit 1
+}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -111,6 +132,7 @@ subjects:
   name: platform-test-sa
   namespace: platform-test
 EOF
+}
 
 log_info "KinD cluster setup complete!"
 log_info "Cluster name: $CLUSTER_NAME"
