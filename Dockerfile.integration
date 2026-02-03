@@ -1,0 +1,64 @@
+# Dockerfile for Integration Tests
+# Provides multi-stage builds for database and Kubernetes integration tests
+# Reference: integration-testing Skill
+
+# Base stage: Setup Go environment with all dependencies
+FROM golang:1.25-alpine AS base
+
+RUN apk add --no-cache \
+    bash \
+    git \
+    ca-certificates \
+    postgresql-client \
+    redis \
+    curl \
+    docker \
+    make
+
+WORKDIR /app
+
+# Copy go module files for caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Database Integration Tests
+FROM base AS db-test-final
+
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+
+# Install gcc for SQLite/database support
+RUN apk add --no-cache gcc musl-dev
+
+CMD ["bash", "-c", "go test -v -timeout 30m -tags=integration ./test/integration/..."]
+
+# Kubernetes Integration Tests
+FROM base AS k8s-test-final
+
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+
+# Install KinD and kubectl for Kubernetes testing
+RUN go install sigs.k8s.io/kind@v0.20.0 && \
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
+
+# Build binary for testing
+RUN go build -o /app/platform-api ./cmd/api && \
+    go build -o /app/platform-scheduler ./cmd/scheduler
+
+CMD ["bash", "-c", ".github/skills/cicd-pipeline-optimization/scripts/k8s-integration-test.sh"]
+
+# Run all tests
+FROM base AS test-final
+
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+
+RUN apk add --no-cache gcc musl-dev docker
+
+CMD ["bash", "-c", "go test -v -race -timeout 30m ./..."]

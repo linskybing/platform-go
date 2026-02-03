@@ -5,31 +5,35 @@ import (
 )
 
 type Repos struct {
-	ConfigFile ConfigFileRepo
-	Group      GroupRepo
-	Project    ProjectRepo
-	Resource   ResourceRepo
-	UserGroup  UserGroupRepo
-	User       UserRepo
-	Audit      AuditRepo
-	Form       FormRepo
-	Image      ImageRepo
+	ConfigFile        ConfigFileRepo
+	Group             GroupRepo
+	Project           ProjectRepo
+	Resource          ResourceRepo
+	UserGroup         UserGroupRepo
+	User              UserRepo
+	Audit             AuditRepo
+	Form              FormRepo
+	Image             ImageRepo
+	StoragePermission StoragePermissionRepo
+	ProjectPVCBinding ProjectPVCBindingRepo
 
 	db *gorm.DB
 }
 
 func NewRepositories(db *gorm.DB) *Repos {
 	return &Repos{
-		ConfigFile: NewConfigFileRepo(db),
-		Group:      NewGroupRepo(db),
-		Project:    NewProjectRepo(db),
-		Resource:   NewResourceRepo(db),
-		UserGroup:  NewUserGroupRepo(db),
-		User:       NewUserRepo(db),
-		Audit:      NewAuditRepo(db),
-		Form:       NewFormRepo(db),
-		Image:      NewImageRepo(db),
-		db:         db,
+		ConfigFile:        NewConfigFileRepo(db),
+		Group:             NewGroupRepo(db),
+		Project:           NewProjectRepo(db),
+		Resource:          NewResourceRepo(db),
+		UserGroup:         NewUserGroupRepo(db),
+		User:              NewUserRepo(db),
+		Audit:             NewAuditRepo(db),
+		Form:              NewFormRepo(db),
+		Image:             NewImageRepo(db),
+		StoragePermission: NewStoragePermissionRepo(db),
+		ProjectPVCBinding: NewProjectPVCBindingRepo(db),
+		db:                db,
 	}
 }
 
@@ -39,16 +43,18 @@ func (r *Repos) Begin() *gorm.DB {
 
 func (r *Repos) WithTx(tx *gorm.DB) *Repos {
 	return &Repos{
-		ConfigFile: r.ConfigFile.WithTx(tx),
-		Group:      r.Group.WithTx(tx),
-		Project:    r.Project.WithTx(tx),
-		Resource:   r.Resource.WithTx(tx),
-		UserGroup:  r.UserGroup.WithTx(tx),
-		User:       r.User.WithTx(tx),
-		Audit:      r.Audit.WithTx(tx),
-		Form:       r.Form.WithTx(tx),
-		Image:      r.Image.WithTx(tx),
-		db:         tx,
+		ConfigFile:        r.ConfigFile.WithTx(tx),
+		Group:             r.Group.WithTx(tx),
+		Project:           r.Project.WithTx(tx),
+		Resource:          r.Resource.WithTx(tx),
+		UserGroup:         r.UserGroup.WithTx(tx),
+		User:              r.User.WithTx(tx),
+		Audit:             r.Audit.WithTx(tx),
+		Form:              r.Form.WithTx(tx),
+		Image:             r.Image.WithTx(tx),
+		StoragePermission: r.StoragePermission.WithTx(tx),
+		ProjectPVCBinding: r.ProjectPVCBinding.WithTx(tx),
+		db:                tx,
 	}
 }
 

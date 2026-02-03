@@ -7,64 +7,41 @@ import (
 	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/cron"
 	"github.com/linskybing/platform-go/internal/repository"
+	"github.com/linskybing/platform-go/pkg/cache"
 	"gorm.io/gorm"
 )
 
-// RegisterRoutes orchestrates the registration of all API routes.
-// It initializes dependencies (repositories, services, handlers) and registers all route groups:
-//   - Authentication routes (register, login, logout)
-//   - WebSocket routes (real-time communication)
-//   - Image management routes
-//   - Configuration file routes
-//   - User management routes
-//   - Group and project routes
-//   - Kubernetes storage routes
-//   - Form management routes
+// RegisterRoutes initializes all API routes and middleware.
+// Routes are organized by feature into separate files (audit.go, group.go, etc.)
+// to maintain modularity and comply with 200-line file limit guidelines.
 //
-// The routes are protected by JWT middleware and use role-based access control (RBAC)
-// through custom authorization middleware.
-func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
-	// Initialize repositories
-	repos_instance := repository.NewRepositories(db)
+// Organization:
+// - Public routes: auth status (no JWT required)
+// - Protected routes: grouped under /api with JWT middleware
+// - Authorization: role-based access control via auth middleware
+func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
+	// Initialize repositories, services, and handlers
+	repos := repository.NewRepositories(db)
+	services := application.NewWithCache(repos, cacheSvc)
+	handlers := handlers.New(services, repos, r)
 
-	// Initialize services
-	services_instance := application.New(repos_instance)
+	// Initialize authorization middleware
+	authMiddleware := middleware.NewAuthMiddleware(repos)
 
-	// Initialize handlers
-	handlers_instance := handlers.New(services_instance, repos_instance, r)
+	// Start background tasks (cleanup, metrics, etc.)
+	cron.StartCleanupTask(services.Audit)
 
-	// Initialize auth middleware for RBAC
-	authMiddleware := middleware.NewAuth(repos_instance)
+	// Register public routes (no JWT protection)
+	registerAuthRoutes(r)
 
-	// Start background tasks (cleanup, etc.)
-	cron.StartCleanupTask(services_instance.Audit)
-
-	// Register authentication routes (no JWT protection)
-	registerAuthRoutes(r, handlers_instance, authMiddleware)
-
-	// Create JWT-protected route group
+	// Register protected routes (JWT required)
 	auth := r.Group("/")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
-		// Register WebSocket routes
-		registerWebSocketRoutes(r, auth, handlers_instance, services_instance)
-
-		// Register feature-specific routes
-		registerImageRoutes(auth, handlers_instance, authMiddleware)
-
-		registerConfigFileRoutes(auth, handlers_instance, authMiddleware, repos_instance)
-
-		registerUserRoutes(auth, handlers_instance, authMiddleware)
-
-		registerGroupRoutes(auth, handlers_instance, authMiddleware, repos_instance)
-
-		// Kubernetes routes
-		k8sRoutes := auth.Group("/k8s")
-		{
-			// Register storage routes in K8s group
-			registerStorageRoutes(k8sRoutes, handlers_instance, authMiddleware, repos_instance)
-		}
-
-		registerFormRoutes(auth, handlers_instance, authMiddleware)
+		registerAuditRoutes(auth, handlers, authMiddleware)
+		registerConfigFileRoutes(auth, handlers, authMiddleware, repos)
+		registerGroupRoutes(auth, handlers, authMiddleware)
+		registerFormRoutes(auth, handlers, authMiddleware)
+		registerStorageRoutes(auth, handlers, authMiddleware)
 	}
 }

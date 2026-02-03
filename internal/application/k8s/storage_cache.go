@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -63,28 +65,17 @@ func (sm *StorageManager) invalidateCache(groupID uint) {
 	slog.Debug("invalidated cache for group", "group_id", groupID)
 }
 
-// invalidateAllCache clears all cached PVCs.
-func (sm *StorageManager) invalidateAllCache() {
-	sm.cacheMutex.Lock()
-	defer sm.cacheMutex.Unlock()
-
-	size := len(sm.pvcCache)
-	sm.pvcCache = make(map[uint]*CacheEntry)
-	slog.Debug("cleared all PVC cache", "cleared_entries", size)
+func (sm *StorageManager) pvcCacheKey(groupID uint) string {
+	return fmt.Sprintf("cache:k8s:group:pvc:%d", groupID)
 }
 
-// GetCacheStats returns cache statistics for monitoring.
-func (sm *StorageManager) GetCacheStats() map[string]interface{} {
-	sm.cacheMutex.RLock()
-	defer sm.cacheMutex.RUnlock()
-
-	totalCached := 0
-	for _, entry := range sm.pvcCache {
-		totalCached += len(entry.PVCs)
-	}
-
-	return map[string]interface{}{
-		"cached_groups": len(sm.pvcCache),
-		"total_pvcs":    totalCached,
+func (sm *StorageManager) invalidatePVCsCache(ctx context.Context, groupID uint) {
+	sm.invalidateCache(groupID)
+	if sm.cache != nil && sm.cache.Enabled() {
+		if err := sm.cache.Invalidate(ctx, sm.pvcCacheKey(groupID)); err != nil {
+			slog.Warn("failed to invalidate redis pvc cache",
+				"group_id", groupID,
+				"error", err)
+		}
 	}
 }
