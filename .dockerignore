@@ -1,0 +1,30 @@
+# Docker build context ignore file for integration tests
+# Reference: integration-testing Skill
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Don't need CI/CD files in test container
+.github/workflows
+
+# Build artifacts
+platform
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+*.out
+coverage.html
+
+# IDE
+.vscode
+.idea
+
+# Temporary files
+*.tmp
+*.log
+/tmp

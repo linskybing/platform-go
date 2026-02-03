@@ -1,4 +1,4 @@
 package handlers
 
-// JobHandler is not currently implemented.
-// This handler is reserved for future job management functionality.
+// Deprecated: Job handler functionality has been removed.
+// Job management is not supported in this version.

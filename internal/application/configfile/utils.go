@@ -8,16 +8,11 @@ import (
 // findPodSpecs recursively looks for objects that look like PodSpecs.
 // It searches for "containers" array or specific nesting keys.
 func findPodSpecs(obj map[string]interface{}) []map[string]interface{} {
-	var results []map[string]interface{}
+	results := make([]map[string]interface{}, 0, 4) // Pre-allocate for typical K8s object (1-2 specs)
 
 	// Direct match: strict check for containers
 	if _, hasContainers := obj["containers"]; hasContainers {
-		results = append(results, obj)
-		// Return here? No, theoretically a PodSpec could define a sidecar that manages other pods (rare but possible in CRDs)
-		// But for standard K8s objects (Pod, Deployment, Job), the PodSpec is a leaf regarding structure.
-		// We continue traversal only if strictly necessary.
-		// For performance, assuming standard K8s structure, we can stop deeper traversal for this branch.
-		return results
+		return append(results, obj)
 	}
 
 	// Recursive Search
@@ -33,7 +28,8 @@ func findPodSpecs(obj map[string]interface{}) []map[string]interface{} {
 }
 
 func getContainersFromPodSpec(podSpec map[string]interface{}) []map[string]interface{} {
-	var containers []map[string]interface{}
+	// Pre-allocate for typical pod (1-3 containers + 0-2 init containers)
+	containers := make([]map[string]interface{}, 0, 5)
 
 	appendContainers := func(key string) {
 		if list, ok := podSpec[key].([]interface{}); ok {
