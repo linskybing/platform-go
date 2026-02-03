@@ -821,13 +821,13 @@ Benefits of k8s/ subdirectory:
 ### Naming Conventions for Handler Subdirectories
 
 ```
-✓ Good:  k8s/base.go, k8s/job.go              # Clear, concise
-✓ Good:  auth/login.go, auth/register.go      # Business concern
-✓ Good:  storage/user.go, storage/project.go  # Domain separation
+[OK] Good:  k8s/base.go, k8s/job.go              # Clear, concise
+[OK] Good:  auth/login.go, auth/register.go      # Business concern
+[OK] Good:  storage/user.go, storage/project.go  # Domain separation
 
-✗ Bad:   k8s_handler.go, k8s_job_handler.go   # Repetitive suffix
-✗ Bad:   handlers/k8s/handlers.go             # Redundant naming
-✗ Bad:   handlers/kubernetes/                 # Overly verbose
+[BAD] Bad:   k8s_handler.go, k8s_job_handler.go   # Repetitive suffix
+[BAD] Bad:   handlers/k8s/handlers.go             # Redundant naming
+[BAD] Bad:   handlers/kubernetes/                 # Overly verbose
 ```
 
 ### Container Registry Pattern

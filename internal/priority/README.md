@@ -2,14 +2,26 @@
 
 Resource priority and preemption management.
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Structure](#structure)
+3. [Preemption Flow](#preemption-flow)
+4. [Priority Levels](#priority-levels)
+
+---
+
+## Overview
+
+Implements priority-based resource allocation where course workloads have higher priority than batch jobs. When resource contention occurs, lower-priority batch jobs are preempted to free resources for higher-priority course workloads.
+
 ## Structure
 
-- `monitor/` - Resource usage monitoring
-- `preemptor/` - Job preemption logic
-
-## Purpose
-
-Implements priority-based resource allocation where course workloads have higher priority than batch jobs.
+```
+internal/priority/
+├─ monitor/   - Resource usage monitoring
+└─ preemptor/ - Job preemption logic
+```
 
 ## Preemption Flow
 

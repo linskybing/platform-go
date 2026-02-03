@@ -19,7 +19,7 @@ func (s *K8sService) CreateGroupPVC(ctx context.Context, groupID uint, req *stor
 		return nil, fmt.Errorf("invalid creator ID: %w", ErrInvalidID)
 	}
 
-	pvc, err := s.storageManager.CreateGroupPVC(ctx, groupID, req, createdByID)
+	pvc, err := s.StorageManager.CreateGroupPVC(ctx, groupID, req, createdByID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PVC for group %d: %w", groupID, err)
 	}
@@ -32,7 +32,7 @@ func (s *K8sService) ListGroupPVCs(ctx context.Context, groupID uint) ([]storage
 		return nil, fmt.Errorf("invalid group ID: %w", ErrInvalidID)
 	}
 
-	pvcs, err := s.storageManager.ListGroupPVCs(ctx, groupID)
+	pvcs, err := s.StorageManager.ListGroupPVCs(ctx, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list PVCs for group %d: %w", groupID, err)
 	}
@@ -45,7 +45,7 @@ func (s *K8sService) DeleteGroupPVC(ctx context.Context, pvcID string) error {
 		return fmt.Errorf("PVC ID is required: %w", ErrMissingField)
 	}
 
-	if err := s.storageManager.DeleteGroupPVC(ctx, pvcID); err != nil {
+	if err := s.StorageManager.DeleteGroupPVC(ctx, pvcID); err != nil {
 		return fmt.Errorf("failed to delete PVC %s: %w", pvcID, err)
 	}
 	return nil

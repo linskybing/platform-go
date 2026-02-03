@@ -1,4 +1,4 @@
 package job
 
-// Models are not currently implemented.
-// This file is reserved for future job model definitions.
+// Deprecated: Job model has been removed.
+// Job functionality is not supported in this version.

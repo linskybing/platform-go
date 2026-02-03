@@ -3,6 +3,21 @@
 This directory contains scripts for building, deploying, and managing the platform-go project.
 All scripts are organized according to **golang-production-standards** from `.github/skills`.
 
+## Table of Contents
+
+1. [Directory Structure](#directory-structure)
+2. [Scripts Overview](#scripts-overview)
+   - [Build Scripts](#build-scripts-build)
+   - [Deployment Scripts](#deployment-scripts-deploy)
+   - [Development Scripts](#development-scripts-dev)
+   - [Tool Scripts](#tool-scripts-tools)
+3. [Script Standards](#script-standards)
+4. [Running Scripts](#running-scripts)
+5. [Maintenance Guidelines](#maintenance-guidelines)
+6. [Troubleshooting](#troubleshooting)
+
+---
+
 ## Directory Structure
 
 ```
@@ -18,6 +33,7 @@ All scripts are organized according to **golang-production-standards** from `.gi
 ### Build Scripts (`build/`)
 
 #### `images.sh`
+
 - **Purpose**: Builds Go API and Postgres images, pushes to private Harbor registry
 - **Usage**: `./build/images.sh`
 - **Configuration**: Edit HARBOR_HOST, PROJECT_NAME, TAG as needed
@@ -27,6 +43,7 @@ All scripts are organized according to **golang-production-standards** from `.gi
 ### Deployment Scripts (`deploy/`)
 
 #### `redeploy.sh`
+
 - **Purpose**: Redeploys application to Kubernetes cluster
 - **Usage**: `./deploy/redeploy.sh`
 - **Prerequisites**: Kubernetes cluster configured, kubectl available
@@ -35,6 +52,7 @@ All scripts are organized according to **golang-production-standards** from `.gi
 ### Development Scripts (`dev/`)
 
 #### `startup.sh`
+
 - **Purpose**: Starts development environment with Kubernetes manifests
 - **Usage**: `./dev/startup.sh`
 - **Prerequisites**: Local Kubernetes cluster (minikube/kind)
@@ -42,11 +60,13 @@ All scripts are organized according to **golang-production-standards** from `.gi
 - **Production Standard**: Development environment follows production patterns
 
 #### `cleanup.sh`
+
 - **Purpose**: Cleans up development environment
 - **Usage**: `./dev/cleanup.sh`
 - **Effect**: Removes deployments from local cluster
 
 #### `setup_k8s.sh`
+
 - **Purpose**: Sets up fake/local Kubernetes environment
 - **Usage**: `./dev/setup_k8s.sh`
 - **Installs**: Minikube and required tools
@@ -55,16 +75,20 @@ All scripts are organized according to **golang-production-standards** from `.gi
 ### Tool Scripts (`tools/`)
 
 #### `genmock.sh`
+
 - **Purpose**: Installs mockgen for generating test mocks
 - **Usage**: `./tools/genmock.sh`
 - **Prerequisite**: Go development environment
 - **Production Standard**: Automated test setup
 
 #### `create_gpu_pod.py`
+
 - **Purpose**: Creates Kubernetes pods with GPU support (Python)
 - **Usage**: `python tools/create_gpu_pod.py`
 - **Prerequisites**: Python 3, Kubernetes Python client
 - **Production Standard**: Declarative GPU resource management
+
+---
 
 ## Script Standards
 

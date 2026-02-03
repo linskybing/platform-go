@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/linskybing/platform-go/internal/api/response"
+	"github.com/linskybing/platform-go/pkg/response"
 	"github.com/linskybing/platform-go/pkg/utils"
 )
 

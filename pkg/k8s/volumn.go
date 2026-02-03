@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/linskybing/platform-go/internal/config"
+	"github.com/linskybing/platform-go/pkg/logger"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,7 +23,7 @@ func parseResourceQuantity(size string) (resource.Quantity, error) {
 
 func ExpandPVC(ns, pvcName, newSize string) error {
 	if Clientset == nil {
-		fmt.Printf("[MOCK] PVC %s in namespace %s expanded to %s\n", pvcName, ns, newSize)
+		logger.Info("mock PVC expansion", "pvc", pvcName, "namespace", ns, "new_size", newSize)
 		return nil
 	}
 	if ns == "" {
@@ -56,13 +57,13 @@ func ExpandPVC(ns, pvcName, newSize string) error {
 		return fmt.Errorf("failed to expand PVC: %w", err)
 	}
 
-	fmt.Printf("PVC %s in namespace %s expanded to %s\n", pvcName, ns, newSize)
+	logger.Info("PVC expanded successfully", "pvc", pvcName, "namespace", ns, "new_size", newSize)
 	return nil
 }
 
 func CreateHubPVC(ns string, name string, storageClassName string, size string) error {
 	if Clientset == nil {
-		fmt.Printf("[MOCK] Hub PVC %s created in %s\n", name, ns)
+		logger.Info("mock hub PVC creation", "pvc", name, "namespace", ns)
 		return nil
 	}
 
@@ -86,7 +87,7 @@ func CreateHubPVC(ns string, name string, storageClassName string, size string) 
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create Hub PVC: %w", err)
 	}
-	fmt.Printf("Hub PVC %s created in namespace %s\n", name, ns)
+	logger.Info("hub PVC created successfully", "pvc", name, "namespace", ns)
 	return nil
 }
 
@@ -148,13 +149,13 @@ func CreateStorageHub(ns string, pvcName string) error {
 	_, err := Clientset.AppsV1().Deployments(ns).Create(context.TODO(), deploy, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			fmt.Printf("Storage Hub %s already exists in %s.\n", hubName, ns)
+			logger.Info("storage hub already exists", "hub", hubName, "namespace", ns)
 			return nil
 		}
 		return fmt.Errorf("failed to create Storage Hub: %w", err)
 	}
 
-	fmt.Printf("Storage Hub created: %s (ns: %s). Mount path: /data\n", hubName, ns)
+	logger.Info("storage hub created successfully", "hub", hubName, "namespace", ns, "mount_path", "/data")
 	return nil
 }
 
@@ -268,7 +269,7 @@ func MountExistingVolumeToNamespace(sourceNs, sourcePvcName, targetNs, targetPvc
 func DeleteGroupStorageCompletely(ctx context.Context, projectName string, projectID uint) error {
 	nsName := GenerateSafeResourceName("group", projectName, projectID)
 
-	fmt.Printf("[Cleanup] Starting cleanup for group: %s (ns: %s)\n", projectName, nsName)
+	logger.Info("starting project cleanup", "project", projectName, "namespace", nsName)
 
 	// 1. List ALL PVCs in the project namespace
 	// We don't guess names like "project-disk", we find whatever exists.
@@ -280,12 +281,12 @@ func DeleteGroupStorageCompletely(ctx context.Context, projectName string, proje
 
 	// 2. Iterate and Clean each PVC tree
 	for _, pvc := range pvcs.Items {
-		fmt.Printf("[Cleanup] Processing project PVC: %s\n", pvc.Name)
+		logger.Debug("processing project PVC", "pvc", pvc.Name)
 
 		// Call the generic helper for each PVC found
 		if err := cleanUpSinglePVCTree(ctx, nsName, pvc.Name); err != nil {
 			// Log error but continue to try cleaning other PVCs and the Namespace
-			fmt.Printf("[Error] Failed to clean PVC %s: %v\n", pvc.Name, err)
+			logger.Error("failed to clean PVC", "pvc", pvc.Name, "error", err)
 		}
 	}
 
@@ -296,7 +297,7 @@ func DeleteGroupStorageCompletely(ctx context.Context, projectName string, proje
 		return fmt.Errorf("failed to delete project namespace: %w", err)
 	}
 
-	fmt.Printf("[Cleanup] Successfully deleted project resources: %s\n", projectName)
+	logger.Info("project resources deleted successfully", "project", projectName)
 	return nil
 }
 
@@ -306,7 +307,7 @@ func DeleteUserStorageCompletely(ctx context.Context, username string) error {
 	nsName := fmt.Sprintf(config.UserStorageNs, safeUser)
 	pvcName := fmt.Sprintf(config.UserStoragePVC, safeUser)
 
-	fmt.Printf("[Cleanup] Starting cleanup for user: %s\n", username)
+	logger.Info("starting user cleanup", "user", username)
 
 	if err := cleanUpSinglePVCTree(ctx, nsName, pvcName); err != nil {
 		return fmt.Errorf("failed to clean up user pvc: %w", err)
@@ -366,9 +367,9 @@ func cleanUpSinglePVCTree(ctx context.Context, ns string, pvcName string) error 
 	for _, pv := range pointerPVs.Items {
 		err := Clientset.CoreV1().PersistentVolumes().Delete(ctx, pv.Name, metav1.DeleteOptions{})
 		if err != nil {
-			fmt.Printf("[Warning] Failed to delete pointer PV %s: %v\n", pv.Name, err)
+			logger.Warn("failed to delete pointer PV", "pv", pv.Name, "error", err)
 		} else {
-			fmt.Printf("[Cleanup] Deleted pointer PV: %s (was linked to %s)\n", pv.Name, pvcName)
+			logger.Info("deleted pointer PV", "pv", pv.Name, "linked_to", pvcName)
 		}
 	}
 
