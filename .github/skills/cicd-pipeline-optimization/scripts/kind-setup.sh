@@ -74,10 +74,14 @@ done
 
 # Then wait for all nodes to be ready
 for i in {1..30}; do
-    ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -c "Ready" || echo 0)
-    total_nodes=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo 0)
+    ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -c "Ready" || echo "0")
+    total_nodes=$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d '[:space:]' || echo "0")
     
-    if [ "$total_nodes" -gt 0 ] && [ "$ready_nodes" -eq "$total_nodes" ]; then
+    # Remove any whitespace/newlines from variables
+    ready_nodes=$(echo "$ready_nodes" | tr -d '[:space:]')
+    total_nodes=$(echo "$total_nodes" | tr -d '[:space:]')
+    
+    if [ "$total_nodes" -gt 0 ] 2>/dev/null && [ "$ready_nodes" -eq "$total_nodes" ] 2>/dev/null; then
         log_info "All $total_nodes nodes are ready!"
         break
     fi
