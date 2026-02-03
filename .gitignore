@@ -7,7 +7,7 @@ RESOURCE_PRIORITY_DESIGN.md
 IMPLEMENTATION_CHECKLIST.md
 
 # Ignore build outputs / binaries
-api
+/api
 *.exe
 *.out
 *.bin

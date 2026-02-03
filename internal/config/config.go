@@ -14,22 +14,37 @@ import (
 )
 
 var (
-	JwtSecret               string
-	DbHost                  string
-	DbPort                  string
-	DbUser                  string
-	DbPassword              string
-	DbName                  string
-	ServerPort              string
-	Issuer                  string
-	GroupAdminRoles         = []string{"admin"}
-	GroupUpdateRoles        = []string{"admin", "manager"}
-	GroupAccessRoles        = []string{"admin", "manager", "user"}
-	MinioEndpoint           string
-	MinioAccessKey          string
-	MinioSecretKey          string
-	MinioUseSSL             bool
-	MinioBucket             string
+	JwtSecret        string
+	DbHost           string
+	DbPort           string
+	DbUser           string
+	DbPassword       string
+	DbName           string
+	ServerPort       string
+	Issuer           string
+	GroupAdminRoles  = []string{"admin"}
+	GroupUpdateRoles = []string{"admin", "manager"}
+	GroupAccessRoles = []string{"admin", "manager", "user"}
+	MinioEndpoint    string
+	MinioAccessKey   string
+	MinioSecretKey   string
+	MinioUseSSL      bool
+	MinioBucket      string
+	// Redis
+	RedisAddr               string
+	RedisUsername           string
+	RedisPassword           string
+	RedisDB                 int
+	RedisUseTLS             bool
+	RedisPoolSize           int
+	RedisMinIdleConns       int
+	RedisMaxRetries         int
+	RedisDialTimeoutMs      int
+	RedisReadTimeoutMs      int
+	RedisWriteTimeoutMs     int
+	RedisPingTimeoutMs      int
+	RedisAsyncQueue         int
+	RedisAsyncWorkers       int
 	Scheme                  = runtime.NewScheme()
 	DefaultStorageName      = "project"
 	DefaultStorageClassName = "longhorn"
@@ -71,6 +86,21 @@ func LoadConfig() {
 	MinioSecretKey = getEnv("MINIO_SECRET_KEY", "minio123")
 	MinioBucket = getEnv("MINIO_BUCKET", "platform-bucket")
 	MinioUseSSL, _ = strconv.ParseBool(getEnv("MINIO_USE_SSL", "true"))
+
+	RedisAddr = getEnv("REDIS_ADDR", "")
+	RedisUsername = getEnv("REDIS_USERNAME", "")
+	RedisPassword = getEnv("REDIS_PASSWORD", "")
+	RedisDB, _ = strconv.Atoi(getEnv("REDIS_DB", "0"))
+	RedisUseTLS, _ = strconv.ParseBool(getEnv("REDIS_USE_TLS", "false"))
+	RedisPoolSize, _ = strconv.Atoi(getEnv("REDIS_POOL_SIZE", "10"))
+	RedisMinIdleConns, _ = strconv.Atoi(getEnv("REDIS_MIN_IDLE_CONNS", "2"))
+	RedisMaxRetries, _ = strconv.Atoi(getEnv("REDIS_MAX_RETRIES", "3"))
+	RedisDialTimeoutMs, _ = strconv.Atoi(getEnv("REDIS_DIAL_TIMEOUT_MS", "3000"))
+	RedisReadTimeoutMs, _ = strconv.Atoi(getEnv("REDIS_READ_TIMEOUT_MS", "2000"))
+	RedisWriteTimeoutMs, _ = strconv.Atoi(getEnv("REDIS_WRITE_TIMEOUT_MS", "2000"))
+	RedisPingTimeoutMs, _ = strconv.Atoi(getEnv("REDIS_PING_TIMEOUT_MS", "1500"))
+	RedisAsyncQueue, _ = strconv.Atoi(getEnv("REDIS_ASYNC_QUEUE", "256"))
+	RedisAsyncWorkers, _ = strconv.Atoi(getEnv("REDIS_ASYNC_WORKERS", "2"))
 
 	DefaultStorageClassName = getEnv("DEFAULT_STORAGE_CLASS_NAME", "longhorn")
 

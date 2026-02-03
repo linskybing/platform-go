@@ -38,7 +38,7 @@ func (sm *StorageManager) ExpandGroupPVC(ctx context.Context, pvcName string, ne
 	}
 
 	// Invalidate cache for this group
-	sm.invalidateCache(groupID)
+	sm.invalidatePVCsCache(ctx, groupID)
 
 	slog.Info("PVC expanded successfully",
 		"pvc_name", pvcName,
@@ -76,7 +76,7 @@ func (sm *StorageManager) DeleteGroupPVC(ctx context.Context, pvcName string) er
 	}
 
 	// Invalidate cache for this group
-	sm.invalidateCache(groupID)
+	sm.invalidatePVCsCache(ctx, groupID)
 
 	slog.Info("PVC deleted successfully",
 		"pvc_name", pvcName,

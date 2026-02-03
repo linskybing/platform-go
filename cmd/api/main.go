@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/api/middleware"
@@ -17,6 +18,7 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/internal/domain/user"
+	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/k8s"
 )
 
@@ -33,6 +35,36 @@ func main() {
 	// Initialize database connection
 	db.Init()
 	k8s.Init()
+
+	cacheSvc := cache.NewNoop()
+	if config.RedisAddr != "" {
+		client, err := cache.NewRedisClient(cache.Config{
+			Addr:         config.RedisAddr,
+			Username:     config.RedisUsername,
+			Password:     config.RedisPassword,
+			DB:           config.RedisDB,
+			UseTLS:       config.RedisUseTLS,
+			PoolSize:     config.RedisPoolSize,
+			MinIdleConns: config.RedisMinIdleConns,
+			MaxRetries:   config.RedisMaxRetries,
+			DialTimeout:  time.Duration(config.RedisDialTimeoutMs) * time.Millisecond,
+			ReadTimeout:  time.Duration(config.RedisReadTimeoutMs) * time.Millisecond,
+			WriteTimeout: time.Duration(config.RedisWriteTimeoutMs) * time.Millisecond,
+			PingTimeout:  time.Duration(config.RedisPingTimeoutMs) * time.Millisecond,
+		})
+		if err != nil {
+			log.Printf("warning: failed to initialize redis client: %v", err)
+		} else if client != nil {
+			cacheSvc = cache.NewService(
+				client,
+				cache.WithAsyncQueueSize(config.RedisAsyncQueue),
+				cache.WithAsyncWorkers(config.RedisAsyncWorkers),
+			)
+		}
+	}
+	defer func() {
+		_ = cacheSvc.Close()
+	}()
 
 	// Auto migrate database schemas
 	if err := db.DB.AutoMigrate(
@@ -66,7 +98,7 @@ func main() {
 	router.Use(middleware.CORSMiddleware())
 	router.Use(middleware.LoggingMiddleware())
 
-	routes.RegisterRoutes(router, db.DB)
+	routes.RegisterRoutes(router, db.DB, cacheSvc)
 
 	port := ":" + config.ServerPort
 	log.Printf("Starting API server on %s", port)

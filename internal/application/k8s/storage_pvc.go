@@ -14,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const pvcCacheTTL = 5 * time.Minute
+
 // CreateGroupPVC creates a new PVC for a group with performance logging.
 func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID uint, req *storage.CreateGroupStorageRequest, createdByID uint) (*storage.GroupPVC, error) {
 	startTime := time.Now()
@@ -102,7 +104,7 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID uint, req 
 		CreatedBy:    createdByID,
 	}
 
-	sm.invalidateCache(groupID)
+	sm.invalidatePVCsCache(ctx, groupID)
 
 	elapsed := time.Since(startTime)
 	slog.Info("PVC created successfully",
@@ -132,11 +134,67 @@ func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID uint) ([]st
 		return cached, nil
 	}
 
+	cacheKey := sm.pvcCacheKey(groupID)
+	if sm.cache != nil && sm.cache.Enabled() {
+		var cached []storage.GroupPVC
+		if err := sm.cache.GetJSON(ctx, cacheKey, &cached); err == nil {
+			sm.setCachedPVCs(groupID, cached, pvcCacheTTL)
+			elapsed := time.Since(startTime)
+			slog.Debug("PVC list retrieved from redis cache",
+				"group_id", groupID,
+				"count", len(cached),
+				"duration_ms", elapsed.Milliseconds())
+			return cached, nil
+		}
+	}
+
 	if k8sclient.Clientset == nil {
 		slog.Debug("k8s client not initialized, returning empty PVC list",
 			"group_id", groupID)
 		return []storage.GroupPVC{}, nil
 	}
+
+	if sm.cache != nil && sm.cache.Enabled() {
+		var pvcs []storage.GroupPVC
+		err := sm.cache.GetOrFetchJSON(ctx, cacheKey, pvcCacheTTL, &pvcs, func(ctx context.Context) (interface{}, error) {
+			return sm.listGroupPVCsFromK8s(ctx, groupID)
+		})
+		if err == nil {
+			sm.setCachedPVCs(groupID, pvcs, pvcCacheTTL)
+			elapsed := time.Since(startTime)
+			slog.Info("PVC list retrieved with redis cache",
+				"group_id", groupID,
+				"count", len(pvcs),
+				"duration_ms", elapsed.Milliseconds(),
+				"cache_ttl_seconds", int(pvcCacheTTL.Seconds()))
+			return pvcs, nil
+		}
+		slog.Warn("redis cache fetch failed, falling back to k8s",
+			"group_id", groupID,
+			"error", err)
+	}
+
+	result, err := sm.listGroupPVCsFromK8s(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	sm.setCachedPVCs(groupID, result, pvcCacheTTL)
+	if sm.cache != nil && sm.cache.Enabled() {
+		_ = sm.cache.AsyncSetJSON(ctx, cacheKey, result, pvcCacheTTL)
+	}
+
+	elapsed := time.Since(startTime)
+	slog.Info("PVC list retrieved from k8s API",
+		"group_id", groupID,
+		"count", len(result),
+		"duration_ms", elapsed.Milliseconds(),
+		"cache_ttl_seconds", int(pvcCacheTTL.Seconds()))
+
+	return result, nil
+}
+
+func (sm *StorageManager) listGroupPVCsFromK8s(ctx context.Context, groupID uint) ([]storage.GroupPVC, error) {
 
 	ns := sm.getGroupNamespace(groupID)
 	listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("storage-type=group,group-id=%d", groupID)}
@@ -175,15 +233,6 @@ func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID uint) ([]st
 			CreatedAt:    pvc.CreationTimestamp.Time,
 		})
 	}
-
-	sm.setCachedPVCs(groupID, result, 5*time.Minute)
-
-	elapsed := time.Since(startTime)
-	slog.Info("PVC list retrieved from k8s API",
-		"group_id", groupID,
-		"count", len(result),
-		"duration_ms", elapsed.Milliseconds(),
-		"cache_ttl_seconds", 300)
 
 	return result, nil
 }

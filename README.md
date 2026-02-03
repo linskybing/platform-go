@@ -243,6 +243,20 @@ make coverage-html
 go test -cover ./...
 ```
 
+### Make Targets
+
+Use `make help` to see all available commands. Key targets include:
+
+```bash
+# Skills-based commands (from .github/skills)
+make skills-lint              # Production standards
+make skills-compile           # Compilation check
+make skills-migration         # Database migration validation
+make docker-integration       # Docker integration tests
+make ci-extended              # Extended CI pipeline
+make production-check         # Full production validation
+```
+
 ---
 
 ## Testing
