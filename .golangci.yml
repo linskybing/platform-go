@@ -1,0 +1,30 @@
+linters:
+  enable:
+    - unused
+    - staticcheck
+    - govet
+    - errcheck
+    - gosimple
+    - ineffassign
+
+linters-settings:
+  staticcheck:
+    # Disable checks that are too strict or have false positives
+    checks:
+      - all
+      - -SA9003  # Empty branch - legitimate for error handling fallthrough patterns
+      - -SA4000  # Equal expressions
+      - -SA4001  # Invalid *regexp.Regexp
+
+output:
+  format: colored-line-number
+
+run:
+  timeout: 5m
+  skip-dirs:
+    - vendor
+    - .git
+    - test/integration
+  skip-files:
+    - ".*_test.go$"
+    - ".*_mock.go$"
