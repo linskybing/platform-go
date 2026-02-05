@@ -116,7 +116,14 @@ func (pbm *PVCBindingManager) CreateProjectPVCBinding(ctx context.Context, req *
 	// Persist PVC binding to database
 	if err := pbm.repos.ProjectPVCBinding.CreateBinding(ctx, projectBinding); err != nil {
 		// Rollback K8s PVC creation
-		_ = k8sclient.Clientset.CoreV1().PersistentVolumeClaims(projectNamespace).Delete(ctx, req.PVCName, metav1.DeleteOptions{})
+		if delErr := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(projectNamespace).Delete(ctx, req.PVCName, metav1.DeleteOptions{}); delErr != nil {
+			logger.Error("failed to rollback PVC creation after binding store failure",
+				"project_id", req.ProjectID,
+				"pvc_name", req.PVCName,
+				"namespace", projectNamespace,
+				"binding_error", err,
+				"rollback_error", delErr)
+		}
 		return nil, fmt.Errorf("failed to store binding: %w", err)
 	}
 

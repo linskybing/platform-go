@@ -51,7 +51,11 @@ func (s *ProjectService) GetProject(id uint) (*project.Project, error) {
 		return nil, ErrProjectNotFound
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), projectByIDKey(id), p, projectCacheTTL)
+		if err := s.cache.AsyncSetJSON(context.Background(), projectByIDKey(id), p, projectCacheTTL); err != nil {
+			slog.Warn("failed to cache project",
+				"project_id", id,
+				"error", err)
+		}
 	}
 	return &p, nil
 }
@@ -69,7 +73,11 @@ func (s *ProjectService) GetProjectsByUser(id uint) ([]view.ProjectUserView, err
 		return nil, ErrProjectNotFound
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), projectByUserKey(id), p, projectCacheTTL)
+		if err := s.cache.AsyncSetJSON(context.Background(), projectByUserKey(id), p, projectCacheTTL); err != nil {
+			slog.Warn("failed to cache user projects",
+				"user_id", id,
+				"error", err)
+		}
 	}
 	return p, nil
 }
@@ -168,7 +176,11 @@ func (s *ProjectService) DeleteProject(c *gin.Context, id uint) error {
 		return ErrProjectNotFound
 	}
 
-	_ = s.RemoveProjectResources(id)
+	if err := s.RemoveProjectResources(id); err != nil {
+		slog.Error("failed to remove project resources",
+			"project_id", id,
+			"error", err)
+	}
 
 	err = s.Repos.Project.DeleteProject(id)
 	if err == nil {
@@ -191,7 +203,10 @@ func (s *ProjectService) ListProjects() ([]project.Project, error) {
 		return nil, err
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), projectListKey(), projects, projectCacheTTL)
+		if err := s.cache.AsyncSetJSON(context.Background(), projectListKey(), projects, projectCacheTTL); err != nil {
+			slog.Warn("failed to cache project list",
+				"error", err)
+		}
 	}
 	return projects, nil
 }
@@ -249,6 +264,13 @@ func (s *ProjectService) invalidateProjectCache(projectID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = s.cache.Invalidate(ctx, projectListKey(), projectByIDKey(projectID))
-	_ = s.cache.InvalidatePrefix(ctx, "cache:project:by-user:")
+	if err := s.cache.Invalidate(ctx, projectListKey(), projectByIDKey(projectID)); err != nil {
+		slog.Warn("failed to invalidate project cache",
+			"project_id", projectID,
+			"error", err)
+	}
+	if err := s.cache.InvalidatePrefix(ctx, "cache:project:by-user:"); err != nil {
+		slog.Warn("failed to invalidate user project cache prefix",
+			"error", err)
+	}
 }

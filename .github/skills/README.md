@@ -72,6 +72,7 @@ Feature development and architecture:
 - **api-design-patterns** - RESTful API design and Gin framework patterns
 - **database-best-practices** - PostgreSQL, GORM, and query optimization
 - **kubernetes-integration** - Client-go usage and resource management
+- **redis-caching** - Distributed caching with Redis, Singleflight, and async writes
 - error-handling-guide
 
 **Quality Skills** (Testing & Deployment):
@@ -159,7 +160,34 @@ Feature development and architecture:
 
 ---
 
-### 5. database-best-practices
+### 5. redis-caching
+**Focus**: Redis caching implementation with distributed patterns
+**When to use**: When adding caching to improve performance or reducing database load
+**Key topics**:
+- Redis client configuration and connection pooling
+- Cache operations (Get, Set, GetJSON, SetJSON)
+- Async write workers and queue management
+- Cache penetration protection with Singleflight
+- Distributed locks for coordinating multiple processes
+- GetOrFetchJSON pattern for automatic cache management
+- Cache invalidation strategies
+- Environment variables for configuration
+- K8s deployment with Redis
+- Performance optimization (5-10x faster API responses)
+- Monitoring cache hit rates and performance
+- Graceful shutdown with worker cleanup
+- Testing with miniredis
+
+**Expected Outcomes**:
+- API response time: 1-2ms (cache hits) vs 100-500ms (misses)
+- Database query reduction: 70-80%
+- Cache hit rate target: 70-80%
+
+**Related skills**: database-best-practices, kubernetes-integration, security-best-practices
+
+---
+
+### 6. database-best-practices
 **Focus**: Database design, ORM usage with GORM, and query optimization
 **When to use**: When creating tables, writing queries, or optimizing performance
 **Key topics**:
@@ -178,7 +206,7 @@ Feature development and architecture:
 
 ---
 
-### 6. security-best-practices
+### 7. security-best-practices
 **Focus**: Authentication, authorization, and secure coding practices
 **When to use**: When handling user input, authentication, or sensitive data
 **Key topics**:
@@ -198,7 +226,7 @@ Feature development and architecture:
 
 ---
 
-### 7. error-handling-guide
+### 8. error-handling-guide
 **Focus**: Comprehensive error handling patterns and recovery
 **When to use**: When handling errors, logging, or implementing retry logic
 **Key topics**:
@@ -216,7 +244,7 @@ Feature development and architecture:
 
 ---
 
-### 8. package-organization
+### 9. package-organization
 **Focus**: Clean architecture, package structure, and code organization
 **When to use**: When designing packages, refactoring code, or planning new features
 **Key topics**:
@@ -237,7 +265,7 @@ Feature development and architecture:
 
 ---
 
-### 9. cicd-pipeline-optimization
+### 10. cicd-pipeline-optimization
 **Focus**: GitHub Actions workflows, build optimization, and automated testing
 **When to use**: When setting up CI/CD, optimizing builds, or adding tests to pipeline
 **Key topics**:
@@ -256,7 +284,7 @@ Feature development and architecture:
 
 ---
 
-### 10. monitoring-observability
+### 11. monitoring-observability
 **Focus**: Logging, metrics, tracing, and alerting
 **When to use**: When implementing logging, metrics collection, or health checks
 **Key topics**:
@@ -275,7 +303,7 @@ Feature development and architecture:
 
 ---
 
-### 11. file-structure-guidelines
+### 12. file-structure-guidelines
 **Focus**: Code file organization, modular design, 200-line file limit
 **When to use**: When creating new features, splitting large files, or designing directory structure
 **Key topics**:
@@ -293,7 +321,7 @@ Feature development and architecture:
 
 ---
 
-### 12. production-readiness-checklist
+### 13. production-readiness-checklist
 **Focus**: Production readiness verification, quality gates, deployment checks
 **When to use**: When preparing code for deployment or conducting pre-release verification
 **Key topics**:
@@ -311,6 +339,63 @@ Feature development and architecture:
 - Emergency rollback procedures
 
 **Related skills**: All other skills (comprehensive quality gate)
+
+---
+
+### 14. access-control-best-practices
+**Focus**: Role-based access control (RBAC), authorization patterns, permission hierarchy
+**When to use**: When implementing authentication, authorization, or access control in API endpoints
+**Key topics**:
+- RBAC (Role-Based Access Control) patterns
+- Authorization middleware implementation
+- Permission hierarchy design
+- Token validation and refresh
+- Resource-level authorization
+- JWT claims and scopes
+- API endpoint protection
+- Audit logging for access control
+- Multi-tenant authorization patterns
+- Access denial response handling
+
+**Related skills**: security-best-practices, api-design-patterns
+
+---
+
+### 15. code-validation-standards
+**Focus**: Code validation, pre-commit checks, automated quality gates
+**When to use**: When setting up validation pipelines, pre-commit hooks, or quality gates for code generation
+**Key topics**:
+- Code validation scripts and standards
+- Pre-commit validation checks
+- Static analysis tools configuration
+- Automated linting rules
+- Code generation validation
+- Test coverage gates
+- Performance regression detection
+- Security scanning tools
+- Quality metrics tracking
+- Validation reporting and dashboards
+
+**Related skills**: cicd-pipeline-optimization, testing-best-practices
+
+---
+
+### 16. markdown-documentation-standards
+**Focus**: Markdown formatting, documentation structure, consistent documentation practices
+**When to use**: When writing documentation, creating README files, or maintaining documentation standards
+**Key topics**:
+- Markdown formatting conventions
+- Documentation file organization
+- Code example formatting in docs
+- Table and list styling
+- Link and reference management
+- Documentation structure patterns
+- English-only documentation
+- Emoji and special character restrictions
+- API documentation templates
+- Documentation maintenance and updates
+
+**Related skills**: file-structure-guidelines, golang-production-standards
 
 ---
 
@@ -356,14 +441,15 @@ golang-production-standards (foundation)
 
 ## Statistics
 
-Total Skills: 12
-Total Documentation Lines: 5,935
-Average Skill Size: 495 lines
+Total Skills: 15
+Total Documentation Lines: 6,200+
+Average Skill Size: 413 lines
 
 Complete breakdown:
 - Foundation Skills: 3 (golang-production-standards, package-organization, file-structure-guidelines)
-- Implementation Skills: 4 (api-design-patterns, database-best-practices, kubernetes-integration, error-handling-guide)  
-- Quality Skills: 5 (testing-best-practices, security-best-practices, monitoring-observability, cicd-pipeline-optimization, production-readiness-checklist)
+- Implementation Skills: 5 (api-design-patterns, database-best-practices, kubernetes-integration, error-handling-guide, access-control-best-practices)  
+- Quality Skills: 6 (testing-best-practices, security-best-practices, monitoring-observability, cicd-pipeline-optimization, code-validation-standards, production-readiness-checklist)
+- Documentation Skills: 1 (markdown-documentation-standards)
 
 All skills:
 - 100% English documentation
@@ -505,8 +591,8 @@ For questions about skills usage:
 
 ---
 
-Last Updated: 2026-02-02
-Total Skills: 11
-Total Documentation: 5,900+ lines
-Code Examples: 250+
-Quality Checklists: 120+
+Last Updated: 2026-02-04
+Total Skills: 15
+Total Documentation: 6,200+ lines
+Code Examples: 280+
+Quality Checklists: 140+

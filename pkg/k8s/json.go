@@ -6,6 +6,7 @@ import (
 	"context"
 	applyJson "encoding/json"
 	"fmt"
+	"log/slog"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +36,7 @@ func ValidateK8sJSON(jsonBytes []byte) (*schema.GroupVersionKind, string, error)
 
 func CreateByJson(jsonStr []byte, ns string) error {
 	if Mapper == nil || DynamicClient == nil {
-		fmt.Printf("[MOCK] Created resource by JSON in namespace %s\n", ns)
+		slog.Debug("[MOCK] create resource by JSON", slog.String("namespace", ns))
 		return nil
 	}
 	// decode
@@ -58,13 +59,16 @@ func CreateByJson(jsonStr []byte, ns string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Created %s/%s\n", result.GetKind(), result.GetName())
+	slog.Info("Resource created successfully",
+		slog.String("kind", result.GetKind()),
+		slog.String("name", result.GetName()),
+		slog.String("namespace", ns))
 	return nil
 }
 
 func DeleteByJson(jsonStr []byte, ns string) error {
 	if Mapper == nil || DynamicClient == nil {
-		fmt.Printf("[MOCK] Deleted resource by JSON in namespace %s\n", ns)
+		slog.Debug("[MOCK] delete resource by JSON", slog.String("namespace", ns))
 		return nil
 	}
 	// decode
@@ -96,7 +100,7 @@ func DeleteByJson(jsonStr []byte, ns string) error {
 
 func UpdateByJson(jsonStr []byte, ns string) error {
 	if Mapper == nil || DynamicClient == nil {
-		fmt.Printf("[MOCK] Updated resource by JSON in namespace %s\n", ns)
+		slog.Debug("[MOCK] update resource by JSON", slog.String("namespace", ns))
 		return nil
 	}
 	// decode
@@ -119,6 +123,9 @@ func UpdateByJson(jsonStr []byte, ns string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Updated %s/%s\n", result.GetKind(), result.GetName())
+	slog.Info("Resource updated successfully",
+		slog.String("kind", result.GetKind()),
+		slog.String("name", result.GetName()),
+		slog.String("namespace", ns))
 	return nil
 }
