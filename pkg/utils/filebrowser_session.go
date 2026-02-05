@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/linskybing/platform-go/pkg/k8s" // 假設這是你的 k8s client wrapper
@@ -23,7 +24,9 @@ func getFileBrowserNames(pvcName string) (podName, svcName string) {
 // CreateFileBrowserPod creates a temporary Pod for file browsing
 func CreateFileBrowserPod(ctx context.Context, ns string, pvcName string) (*corev1.Pod, error) {
 	if k8s.Clientset == nil {
-		fmt.Printf("[MOCK] Created FB Pod for %s in %s\n", pvcName, ns)
+		slog.Debug("[MOCK] Created FileBrowser Pod",
+			slog.String("pvc", pvcName),
+			slog.String("namespace", ns))
 		return nil, nil
 	}
 
@@ -145,7 +148,8 @@ func CreateFileBrowserService(ctx context.Context, ns string, pvcName string) (s
 // DeleteFileBrowserResources cleans up both Pod and Service
 func DeleteFileBrowserResources(ctx context.Context, ns string, pvcName string) error {
 	if k8s.Clientset == nil {
-		fmt.Printf("[MOCK] Cleaning up FB resources for %s\n", pvcName)
+		slog.Debug("[MOCK] Cleaning up FileBrowser resources",
+			slog.String("pvc", pvcName))
 		return nil
 	}
 
@@ -166,7 +170,9 @@ func DeleteFileBrowserResources(ctx context.Context, ns string, pvcName string) 
 		return fmt.Errorf("failed to delete pod: %w", errPod)
 	}
 
-	fmt.Printf("Stopped FileBrowser for %s/%s\n", ns, pvcName)
+	slog.Info("FileBrowser stopped successfully",
+		slog.String("namespace", ns),
+		slog.String("pvc", pvcName))
 	return nil
 }
 
@@ -254,7 +260,8 @@ func StartUserHubBrowser(ctx context.Context, username string) (string, error) {
 
 func StopUserHubBrowser(ctx context.Context, username string) error {
 	if k8s.Clientset == nil {
-		fmt.Printf("[MOCK] Stopped Hub Browser for %s\n", username)
+		slog.Debug("[MOCK] Stopped Hub Browser",
+			slog.String("username", username))
 		return nil
 	}
 

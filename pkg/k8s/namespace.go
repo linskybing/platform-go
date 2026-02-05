@@ -5,6 +5,7 @@ import ()
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 
 func CreateNamespace(name string) error {
 	if Clientset == nil {
-		fmt.Printf("[MOCK] create Namespace: %s successfully\n", name)
+		slog.Debug("[MOCK] create namespace", slog.String("name", name))
 		return nil
 	}
 	_, err := Clientset.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
@@ -34,13 +35,13 @@ func CreateNamespace(name string) error {
 		return fmt.Errorf("failed create namespace: %v", err)
 	}
 
-	fmt.Printf("create Namespace: %s successfully\n", name)
+	slog.Info("Namespace created successfully", slog.String("name", name))
 	return nil
 }
 
 func DeleteNamespace(name string) error {
 	if Clientset == nil {
-		fmt.Printf("[MOCK] Deleted namespace: %s\n", name)
+		slog.Debug("[MOCK] delete namespace", slog.String("name", name))
 		return nil
 	}
 	err := Clientset.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
@@ -48,7 +49,7 @@ func DeleteNamespace(name string) error {
 		return fmt.Errorf("failed to delete namespace %s: %w", name, err)
 	}
 
-	fmt.Printf("Deleted namespace: %s\n", name)
+	slog.Info("Namespace deleted successfully", slog.String("name", name))
 	return nil
 }
 
@@ -57,7 +58,7 @@ func EnsureNamespaceExists(nsName string) error {
 	if Clientset == nil {
 		// In unit tests or environments without a k8s client, behave as a no-op
 		// and assume the namespace exists / can be created.
-		fmt.Printf("[MOCK] ensure namespace exists: %s\n", nsName)
+		slog.Debug("[MOCK] ensure namespace exists", slog.String("namespace", nsName))
 		return nil
 	}
 

@@ -2,8 +2,8 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/domain/audit"
@@ -19,7 +19,11 @@ var LogAuditWithConsole = func(c *gin.Context, action, resourceType, resourceID 
 	// Run DB operation in background
 	go func() {
 		if err := LogAudit(userID, ip, ua, action, resourceType, resourceID, oldData, newData, msg, repos); err != nil {
-			fmt.Printf("[LogAudit] error: %v\n", err)
+			slog.Error("Failed to log audit",
+				slog.String("action", action),
+				slog.String("resource_type", resourceType),
+				slog.String("resource_id", resourceID),
+				slog.Any("error", err))
 		}
 	}()
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -186,13 +187,16 @@ func watchAndSend(
 	if err == nil {
 		for _, item := range list.Items {
 			if err := sendObject("ADDED", &item); err != nil && ctx.Err() != context.Canceled {
-				fmt.Printf("Failed to send list item: %v\n", err)
+				slog.Warn("Failed to send list item", slog.Any("error", err))
 			}
 		}
 	} else if ctx.Err() == context.Canceled {
 		return
 	} else {
-		fmt.Printf("List error for %s.%s: %v\n", gvr.Resource, gvr.Group, err)
+		slog.Error("List error for resource",
+			slog.String("resource", gvr.Resource),
+			slog.String("group", gvr.Group),
+			slog.Any("error", err))
 	}
 
 	// Watch Loop
@@ -229,7 +233,7 @@ func watchAndSend(
 					}
 
 					if err := sendObject(string(event.Type), obj); err != nil && ctx.Err() != context.Canceled {
-						fmt.Printf("Failed to send watch event: %v\n", err)
+						slog.Warn("Failed to send watch event", slog.Any("error", err))
 					}
 				}
 			}

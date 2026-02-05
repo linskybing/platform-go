@@ -59,7 +59,10 @@ func (s *ConfigFileService) ListConfigFiles() ([]configfile.ConfigFile, error) {
 		return nil, err
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), configFileListKey(), files, configFileCacheTTL)
+		if err := s.cache.AsyncSetJSON(context.Background(), configFileListKey(), files, configFileCacheTTL); err != nil {
+			slog.Warn("failed to cache config file list",
+				"error", err)
+		}
 	}
 	return files, nil
 }
@@ -77,7 +80,11 @@ func (s *ConfigFileService) GetConfigFile(id uint) (*configfile.ConfigFile, erro
 		return nil, err
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), configFileByIDKey(id), cf, configFileCacheTTL)
+		if err := s.cache.AsyncSetJSON(context.Background(), configFileByIDKey(id), cf, configFileCacheTTL); err != nil {
+			slog.Warn("failed to cache config file",
+				"config_id", id,
+				"error", err)
+		}
 	}
 	return cf, nil
 }
@@ -95,7 +102,11 @@ func (s *ConfigFileService) ListConfigFilesByProjectID(projectID uint) ([]config
 		return nil, err
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), configFileByProjectKey(projectID), files, configFileCacheTTL)
+		if err := s.cache.AsyncSetJSON(context.Background(), configFileByProjectKey(projectID), files, configFileCacheTTL); err != nil {
+			slog.Warn("failed to cache project config files",
+				"project_id", projectID,
+				"error", err)
+		}
 	}
 	return files, nil
 }
