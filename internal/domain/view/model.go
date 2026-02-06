@@ -3,7 +3,7 @@ package view
 import "time"
 
 type ProjectGroupView struct {
-	GID           uint   `gorm:"column:g_id" json:"GID"`
+	GID           string `gorm:"column:g_id" json:"GID"`
 	GroupName     string `gorm:"column:group_name" json:"GroupName"`
 	ProjectCount  int64  `gorm:"column:project_count" json:"ProjectCount"`
 	ResourceCount int64  `gorm:"column:resource_count" json:"ResourceCount"`
@@ -12,9 +12,9 @@ type ProjectGroupView struct {
 }
 
 type ProjectResourceView struct {
-	PID              uint   `gorm:"column:p_id" json:"PID"`
+	PID              string `gorm:"column:p_id" json:"PID"`
 	ProjectName      string `gorm:"column:project_name" json:"ProjectName"`
-	RID              uint   `gorm:"column:r_id" json:"RID"`
+	RID              string `gorm:"column:r_id" json:"RID"`
 	Type             string `gorm:"column:type" json:"Type"`
 	Name             string `gorm:"column:name" json:"Name"`
 	Filename         string `gorm:"column:filename" json:"Filename"`
@@ -36,15 +36,15 @@ type GroupResourceView struct {
 }
 
 type UserGroupView struct {
-	UID       uint   `gorm:"column:u_id" json:"UID"`
+	UID       string `gorm:"column:u_id" json:"UID"`
 	Username  string `gorm:"column:username" json:"Username"`
-	GID       uint   `gorm:"column:g_id" json:"GID"`
+	GID       string `gorm:"column:g_id" json:"GID"`
 	GroupName string `gorm:"column:group_name" json:"GroupName"`
 	Role      string `gorm:"column:role" json:"Role"`
 }
 
 type UserWithSuperAdmin struct {
-	UID          uint      `gorm:"column:u_id" json:"UID"`
+	UID          string    `gorm:"column:u_id" json:"UID"`
 	Username     string    `gorm:"column:username" json:"Username"`
 	Password     string    `gorm:"column:password" json:"-"`
 	Email        string    `gorm:"column:email" json:"Email"`
@@ -57,12 +57,12 @@ type UserWithSuperAdmin struct {
 }
 
 type ProjectUserView struct {
-	PID         uint   `gorm:"column:p_id" json:"PID"`
+	PID         string `gorm:"column:p_id" json:"PID"`
 	ProjectName string `gorm:"column:project_name" json:"ProjectName"`
-	GID         uint   `gorm:"column:g_id" json:"GID"`
+	GID         string `gorm:"column:g_id" json:"GID"`
 	GroupName   string `gorm:"column:group_name" json:"GroupName"`
 	Role        string `gorm:"column:role" json:"Role"`
-	UID         uint   `gorm:"column:u_id" json:"UID"`
+	UID         string `gorm:"column:u_id" json:"UID"`
 	Username    string `gorm:"column:username" json:"Username"`
 }
 

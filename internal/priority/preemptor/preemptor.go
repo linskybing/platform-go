@@ -28,7 +28,6 @@ type ResourceRequirement struct {
 	CPU    float64
 	Memory int64
 	GPU    int
-	MPS    int
 }
 
 // PreemptionConfig defines preemption behavior configuration

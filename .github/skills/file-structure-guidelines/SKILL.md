@@ -1,7 +1,12 @@
 ---
 name: file-structure-guidelines
 description: Code file organization, modular design, directory structure planning, and 200-line file limit implementation for maintainable platform-go codebase
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # File Structure and Modularization Guidelines
 

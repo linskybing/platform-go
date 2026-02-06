@@ -2,6 +2,9 @@ package storage
 
 import (
 	"time"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
+	"gorm.io/gorm"
 )
 
 // StoragePermission defines access levels for group storage
@@ -21,16 +24,23 @@ const (
 
 // GroupStoragePermission represents user permissions for a specific group PVC
 type GroupStoragePermission struct {
-	ID         uint              `gorm:"primaryKey;column:id;autoIncrement"`
-	GroupID    uint              `gorm:"not null;index:idx_group_pvc_user"`          // Group ID
-	PVCID      string            `gorm:"size:100;not null;index:idx_group_pvc_user"` // PVC ID (group-{gid}-{uuid})
-	PVCName    string            `gorm:"size:100;not null;index"`                    // K8s PVC name for quick lookup
-	UserID     uint              `gorm:"not null;index:idx_group_pvc_user,unique"`   // User ID
-	Permission StoragePermission `gorm:"type:varchar(20);not null;default:'none'"`   // none, read, write
-	GrantedBy  uint              `gorm:"not null"`                                   // Admin who granted permission
+	ID         string            `gorm:"primaryKey;column:id;size:21"`
+	GroupID    string            `gorm:"not null;index:idx_group_pvc_user;size:21"`        // Group ID
+	PVCID      string            `gorm:"size:100;not null;index:idx_group_pvc_user"`       // PVC ID (group-{gid}-{uuid})
+	PVCName    string            `gorm:"size:100;not null;index"`                          // K8s PVC name for quick lookup
+	UserID     string            `gorm:"not null;index:idx_group_pvc_user,unique;size:21"` // User ID
+	Permission StoragePermission `gorm:"type:varchar(20);not null;default:'none'"`         // none, read, write
+	GrantedBy  string            `gorm:"not null;size:21"`                                 // Admin who granted permission
 	GrantedAt  time.Time         `gorm:"column:granted_at;autoCreateTime"`
 	UpdatedAt  time.Time         `gorm:"column:updated_at;autoUpdateTime"`
 	RevokedAt  *time.Time        `gorm:"column:revoked_at;index"` // NULL if active
+}
+
+func (m *GroupStoragePermission) BeforeCreate(tx *gorm.DB) (err error) {
+	if m.ID == "" {
+		m.ID, err = gonanoid.New()
+	}
+	return
 }
 
 // TableName specifies the database table name
@@ -55,14 +65,21 @@ func (p *GroupStoragePermission) CanWrite() bool {
 
 // GroupStorageAccessPolicy defines default access policy for a group PVC
 type GroupStorageAccessPolicy struct {
-	ID                uint              `gorm:"primaryKey;column:id;autoIncrement"`
-	GroupID           uint              `gorm:"not null;index"`
+	ID                string            `gorm:"primaryKey;column:id;size:21"`
+	GroupID           string            `gorm:"not null;index;size:21"`
 	PVCID             string            `gorm:"size:100;not null;uniqueIndex"`            // One policy per PVC
 	DefaultPermission StoragePermission `gorm:"type:varchar(20);not null;default:'none'"` // Default for new members
 	AdminOnly         bool              `gorm:"default:false"`                            // Only admins can access
-	CreatedBy         uint              `gorm:"not null"`                                 // Admin who created policy
+	CreatedBy         string            `gorm:"not null;size:21"`                         // Admin who created policy
 	CreatedAt         time.Time         `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt         time.Time         `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+func (m *GroupStorageAccessPolicy) BeforeCreate(tx *gorm.DB) (err error) {
+	if m.ID == "" {
+		m.ID, err = gonanoid.New()
+	}
+	return
 }
 
 // TableName specifies the database table name
@@ -73,9 +90,9 @@ func (GroupStorageAccessPolicy) TableName() string {
 // ProjectPVCBinding represents a PVC in user's project namespace that binds to group PV
 // This allows users to mount group storage in their own project namespaces
 type ProjectPVCBinding struct {
-	ID               uint      `gorm:"primaryKey;column:id;autoIncrement"`
-	ProjectID        uint      `gorm:"not null;index"`                 // Project ID
-	UserID           uint      `gorm:"not null;index"`                 // User ID
+	ID               string    `gorm:"primaryKey;column:id;size:21"`
+	ProjectID        string    `gorm:"not null;index;size:21"`         // Project ID
+	UserID           string    `gorm:"not null;index;size:21"`         // User ID
 	GroupPVCID       string    `gorm:"size:100;not null;index"`        // Source group PVC ID
 	ProjectPVCName   string    `gorm:"size:100;not null;uniqueIndex"`  // PVC name in project namespace
 	ProjectNamespace string    `gorm:"size:100;not null;index"`        // Project namespace
@@ -84,6 +101,13 @@ type ProjectPVCBinding struct {
 	Status           string    `gorm:"size:50;default:'Pending'"`      // Bound, Pending, Failed
 	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt        time.Time `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+func (m *ProjectPVCBinding) BeforeCreate(tx *gorm.DB) (err error) {
+	if m.ID == "" {
+		m.ID, err = gonanoid.New()
+	}
+	return
 }
 
 // TableName specifies the database table name

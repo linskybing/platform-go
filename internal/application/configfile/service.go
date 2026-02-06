@@ -67,7 +67,7 @@ func (s *ConfigFileService) ListConfigFiles() ([]configfile.ConfigFile, error) {
 	return files, nil
 }
 
-func (s *ConfigFileService) GetConfigFile(id uint) (*configfile.ConfigFile, error) {
+func (s *ConfigFileService) GetConfigFile(id string) (*configfile.ConfigFile, error) {
 	if s.cache != nil && s.cache.Enabled() {
 		var cached configfile.ConfigFile
 		if err := s.cache.GetJSON(context.Background(), configFileByIDKey(id), &cached); err == nil {
@@ -89,7 +89,7 @@ func (s *ConfigFileService) GetConfigFile(id uint) (*configfile.ConfigFile, erro
 	return cf, nil
 }
 
-func (s *ConfigFileService) ListConfigFilesByProjectID(projectID uint) ([]configfile.ConfigFile, error) {
+func (s *ConfigFileService) ListConfigFilesByProjectID(projectID string) ([]configfile.ConfigFile, error) {
 	if s.cache != nil && s.cache.Enabled() {
 		var cached []configfile.ConfigFile
 		if err := s.cache.GetJSON(context.Background(), configFileByProjectKey(projectID), &cached); err == nil {
@@ -151,14 +151,14 @@ func (s *ConfigFileService) CreateConfigFile(c *gin.Context, cf configfile.Creat
 
 	logFn := utils.LogAuditWithConsole
 	go func(fn func(*gin.Context, string, string, string, interface{}, interface{}, string, repository.AuditRepo)) {
-		fn(c, "create", "config_file", fmt.Sprintf("cf_id=%d", createdCF.CFID), nil, *createdCF, "", s.Repos.Audit)
+		fn(c, "create", "config_file", fmt.Sprintf("cf_id=%s", createdCF.CFID), nil, *createdCF, "", s.Repos.Audit)
 	}(logFn)
 	s.invalidateConfigFileCache(createdCF.CFID, createdCF.ProjectID)
 
 	return createdCF, nil
 }
 
-func (s *ConfigFileService) UpdateConfigFile(c *gin.Context, id uint, input configfile.ConfigFileUpdateDTO) (*configfile.ConfigFile, error) {
+func (s *ConfigFileService) UpdateConfigFile(c *gin.Context, id string, input configfile.ConfigFileUpdateDTO) (*configfile.ConfigFile, error) {
 	existing, err := s.Repos.ConfigFile.GetConfigFileByID(id)
 	if err != nil {
 		return nil, ErrConfigFileNotFound
@@ -191,12 +191,12 @@ func (s *ConfigFileService) UpdateConfigFile(c *gin.Context, id uint, input conf
 	}
 	s.invalidateConfigFileCache(existing.CFID, existing.ProjectID)
 
-	utils.LogAuditWithConsole(c, "update", "config_file", fmt.Sprintf("cf_id=%d", existing.CFID), oldCF, *existing, "", s.Repos.Audit)
+	utils.LogAuditWithConsole(c, "update", "config_file", fmt.Sprintf("cf_id=%s", existing.CFID), oldCF, *existing, "", s.Repos.Audit)
 
 	return existing, nil
 }
 
-func (s *ConfigFileService) DeleteConfigFile(c *gin.Context, id uint) error {
+func (s *ConfigFileService) DeleteConfigFile(c *gin.Context, id string) error {
 	cf, err := s.Repos.ConfigFile.GetConfigFileByID(id)
 	if err != nil {
 		return ErrConfigFileNotFound
@@ -228,7 +228,7 @@ func (s *ConfigFileService) DeleteConfigFile(c *gin.Context, id uint) error {
 	}
 	s.invalidateConfigFileCache(cf.CFID, cf.ProjectID)
 
-	utils.LogAuditWithConsole(c, "delete", "config_file", fmt.Sprintf("cf_id=%d", cf.CFID), *cf, nil, "", s.Repos.Audit)
+	utils.LogAuditWithConsole(c, "delete", "config_file", fmt.Sprintf("cf_id=%s", cf.CFID), *cf, nil, "", s.Repos.Audit)
 	return nil
 }
 
@@ -236,15 +236,15 @@ func configFileListKey() string {
 	return "cache:configfile:list"
 }
 
-func configFileByIDKey(id uint) string {
-	return fmt.Sprintf("cache:configfile:by-id:%d", id)
+func configFileByIDKey(id string) string {
+	return fmt.Sprintf("cache:configfile:by-id:%s", id)
 }
 
-func configFileByProjectKey(projectID uint) string {
-	return fmt.Sprintf("cache:configfile:by-project:%d", projectID)
+func configFileByProjectKey(projectID string) string {
+	return fmt.Sprintf("cache:configfile:by-project:%s", projectID)
 }
 
-func (s *ConfigFileService) invalidateConfigFileCache(id, projectID uint) {
+func (s *ConfigFileService) invalidateConfigFileCache(id, projectID string) {
 	if s.cache == nil || !s.cache.Enabled() {
 		return
 	}

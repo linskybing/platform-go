@@ -9,12 +9,12 @@ import (
 
 type ConfigFileRepo interface {
 	CreateConfigFile(cf *configfile.ConfigFile) error
-	GetConfigFileByID(id uint) (*configfile.ConfigFile, error)
+	GetConfigFileByID(id string) (*configfile.ConfigFile, error)
 	UpdateConfigFile(cf *configfile.ConfigFile) error
-	DeleteConfigFile(id uint) error
+	DeleteConfigFile(id string) error
 	ListConfigFiles() ([]configfile.ConfigFile, error)
-	GetConfigFilesByProjectID(projectID uint) ([]configfile.ConfigFile, error)
-	GetGroupIDByConfigFileID(cfID uint) (uint, error)
+	GetConfigFilesByProjectID(projectID string) ([]configfile.ConfigFile, error)
+	GetGroupIDByConfigFileID(cfID string) (string, error)
 	WithTx(tx *gorm.DB) ConfigFileRepo
 }
 
@@ -32,16 +32,16 @@ func (r *DBConfigFileRepo) CreateConfigFile(cf *configfile.ConfigFile) error {
 	return r.db.Create(cf).Error
 }
 
-func (r *DBConfigFileRepo) GetConfigFileByID(id uint) (*configfile.ConfigFile, error) {
+func (r *DBConfigFileRepo) GetConfigFileByID(id string) (*configfile.ConfigFile, error) {
 	var cf configfile.ConfigFile
-	if err := r.db.First(&cf, id).Error; err != nil {
+	if err := r.db.First(&cf, "cf_id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &cf, nil
 }
 
 func (r *DBConfigFileRepo) UpdateConfigFile(cf *configfile.ConfigFile) error {
-	if cf.CFID == 0 {
+	if cf.CFID == "" {
 		return fmt.Errorf("missing ConfigFile ID: validation failed")
 	}
 	if err := r.db.Save(cf).Error; err != nil {
@@ -50,8 +50,8 @@ func (r *DBConfigFileRepo) UpdateConfigFile(cf *configfile.ConfigFile) error {
 	return nil
 }
 
-func (r *DBConfigFileRepo) DeleteConfigFile(id uint) error {
-	return r.db.Delete(&configfile.ConfigFile{}, id).Error
+func (r *DBConfigFileRepo) DeleteConfigFile(id string) error {
+	return r.db.Delete(&configfile.ConfigFile{}, "cf_id = ?", id).Error
 }
 
 func (r *DBConfigFileRepo) ListConfigFiles() ([]configfile.ConfigFile, error) {
@@ -62,7 +62,7 @@ func (r *DBConfigFileRepo) ListConfigFiles() ([]configfile.ConfigFile, error) {
 	return list, nil
 }
 
-func (r *DBConfigFileRepo) GetConfigFilesByProjectID(projectID uint) ([]configfile.ConfigFile, error) {
+func (r *DBConfigFileRepo) GetConfigFilesByProjectID(projectID string) ([]configfile.ConfigFile, error) {
 	var files []configfile.ConfigFile
 	if err := r.db.Where("project_id = ?", projectID).Find(&files).Error; err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func (r *DBConfigFileRepo) GetConfigFilesByProjectID(projectID uint) ([]configfi
 	return files, nil
 }
 
-func (r *DBConfigFileRepo) GetGroupIDByConfigFileID(cfID uint) (uint, error) {
-	var gID uint
+func (r *DBConfigFileRepo) GetGroupIDByConfigFileID(cfID string) (string, error) {
+	var gID string
 	err := r.db.Table("config_files cf").
 		Select("p.g_id").
 		Joins("JOIN project_list p ON cf.project_id = p.p_id").
@@ -79,7 +79,7 @@ func (r *DBConfigFileRepo) GetGroupIDByConfigFileID(cfID uint) (uint, error) {
 		Scan(&gID).Error
 
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return gID, nil
 }

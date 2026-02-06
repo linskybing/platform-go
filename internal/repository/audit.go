@@ -8,7 +8,7 @@ import (
 )
 
 type AuditQueryParams struct {
-	UserID       *uint
+	UserID       *string
 	ResourceType *string
 	Action       *string
 	StartTime    *time.Time

@@ -20,7 +20,7 @@ func TestAuditLogStructure(t *testing.T) {
 			setup: func() AuditLog {
 				return AuditLog{
 					ID:           1,
-					UserID:       100,
+					UserID:       "100",
 					Action:       "CREATE",
 					ResourceType: "Project",
 					ResourceID:   "proj-123",
@@ -34,7 +34,7 @@ func TestAuditLogStructure(t *testing.T) {
 			},
 			verify: func(log AuditLog) bool {
 				return log.ID == 1 &&
-					log.UserID == 100 &&
+					log.UserID == "100" &&
 					log.Action == "CREATE" &&
 					log.ResourceType == "Project" &&
 					log.ResourceID == "proj-123"
@@ -45,7 +45,7 @@ func TestAuditLogStructure(t *testing.T) {
 			name: "minimal_audit_log",
 			setup: func() AuditLog {
 				return AuditLog{
-					UserID:       50,
+					UserID:       "50",
 					Action:       "UPDATE",
 					ResourceType: "User",
 					ResourceID:   "user-456",
@@ -53,7 +53,7 @@ func TestAuditLogStructure(t *testing.T) {
 				}
 			},
 			verify: func(log AuditLog) bool {
-				return log.UserID == 50 &&
+				return log.UserID == "50" &&
 					log.Action == "UPDATE" &&
 					log.ResourceType == "User" &&
 					log.ResourceID == "user-456"
@@ -64,7 +64,7 @@ func TestAuditLogStructure(t *testing.T) {
 			name: "audit_log_with_empty_json",
 			setup: func() AuditLog {
 				return AuditLog{
-					UserID:       75,
+					UserID:       "75",
 					Action:       "DELETE",
 					ResourceType: "Resource",
 					ResourceID:   "res-789",
@@ -74,7 +74,7 @@ func TestAuditLogStructure(t *testing.T) {
 				}
 			},
 			verify: func(log AuditLog) bool {
-				return len(log.OldData) > 0 && log.UserID == 75
+				return len(log.OldData) > 0 && log.UserID == "75"
 			},
 			wantErr: false,
 		},
@@ -83,7 +83,7 @@ func TestAuditLogStructure(t *testing.T) {
 			setup: func() AuditLog {
 				longDesc := "This is a very long description of the audit event that contains multiple sentences and provides detailed information about what action was performed on the resource."
 				return AuditLog{
-					UserID:       100,
+					UserID:       "100",
 					Action:       "MODIFY",
 					ResourceType: "Configuration",
 					ResourceID:   "config-001",
@@ -100,7 +100,7 @@ func TestAuditLogStructure(t *testing.T) {
 			name: "audit_log_with_ipv6",
 			setup: func() AuditLog {
 				return AuditLog{
-					UserID:       100,
+					UserID:       "100",
 					Action:       "READ",
 					ResourceType: "Data",
 					ResourceID:   "data-123",
@@ -117,7 +117,7 @@ func TestAuditLogStructure(t *testing.T) {
 			name: "audit_log_with_zero_user_id_boundary",
 			setup: func() AuditLog {
 				return AuditLog{
-					UserID:       0,
+					UserID:       "0",
 					Action:       "SYSTEM",
 					ResourceType: "System",
 					ResourceID:   "sys-000",
@@ -125,7 +125,7 @@ func TestAuditLogStructure(t *testing.T) {
 				}
 			},
 			verify: func(log AuditLog) bool {
-				return log.UserID == 0
+				return log.UserID == "0"
 			},
 			wantErr: false,
 		},
@@ -134,7 +134,7 @@ func TestAuditLogStructure(t *testing.T) {
 			setup: func() AuditLog {
 				return AuditLog{
 					ID:           4294967295, // Max uint32
-					UserID:       1000000,
+					UserID:       "1000000",
 					Action:       "ARCHIVE",
 					ResourceType: "Project",
 					ResourceID:   "proj-max",
@@ -170,7 +170,7 @@ func TestAuditLogFieldValidation(t *testing.T) {
 			name: "action_field_validation",
 			setupFunc: func() AuditLog {
 				return AuditLog{
-					UserID:       1,
+					UserID:       "1",
 					Action:       "CREATE",
 					ResourceType: "Project",
 					ResourceID:   "id-1",
@@ -186,7 +186,7 @@ func TestAuditLogFieldValidation(t *testing.T) {
 			name: "resource_type_field_validation",
 			setupFunc: func() AuditLog {
 				return AuditLog{
-					UserID:       1,
+					UserID:       "1",
 					Action:       "UPDATE",
 					ResourceType: "ProjectConfiguration",
 					ResourceID:   "id-2",
@@ -202,7 +202,7 @@ func TestAuditLogFieldValidation(t *testing.T) {
 			name: "resource_id_not_empty",
 			setupFunc: func() AuditLog {
 				return AuditLog{
-					UserID:       1,
+					UserID:       "1",
 					Action:       "DELETE",
 					ResourceType: "User",
 					ResourceID:   "user-123",
@@ -219,7 +219,7 @@ func TestAuditLogFieldValidation(t *testing.T) {
 			setupFunc: func() AuditLog {
 				now := time.Now()
 				return AuditLog{
-					UserID:       1,
+					UserID:       "1",
 					Action:       "CREATE",
 					ResourceType: "Project",
 					ResourceID:   "id-3",
@@ -280,7 +280,7 @@ func TestAuditLogJSONMarshaling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			log := AuditLog{
-				UserID:       1,
+				UserID:       "1",
 				Action:       "CREATE",
 				ResourceType: "Test",
 				ResourceID:   "test-1",

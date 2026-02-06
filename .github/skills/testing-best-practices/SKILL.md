@@ -1,7 +1,12 @@
 ---
 name: testing-best-practices
 description: Comprehensive testing guidelines for unit tests, integration tests, table-driven tests, and test coverage in platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Testing Best Practices
 

@@ -165,6 +165,23 @@ func (tc *TestCluster) WaitForPodReady(ctx context.Context, namespace, name stri
 	return fmt.Errorf("timeout waiting for pod %s to be ready", name)
 }
 
+// WaitForPodDeleted waits for pod to be fully deleted
+func (tc *TestCluster) WaitForPodDeleted(ctx context.Context, namespace, name string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+
+	for time.Now().Before(deadline) {
+		_, err := tc.Client.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			// Pod not found means it's deleted
+			return nil
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	return fmt.Errorf("timeout waiting for pod %s to be deleted", name)
+}
+
 // WaitForPVCBound waits for PVC to be bound
 func (tc *TestCluster) WaitForPVCBound(ctx context.Context, namespace, name string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)

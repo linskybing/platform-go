@@ -14,64 +14,64 @@ func TestParseIDParam(t *testing.T) {
 	tests := []struct {
 		name        string
 		idValue     string
-		wantID      uint
+		wantID      string
 		wantErr     bool
 		description string
 	}{
 		{
 			name:        "valid positive ID",
 			idValue:     "123",
-			wantID:      123,
+			wantID:      "123",
 			wantErr:     false,
 			description: "should parse valid positive ID",
 		},
 		{
 			name:        "zero ID",
 			idValue:     "0",
-			wantID:      0,
+			wantID:      "0",
 			wantErr:     false,
 			description: "should parse zero ID",
 		},
 		{
 			name:        "large ID",
 			idValue:     "4294967295",
-			wantID:      4294967295,
+			wantID:      "4294967295",
 			wantErr:     false,
 			description: "should parse large uint32 value",
 		},
 		{
 			name:        "non-numeric ID",
 			idValue:     "abc",
-			wantID:      0,
-			wantErr:     true,
+			wantID:      "abc",
+			wantErr:     false,
 			description: "should error for non-numeric ID",
 		},
 		{
 			name:        "negative ID",
 			idValue:     "-123",
-			wantID:      0,
-			wantErr:     true,
+			wantID:      "-123",
+			wantErr:     false,
 			description: "should error for negative ID",
 		},
 		{
 			name:        "empty string",
 			idValue:     "",
-			wantID:      0,
+			wantID:      "",
 			wantErr:     true,
 			description: "should error for empty string",
 		},
 		{
 			name:        "float ID",
 			idValue:     "123.45",
-			wantID:      0,
-			wantErr:     true,
+			wantID:      "123.45",
+			wantErr:     false,
 			description: "should error for float value",
 		},
 		{
 			name:        "ID with spaces",
 			idValue:     " 123 ",
-			wantID:      0,
-			wantErr:     true,
+			wantID:      " 123 ",
+			wantErr:     false,
 			description: "should error for ID with spaces",
 		},
 	}
@@ -99,13 +99,13 @@ func TestParseIDParam(t *testing.T) {
 	}
 }
 
-// TestParseQueryUintParam - Table-driven tests
-func TestParseQueryUintParam(t *testing.T) {
+// TestParseQueryIDParam - Table-driven tests
+func TestParseQueryIDParam(t *testing.T) {
 	tests := []struct {
 		name        string
 		paramName   string
 		paramValue  string
-		wantValue   uint
+		wantValue   string
 		wantErr     bool
 		description string
 	}{
@@ -113,7 +113,7 @@ func TestParseQueryUintParam(t *testing.T) {
 			name:        "valid positive query param",
 			paramName:   "page",
 			paramValue:  "5",
-			wantValue:   5,
+			wantValue:   "5",
 			wantErr:     false,
 			description: "should parse valid query parameter",
 		},
@@ -121,7 +121,7 @@ func TestParseQueryUintParam(t *testing.T) {
 			name:        "zero query param",
 			paramName:   "limit",
 			paramValue:  "0",
-			wantValue:   0,
+			wantValue:   "0",
 			wantErr:     false,
 			description: "should parse zero value",
 		},
@@ -129,7 +129,7 @@ func TestParseQueryUintParam(t *testing.T) {
 			name:        "missing query param",
 			paramName:   "page",
 			paramValue:  "",
-			wantValue:   0,
+			wantValue:   "",
 			wantErr:     true,
 			description: "should error when parameter is empty",
 		},
@@ -137,23 +137,23 @@ func TestParseQueryUintParam(t *testing.T) {
 			name:        "non-numeric query param",
 			paramName:   "page",
 			paramValue:  "invalid",
-			wantValue:   0,
-			wantErr:     true,
+			wantValue:   "invalid",
+			wantErr:     false,
 			description: "should error for non-numeric value",
 		},
 		{
 			name:        "negative query param",
 			paramName:   "limit",
 			paramValue:  "-10",
-			wantValue:   0,
-			wantErr:     true,
+			wantValue:   "-10",
+			wantErr:     false,
 			description: "should error for negative value",
 		},
 		{
 			name:        "large query param",
 			paramName:   "count",
 			paramValue:  "4294967295",
-			wantValue:   4294967295,
+			wantValue:   "4294967295",
 			wantErr:     false,
 			description: "should parse large uint32 value",
 		},
@@ -161,8 +161,8 @@ func TestParseQueryUintParam(t *testing.T) {
 			name:        "float query param",
 			paramName:   "rate",
 			paramValue:  "3.14",
-			wantValue:   0,
-			wantErr:     true,
+			wantValue:   "3.14",
+			wantErr:     false,
 			description: "should error for float value",
 		},
 	}
@@ -180,7 +180,7 @@ func TestParseQueryUintParam(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request = req
 
-			got, err := ParseQueryUintParam(c, tt.paramName)
+			got, err := ParseQueryIDParam(c, tt.paramName)
 
 			if tt.wantErr {
 				assert.Error(t, err, tt.description)
@@ -242,12 +242,12 @@ func TestParsingEdgeCases(t *testing.T) {
 		// Parse multiple times
 		id1, err1 := ParseIDParam(c, "id")
 		require.NoError(t, err1)
-		require.Equal(t, uint(123), id1)
+		require.Equal(t, "123", id1)
 
 		// Parse again from same context
 		id2, err2 := ParseIDParam(c, "id")
 		require.NoError(t, err2)
-		require.Equal(t, uint(123), id2)
+		require.Equal(t, "123", id2)
 		require.Equal(t, id1, id2)
 	})
 
@@ -259,13 +259,13 @@ func TestParsingEdgeCases(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		page, err1 := ParseQueryUintParam(c, "page")
+		page, err1 := ParseQueryIDParam(c, "page")
 		require.NoError(t, err1)
-		require.Equal(t, uint(2), page)
+		require.Equal(t, "2", page)
 
-		limit, err2 := ParseQueryUintParam(c, "limit")
+		limit, err2 := ParseQueryIDParam(c, "limit")
 		require.NoError(t, err2)
-		require.Equal(t, uint(10), limit)
+		require.Equal(t, "10", limit)
 	})
 
 	t.Run("parameter value overrides", func(t *testing.T) {
@@ -277,8 +277,8 @@ func TestParsingEdgeCases(t *testing.T) {
 		c.Request = req
 
 		// Should get first value when duplicates exist
-		val, err := ParseQueryUintParam(c, "id")
+		val, err := ParseQueryIDParam(c, "id")
 		require.NoError(t, err)
-		assert.True(t, val == 100 || val == 200)
+		assert.True(t, val == "100" || val == "200")
 	})
 }

@@ -65,7 +65,7 @@ func (mr *MockUserGroupRepoMockRecorder) UpdateUserGroup(userGroup interface{}) 
 }
 
 // DeleteUserGroup mocks base method.
-func (m *MockUserGroupRepo) DeleteUserGroup(uid, gid uint) error {
+func (m *MockUserGroupRepo) DeleteUserGroup(uid, gid string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUserGroup", uid, gid)
 	ret0, _ := ret[0].(error)
@@ -79,7 +79,7 @@ func (mr *MockUserGroupRepoMockRecorder) DeleteUserGroup(uid, gid interface{}) *
 }
 
 // GetUserGroupsByUID mocks base method.
-func (m *MockUserGroupRepo) GetUserGroupsByUID(uid uint) ([]group.UserGroup, error) {
+func (m *MockUserGroupRepo) GetUserGroupsByUID(uid string) ([]group.UserGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserGroupsByUID", uid)
 	ret0, _ := ret[0].([]group.UserGroup)
@@ -94,7 +94,7 @@ func (mr *MockUserGroupRepoMockRecorder) GetUserGroupsByUID(uid interface{}) *go
 }
 
 // GetUserGroupsByGID mocks base method.
-func (m *MockUserGroupRepo) GetUserGroupsByGID(gid uint) ([]group.UserGroup, error) {
+func (m *MockUserGroupRepo) GetUserGroupsByGID(gid string) ([]group.UserGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserGroupsByGID", gid)
 	ret0, _ := ret[0].([]group.UserGroup)
@@ -109,7 +109,7 @@ func (mr *MockUserGroupRepoMockRecorder) GetUserGroupsByGID(gid interface{}) *go
 }
 
 // GetUserGroup mocks base method.
-func (m *MockUserGroupRepo) GetUserGroup(uid, gid uint) (group.UserGroup, error) {
+func (m *MockUserGroupRepo) GetUserGroup(uid, gid string) (group.UserGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserGroup", uid, gid)
 	ret0, _ := ret[0].(group.UserGroup)
@@ -124,7 +124,7 @@ func (mr *MockUserGroupRepoMockRecorder) GetUserGroup(uid, gid interface{}) *gom
 }
 
 // GetUserRoleInGroup mocks base method.
-func (m *MockUserGroupRepo) GetUserRoleInGroup(uid uint, gid uint) (string, error) {
+func (m *MockUserGroupRepo) GetUserRoleInGroup(uid string, gid string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserRoleInGroup", uid, gid)
 	ret0, _ := ret[0].(string)
@@ -153,7 +153,7 @@ func (mr *MockUserGroupRepoMockRecorder) WithTx(tx interface{}) *gomock.Call {
 }
 
 // IsSuperAdmin mocks base method.
-func (m *MockUserGroupRepo) IsSuperAdmin(uid uint) (bool, error) {
+func (m *MockUserGroupRepo) IsSuperAdmin(uid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsSuperAdmin", uid)
 	ret0, _ := ret[0].(bool)

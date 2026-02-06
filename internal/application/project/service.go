@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +37,7 @@ func NewProjectServiceWithCache(repos *repository.Repos, cacheSvc *cache.Service
 
 const projectCacheTTL = 5 * time.Minute
 
-func (s *ProjectService) GetProject(id uint) (*project.Project, error) {
+func (s *ProjectService) GetProject(id string) (*project.Project, error) {
 	if s.cache != nil && s.cache.Enabled() {
 		var cached project.Project
 		if err := s.cache.GetJSON(context.Background(), projectByIDKey(id), &cached); err == nil {
@@ -60,7 +59,7 @@ func (s *ProjectService) GetProject(id uint) (*project.Project, error) {
 	return &p, nil
 }
 
-func (s *ProjectService) GetProjectsByUser(id uint) ([]view.ProjectUserView, error) {
+func (s *ProjectService) GetProjectsByUser(id string) ([]view.ProjectUserView, error) {
 	if s.cache != nil && s.cache.Enabled() {
 		var cached []view.ProjectUserView
 		if err := s.cache.GetJSON(context.Background(), projectByUserKey(id), &cached); err == nil {
@@ -86,7 +85,7 @@ func (s *ProjectService) GroupProjectsByGID(records []view.ProjectUserView) map[
 	grouped := make(map[string]map[string]interface{})
 
 	for _, r := range records {
-		key := strconv.Itoa(int(r.GID))
+		key := r.GID
 		if _, exists := grouped[key]; !exists {
 			grouped[key] = map[string]interface{}{
 				"GroupName": r.GroupName,
@@ -107,7 +106,7 @@ func (s *ProjectService) GroupProjectsByGID(records []view.ProjectUserView) map[
 func (s *ProjectService) CreateProject(c *gin.Context, input project.CreateProjectDTO) (*project.Project, error) {
 	// Validate that the group exists
 	if _, err := s.Repos.Group.GetGroupByID(input.GID); err != nil {
-		return nil, fmt.Errorf("group with ID %d not found", input.GID)
+		return nil, fmt.Errorf("group with ID %s not found", input.GID)
 	}
 
 	p := &project.Project{
@@ -127,20 +126,20 @@ func (s *ProjectService) CreateProject(c *gin.Context, input project.CreateProje
 	s.invalidateProjectCache(p.PID)
 
 	// Sanity check: Verify GORM properly populated the PID
-	if p.PID == 0 {
-		fmt.Fprintf(os.Stderr, "ERROR CreateProject: GORM did not populate p.PID after CREATE. This indicates a database or driver issue.\n")
+	if p.PID == "" {
+		fmt.Fprintf(os.Stderr, "ERROR CreateProject: GORM/Hook did not populate p.PID after CREATE.\n")
 		return nil, fmt.Errorf("failed to get project ID from database")
 	}
 
 	logFn := utils.LogAuditWithConsole
 	go func(fn func(*gin.Context, string, string, string, interface{}, interface{}, string, repository.AuditRepo)) {
-		fn(c, "create", "project", fmt.Sprintf("p_id=%d", p.PID), nil, p, "", s.Repos.Audit)
+		fn(c, "create", "project", fmt.Sprintf("p_id=%s", p.PID), nil, p, "", s.Repos.Audit)
 	}(logFn)
 
 	return p, nil
 }
 
-func (s *ProjectService) UpdateProject(c *gin.Context, id uint, input project.UpdateProjectDTO) (*project.Project, error) {
+func (s *ProjectService) UpdateProject(c *gin.Context, id string, input project.UpdateProjectDTO) (*project.Project, error) {
 	p, err := s.Repos.Project.GetProjectByID(id)
 	if err != nil {
 		return nil, ErrProjectNotFound
@@ -164,13 +163,13 @@ func (s *ProjectService) UpdateProject(c *gin.Context, id uint, input project.Up
 	err = s.Repos.Project.UpdateProject(&p)
 	if err == nil {
 		s.invalidateProjectCache(p.PID)
-		utils.LogAuditWithConsole(c, "update", "project", fmt.Sprintf("p_id=%d", p.PID), oldProject, p, "", s.Repos.Audit)
+		utils.LogAuditWithConsole(c, "update", "project", fmt.Sprintf("p_id=%s", p.PID), oldProject, p, "", s.Repos.Audit)
 	}
 
 	return &p, err
 }
 
-func (s *ProjectService) DeleteProject(c *gin.Context, id uint) error {
+func (s *ProjectService) DeleteProject(c *gin.Context, id string) error {
 	project, err := s.Repos.Project.GetProjectByID(id)
 	if err != nil {
 		return ErrProjectNotFound
@@ -185,7 +184,7 @@ func (s *ProjectService) DeleteProject(c *gin.Context, id uint) error {
 	err = s.Repos.Project.DeleteProject(id)
 	if err == nil {
 		s.invalidateProjectCache(project.PID)
-		utils.LogAuditWithConsole(c, "delete", "project", fmt.Sprintf("p_id=%d", project.PID), project, nil, "", s.Repos.Audit)
+		utils.LogAuditWithConsole(c, "delete", "project", fmt.Sprintf("p_id=%s", project.PID), project, nil, "", s.Repos.Audit)
 	}
 	return err
 }
@@ -211,7 +210,7 @@ func (s *ProjectService) ListProjects() ([]project.Project, error) {
 	return projects, nil
 }
 
-func (s *ProjectService) RemoveProjectResources(projectID uint) error {
+func (s *ProjectService) RemoveProjectResources(projectID string) error {
 	project, err := s.Repos.Project.GetProjectByID(projectID)
 	if err != nil {
 		return fmt.Errorf("failed to get project info: %w", err)
@@ -251,15 +250,15 @@ func projectListKey() string {
 	return "cache:project:list"
 }
 
-func projectByIDKey(id uint) string {
-	return fmt.Sprintf("cache:project:by-id:%d", id)
+func projectByIDKey(id string) string {
+	return fmt.Sprintf("cache:project:by-id:%s", id)
 }
 
-func projectByUserKey(userID uint) string {
-	return fmt.Sprintf("cache:project:by-user:%d", userID)
+func projectByUserKey(userID string) string {
+	return fmt.Sprintf("cache:project:by-user:%s", userID)
 }
 
-func (s *ProjectService) invalidateProjectCache(projectID uint) {
+func (s *ProjectService) invalidateProjectCache(projectID string) {
 	if s.cache == nil || !s.cache.Enabled() {
 		return
 	}

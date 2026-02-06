@@ -38,7 +38,7 @@ func (m *MockUserRepo) EXPECT() *MockUserRepoMockRecorder {
 }
 
 // DeleteUser mocks base method.
-func (m *MockUserRepo) DeleteUser(id uint) error {
+func (m *MockUserRepo) DeleteUser(id string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUser", id)
 	ret0, _ := ret[0].(error)
@@ -67,7 +67,7 @@ func (mr *MockUserRepoMockRecorder) GetAllUsers() *gomock.Call {
 }
 
 // GetUserByID mocks base method.
-func (m *MockUserRepo) GetUserByID(id uint) (user.UserWithSuperAdmin, error) {
+func (m *MockUserRepo) GetUserByID(id string) (user.UserWithSuperAdmin, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserByID", id)
 	ret0, _ := ret[0].(user.UserWithSuperAdmin)
@@ -97,7 +97,7 @@ func (mr *MockUserRepoMockRecorder) GetUserByUsername(username interface{}) *gom
 }
 
 // GetUserRawByID mocks base method.
-func (m *MockUserRepo) GetUserRawByID(id uint) (user.User, error) {
+func (m *MockUserRepo) GetUserRawByID(id string) (user.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserRawByID", id)
 	ret0, _ := ret[0].(user.User)
@@ -112,7 +112,7 @@ func (mr *MockUserRepoMockRecorder) GetUserRawByID(id interface{}) *gomock.Call 
 }
 
 // GetUsernameByID mocks base method.
-func (m *MockUserRepo) GetUsernameByID(id uint) (string, error) {
+func (m *MockUserRepo) GetUsernameByID(id string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUsernameByID", id)
 	ret0, _ := ret[0].(string)
@@ -156,7 +156,7 @@ func (mr *MockUserRepoMockRecorder) SaveUser(user interface{}) *gomock.Call {
 }
 
 // ListUsersByProjectID mocks base method.
-func (m *MockUserRepo) ListUsersByProjectID(projectID uint) ([]view.ProjectUserView, error) {
+func (m *MockUserRepo) ListUsersByProjectID(projectID string) ([]view.ProjectUserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsersByProjectID", projectID)
 	ret0, _ := ret[0].([]view.ProjectUserView)

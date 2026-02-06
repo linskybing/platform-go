@@ -1,7 +1,12 @@
 ---
 name: redis-caching
 description: Redis caching patterns, distributed cache management, cache invalidation strategies, and performance optimization for platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Redis Caching
 

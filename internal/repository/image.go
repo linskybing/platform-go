@@ -36,7 +36,7 @@ func (r *DBImageRepo) FindOrCreateTag(tag *image.ContainerTag) error {
 		FirstOrCreate(tag).Error
 }
 
-func (r *DBImageRepo) GetTagByDigest(repoID uint, digest string) (*image.ContainerTag, error) {
+func (r *DBImageRepo) GetTagByDigest(repoID string, digest string) (*image.ContainerTag, error) {
 	var tag image.ContainerTag
 	err := r.db.Where("repository_id = ? AND digest = ?", repoID, digest).First(&tag).Error
 	return &tag, err
@@ -46,13 +46,13 @@ func (r *DBImageRepo) CreateRequest(req *image.ImageRequest) error {
 	return r.db.Create(req).Error
 }
 
-func (r *DBImageRepo) FindRequestByID(id uint) (*image.ImageRequest, error) {
+func (r *DBImageRepo) FindRequestByID(id string) (*image.ImageRequest, error) {
 	var req image.ImageRequest
-	err := r.db.First(&req, id).Error
+	err := r.db.First(&req, "id = ?", id).Error
 	return &req, err
 }
 
-func (r *DBImageRepo) ListRequests(projectID *uint, status string) ([]image.ImageRequest, error) {
+func (r *DBImageRepo) ListRequests(projectID *string, status string) ([]image.ImageRequest, error) {
 	var reqs []image.ImageRequest
 	query := r.db.Model(&image.ImageRequest{})
 
@@ -75,7 +75,7 @@ func (r *DBImageRepo) CreateAllowListRule(rule *image.ImageAllowList) error {
 	return r.db.Create(rule).Error
 }
 
-func (r *DBImageRepo) ListAllowedImages(projectID *uint) ([]image.ImageAllowList, error) {
+func (r *DBImageRepo) ListAllowedImages(projectID *string) ([]image.ImageAllowList, error) {
 	var rules []image.ImageAllowList
 	query := r.db.Preload("Repository").Preload("Tag").Where("is_enabled = ?", true)
 
@@ -87,7 +87,7 @@ func (r *DBImageRepo) ListAllowedImages(projectID *uint) ([]image.ImageAllowList
 	return rules, err
 }
 
-func (r *DBImageRepo) CheckImageAllowed(projectID *uint, repoFullName string, tagName string) (bool, error) {
+func (r *DBImageRepo) CheckImageAllowed(projectID *string, repoFullName string, tagName string) (bool, error) {
 	var count int64
 	query := r.db.Model(&image.ImageAllowList{}).
 		Joins("JOIN container_repositories r ON r.id = image_allow_lists.repository_id").
@@ -110,7 +110,7 @@ func (r *DBImageRepo) CheckImageAllowed(projectID *uint, repoFullName string, ta
 	return count > 0, nil
 }
 
-func (r *DBImageRepo) DisableAllowListRule(id uint) error {
+func (r *DBImageRepo) DisableAllowListRule(id string) error {
 	return r.db.Model(&image.ImageAllowList{}).Where("id = ?", id).Update("is_enabled", false).Error
 }
 
@@ -127,7 +127,7 @@ func (r *DBImageRepo) UpdateClusterStatus(status *image.ClusterImageStatus) erro
 	return r.db.Save(status).Error
 }
 
-func (r *DBImageRepo) GetClusterStatus(tagID uint) (*image.ClusterImageStatus, error) {
+func (r *DBImageRepo) GetClusterStatus(tagID string) (*image.ClusterImageStatus, error) {
 	var status image.ClusterImageStatus
 	err := r.db.Where("tag_id = ?", tagID).First(&status).Error
 	if err != nil {
@@ -136,7 +136,7 @@ func (r *DBImageRepo) GetClusterStatus(tagID uint) (*image.ClusterImageStatus, e
 	return &status, nil
 }
 
-func (r *DBImageRepo) FindAllowListRule(projectID *uint, repoFullName, tagName string) (*image.ImageAllowList, error) {
+func (r *DBImageRepo) FindAllowListRule(projectID *string, repoFullName, tagName string) (*image.ImageAllowList, error) {
 	var rule image.ImageAllowList
 	query := r.db.Preload("Repository").Preload("Tag").
 		Joins("JOIN container_repositories r ON r.id = image_allow_lists.repository_id").

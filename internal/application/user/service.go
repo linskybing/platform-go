@@ -145,7 +145,7 @@ func (s *UserService) ListUserByPaging(page, limit int) ([]user.UserWithSuperAdm
 	return users, nil
 }
 
-func (s *UserService) FindUserByID(id uint) (user.UserWithSuperAdmin, error) {
+func (s *UserService) FindUserByID(id string) (user.UserWithSuperAdmin, error) {
 	if s.cache != nil && s.cache.Enabled() {
 		var cached user.UserWithSuperAdmin
 		if err := s.cache.GetJSON(context.Background(), userByIDKey(id), &cached); err == nil {
@@ -163,7 +163,7 @@ func (s *UserService) FindUserByID(id uint) (user.UserWithSuperAdmin, error) {
 	return usr, nil
 }
 
-func (s *UserService) UpdateUser(id uint, input user.UpdateUserInput) (user.User, error) {
+func (s *UserService) UpdateUser(id string, input user.UpdateUserInput) (user.User, error) {
 	usr, err := s.Repos.User.GetUserRawByID(id)
 	if err != nil {
 		return user.User{}, ErrUserNotFound
@@ -214,7 +214,7 @@ func (s *UserService) UpdateUser(id uint, input user.UpdateUserInput) (user.User
 	return usr, nil
 }
 
-func (s *UserService) RemoveUser(id uint) error {
+func (s *UserService) RemoveUser(id string) error {
 	usr, err := s.Repos.User.GetUserRawByID(id)
 	if err != nil {
 		return ErrUserNotFound
@@ -266,11 +266,11 @@ func userListPagingKey(page, limit int) string {
 	return fmt.Sprintf("cache:user:list:%d:%d", page, limit)
 }
 
-func userByIDKey(id uint) string {
-	return fmt.Sprintf("cache:user:by-id:%d", id)
+func userByIDKey(id string) string {
+	return fmt.Sprintf("cache:user:by-id:%s", id)
 }
 
-func (s *UserService) invalidateUserCache(id uint) {
+func (s *UserService) invalidateUserCache(id string) {
 	if s.cache == nil || !s.cache.Enabled() {
 		return
 	}

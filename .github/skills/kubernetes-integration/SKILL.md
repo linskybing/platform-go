@@ -1,7 +1,12 @@
 ---
 name: kubernetes-integration
 description: Best practices for Kubernetes API integration, resource management, and client-go usage in the platform-go project
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Kubernetes Integration Skill
 

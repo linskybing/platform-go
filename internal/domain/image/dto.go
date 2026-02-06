@@ -1,10 +1,10 @@
 package image
 
 type CreateImageRequestDTO struct {
-	Registry  string `json:"registry"`
-	ImageName string `json:"image_name" binding:"required"`
-	Tag       string `json:"tag" binding:"required"`
-	ProjectID *uint  `json:"project_id"`
+	Registry  string  `json:"registry"`
+	ImageName string  `json:"image_name" binding:"required"`
+	Tag       string  `json:"tag" binding:"required"`
+	ProjectID *string `json:"project_id"`
 }
 
 type UpdateImageRequestDTO struct {
@@ -13,12 +13,12 @@ type UpdateImageRequestDTO struct {
 }
 
 type AllowedImageDTO struct {
-	ID        uint   `json:"id"`
-	Registry  string `json:"registry"`
-	ImageName string `json:"image_name"`
-	Tag       string `json:"tag"`
-	Digest    string `json:"digest"`
-	ProjectID *uint  `json:"project_id"`
-	IsGlobal  bool   `json:"is_global"`
-	IsPulled  bool   `json:"is_pulled"`
+	ID        string  `json:"id"`
+	Registry  string  `json:"registry"`
+	ImageName string  `json:"image_name"`
+	Tag       string  `json:"tag"`
+	Digest    string  `json:"digest"`
+	ProjectID *string `json:"project_id"`
+	IsGlobal  bool    `json:"is_global"`
+	IsPulled  bool    `json:"is_pulled"`
 }

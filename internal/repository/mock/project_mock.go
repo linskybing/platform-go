@@ -52,7 +52,7 @@ func (mr *MockProjectRepoMockRecorder) CreateProject(p interface{}) *gomock.Call
 }
 
 // DeleteProject mocks base method.
-func (m *MockProjectRepo) DeleteProject(id uint) error {
+func (m *MockProjectRepo) DeleteProject(id string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteProject", id)
 	ret0, _ := ret[0].(error)
@@ -66,10 +66,10 @@ func (mr *MockProjectRepoMockRecorder) DeleteProject(id interface{}) *gomock.Cal
 }
 
 // GetGroupIDByProjectID mocks base method.
-func (m *MockProjectRepo) GetGroupIDByProjectID(pID uint) (uint, error) {
+func (m *MockProjectRepo) GetGroupIDByProjectID(pID string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupIDByProjectID", pID)
-	ret0, _ := ret[0].(uint)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -81,7 +81,7 @@ func (mr *MockProjectRepoMockRecorder) GetGroupIDByProjectID(pID interface{}) *g
 }
 
 // GetProjectByID mocks base method.
-func (m *MockProjectRepo) GetProjectByID(id uint) (project.Project, error) {
+func (m *MockProjectRepo) GetProjectByID(id string) (project.Project, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetProjectByID", id)
 	ret0, _ := ret[0].(project.Project)
@@ -111,7 +111,7 @@ func (mr *MockProjectRepoMockRecorder) ListProjects() *gomock.Call {
 }
 
 // ListProjectsByGroup mocks base method.
-func (m *MockProjectRepo) ListProjectsByGroup(id uint) ([]project.Project, error) {
+func (m *MockProjectRepo) ListProjectsByGroup(id string) ([]project.Project, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListProjectsByGroup", id)
 	ret0, _ := ret[0].([]project.Project)
@@ -169,7 +169,7 @@ func (mr *MockProjectRepoMockRecorder) WithTx(tx interface{}) *gomock.Call {
 }
 
 // ListProjectsByUserID mocks base method.
-func (m *MockProjectRepo) ListProjectsByUserID(userID uint) ([]view.ProjectUserView, error) {
+func (m *MockProjectRepo) ListProjectsByUserID(userID string) ([]view.ProjectUserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListProjectsByUserID", userID)
 	ret0, _ := ret[0].([]view.ProjectUserView)

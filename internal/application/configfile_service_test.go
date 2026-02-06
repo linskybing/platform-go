@@ -59,7 +59,7 @@ func setupMocks(t *testing.T) (*application.ConfigFileService, *mock.MockConfigF
 	c, _ := gin.CreateTestContext(w)
 	req, _ := http.NewRequest("POST", "/", nil)
 	c.Request = req
-	c.Set("claims", &types.Claims{Username: "testuser", UserID: 1})
+	c.Set("claims", &types.Claims{Username: "testuser", UserID: "1"})
 
 	// mock utils (k8s functions use mock behavior when Mapper/DynamicClient/Clientset are nil)
 	utils.SplitYAMLDocuments = func(yamlStr string) []string { return []string{yamlStr} }
@@ -89,7 +89,7 @@ func TestCreateConfigFile_Success(t *testing.T) {
 	input := configfile.CreateConfigFileInput{
 		Filename:  "test.yaml",
 		RawYaml:   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: testpod",
-		ProjectID: 1,
+		ProjectID: "1",
 	}
 
 	cf, err := svc.CreateConfigFile(c, input)
@@ -109,7 +109,7 @@ func TestCreateConfigFile_NoYAMLDocuments(t *testing.T) {
 	input := configfile.CreateConfigFileInput{
 		Filename:  "test.yaml",
 		RawYaml:   "",
-		ProjectID: 1,
+		ProjectID: "1",
 	}
 
 	_, err := svc.CreateConfigFile(c, input)
@@ -123,15 +123,15 @@ func TestUpdateConfigFile_Success(t *testing.T) {
 
 	// Mock original ConfigFile
 	existingCF := &configfile.ConfigFile{
-		CFID:      1,
-		ProjectID: 1,
+		CFID:      "1",
+		ProjectID: "1",
 		Filename:  "old.yaml",
 	}
-	mockCF.EXPECT().GetConfigFileByID(uint(1)).Return(existingCF, nil)
+	mockCF.EXPECT().GetConfigFileByID("1").Return(existingCF, nil)
 	mockCF.EXPECT().UpdateConfigFile(gomock.Any()).Return(nil)
 
 	// Mock Resource
-	mockRes.EXPECT().ListResourcesByConfigFileID(uint(1)).Return([]resource.Resource{}, nil)
+	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{}, nil)
 	mockRes.EXPECT().CreateResource(gomock.Any()).Return(nil).AnyTimes()
 	mockRes.EXPECT().UpdateResource(gomock.Any()).Return(nil).AnyTimes()
 	mockRes.EXPECT().DeleteResource(gomock.Any()).Return(nil).AnyTimes()
@@ -158,7 +158,7 @@ func TestUpdateConfigFile_Success(t *testing.T) {
 		RawYaml:  &rawYaml,
 	}
 
-	cf, err := svc.UpdateConfigFile(c, 1, input)
+	cf, err := svc.UpdateConfigFile(c, "1", input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -170,25 +170,25 @@ func TestUpdateConfigFile_Success(t *testing.T) {
 func TestDeleteConfigFile_Success(t *testing.T) {
 	svc, mockCF, mockRes, mockAudit, mockUser, _, _, c := setupMocks(t)
 
-	mockCF.EXPECT().GetConfigFileByID(uint(1)).Return(&configfile.ConfigFile{
-		CFID: 1, ProjectID: 1, Filename: "test.yaml",
+	mockCF.EXPECT().GetConfigFileByID("1").Return(&configfile.ConfigFile{
+		CFID: "1", ProjectID: "1", Filename: "test.yaml",
 	}, nil).AnyTimes()
 
-	mockRes.EXPECT().ListResourcesByConfigFileID(uint(1)).Return([]resource.Resource{
-		{RID: 10, Name: "res1"},
+	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{
+		{RID: "10", Name: "res1"},
 	}, nil).AnyTimes()
 
-	mockUser.EXPECT().ListUsersByProjectID(uint(1)).Return([]view.ProjectUserView{
+	mockUser.EXPECT().ListUsersByProjectID("1").Return([]view.ProjectUserView{
 		{Username: "user1"},
 	}, nil)
 
-	mockRes.EXPECT().DeleteResource(uint(10)).Return(nil).AnyTimes()
-	mockCF.EXPECT().DeleteConfigFile(uint(1)).Return(nil).AnyTimes()
+	mockRes.EXPECT().DeleteResource("10").Return(nil).AnyTimes()
+	mockCF.EXPECT().DeleteConfigFile("1").Return(nil).AnyTimes()
 	mockAudit.EXPECT().CreateAuditLog(gomock.Any()).Return(nil).AnyTimes()
 
 	// k8s.DeleteByJson is a function that uses mock behavior when k8s clients are nil, so no override needed
 
-	err := svc.DeleteConfigFile(c, 1)
+	err := svc.DeleteConfigFile(c, "1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -197,12 +197,12 @@ func TestDeleteConfigFile_Success(t *testing.T) {
 func TestCreateInstance_Success(t *testing.T) {
 	svc, mockCF, mockRes, _, _, mockProject, mockUserGroup, c := setupMocks(t)
 
-	mockRes.EXPECT().ListResourcesByConfigFileID(uint(1)).Return([]resource.Resource{{RID: 1, ParsedYAML: datatypes.JSON([]byte("{}"))}}, nil)
-	mockCF.EXPECT().GetConfigFileByID(uint(1)).Return(&configfile.ConfigFile{CFID: 1, ProjectID: 1}, nil)
-	mockProject.EXPECT().GetProjectByID(uint(1)).Return(project.Project{PID: 1, GID: 10}, nil).AnyTimes()
-	mockUserGroup.EXPECT().GetUserGroup(uint(1), uint(10)).Return(group.UserGroup{UID: 1, GID: 10, Role: "admin"}, nil).AnyTimes()
+	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{{RID: "1", ParsedYAML: datatypes.JSON([]byte("{}"))}}, nil)
+	mockCF.EXPECT().GetConfigFileByID("1").Return(&configfile.ConfigFile{CFID: "1", ProjectID: "1"}, nil)
+	mockProject.EXPECT().GetProjectByID("1").Return(project.Project{PID: "1", GID: "10"}, nil).AnyTimes()
+	mockUserGroup.EXPECT().GetUserGroup("1", "10").Return(group.UserGroup{UID: "1", GID: "10", Role: "admin"}, nil).AnyTimes()
 
-	err := svc.CreateInstance(c, 1)
+	err := svc.CreateInstance(c, "1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -211,10 +211,10 @@ func TestCreateInstance_Success(t *testing.T) {
 func TestDeleteInstance_Success(t *testing.T) {
 	svc, mockCF, mockRes, _, _, _, _, c := setupMocks(t)
 
-	mockRes.EXPECT().ListResourcesByConfigFileID(uint(1)).Return([]resource.Resource{{RID: 1, ParsedYAML: datatypes.JSON([]byte("{}"))}}, nil)
-	mockCF.EXPECT().GetConfigFileByID(uint(1)).Return(&configfile.ConfigFile{CFID: 1, ProjectID: 1}, nil)
+	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{{RID: "1", ParsedYAML: datatypes.JSON([]byte("{}"))}}, nil)
+	mockCF.EXPECT().GetConfigFileByID("1").Return(&configfile.ConfigFile{CFID: "1", ProjectID: "1"}, nil)
 
-	err := svc.DeleteInstance(c, 1)
+	err := svc.DeleteInstance(c, "1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -224,25 +224,25 @@ func TestDeleteConfigFileInstance_Success(t *testing.T) {
 	svc, mockCF, mockRes, _, mockUser, _, _, _ := setupMocks(t)
 
 	// Mock ConfigFile
-	mockCF.EXPECT().GetConfigFileByID(uint(1)).Return(&configfile.ConfigFile{
-		CFID:      1,
-		ProjectID: 1,
+	mockCF.EXPECT().GetConfigFileByID("1").Return(&configfile.ConfigFile{
+		CFID:      "1",
+		ProjectID: "1",
 		Filename:  "test.yaml",
 	}, nil)
 
 	// Mock Resource
-	mockRes.EXPECT().ListResourcesByConfigFileID(uint(1)).Return([]resource.Resource{
-		{RID: 1, Name: "res1"},
+	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{
+		{RID: "1", Name: "res1"},
 	}, nil)
 
 	// Mock User repo listing
-	mockUser.EXPECT().ListUsersByProjectID(uint(1)).Return([]view.ProjectUserView{
+	mockUser.EXPECT().ListUsersByProjectID("1").Return([]view.ProjectUserView{
 		{Username: "user1"},
 	}, nil)
 
 	// k8s.FormatNamespaceName and k8s.DeleteByJson use deterministic behavior / mock when clients are nil
 
-	err := svc.DeleteConfigFileInstance(1)
+	err := svc.DeleteConfigFileInstance("1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestConfigFileRead(t *testing.T) {
 	svc, mockCF, _, _, _, _, _, _ := setupMocks(t)
 
 	t.Run("ListConfigFiles", func(t *testing.T) {
-		cfs := []configfile.ConfigFile{{CFID: 1, Filename: "f1"}}
+		cfs := []configfile.ConfigFile{{CFID: "1", Filename: "f1"}}
 		mockCF.EXPECT().ListConfigFiles().Return(cfs, nil)
 
 		res, err := svc.ListConfigFiles()
@@ -265,10 +265,10 @@ func TestConfigFileRead(t *testing.T) {
 	})
 
 	t.Run("GetConfigFile", func(t *testing.T) {
-		cf := &configfile.ConfigFile{CFID: 1, Filename: "f1"}
-		mockCF.EXPECT().GetConfigFileByID(uint(1)).Return(cf, nil)
+		cf := &configfile.ConfigFile{CFID: "1", Filename: "f1"}
+		mockCF.EXPECT().GetConfigFileByID("1").Return(cf, nil)
 
-		res, err := svc.GetConfigFile(1)
+		res, err := svc.GetConfigFile("1")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -278,10 +278,10 @@ func TestConfigFileRead(t *testing.T) {
 	})
 
 	t.Run("ListConfigFilesByProjectID", func(t *testing.T) {
-		cfs := []configfile.ConfigFile{{CFID: 1, Filename: "f1"}}
-		mockCF.EXPECT().GetConfigFilesByProjectID(uint(10)).Return(cfs, nil)
+		cfs := []configfile.ConfigFile{{CFID: "1", Filename: "f1"}}
+		mockCF.EXPECT().GetConfigFilesByProjectID("10").Return(cfs, nil)
 
-		res, err := svc.ListConfigFilesByProjectID(10)
+		res, err := svc.ListConfigFilesByProjectID("10")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

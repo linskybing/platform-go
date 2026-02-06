@@ -7,7 +7,7 @@ import "time"
 // GroupPVCSpec represents a PVC specification for a group
 type GroupPVCSpec struct {
 	ID           string    `json:"id"`            // Unique identifier: group-{gid}-{uuid}
-	GroupID      uint      `json:"group_id"`      // Group ID
+	GroupID      string    `json:"group_id"`      // Group ID
 	Name         string    `json:"name"`          // User-friendly PVC name
 	PVCName      string    `json:"pvc_name"`      // K8s PVC name (for direct deletion)
 	Capacity     int       `json:"capacity"`      // Size in Gi
@@ -15,13 +15,13 @@ type GroupPVCSpec struct {
 	Status       string    `json:"status"`        // Bound, Pending, etc
 	AccessMode   string    `json:"access_mode"`   // ReadWriteMany, ReadWriteOnce, etc
 	CreatedAt    time.Time `json:"created_at"`    // Creation timestamp
-	CreatedBy    uint      `json:"created_by"`    // User ID who created this PVC
+	CreatedBy    string    `json:"created_by"`    // User ID who created this PVC
 }
 
 // CreateGroupStorageRequest defines the payload for creating group storage.
 // Supports both simple (ID, name, capacity) and extended (storage class) formats.
 type CreateGroupStorageRequest struct {
-	GroupID      uint    `json:"group_id" binding:"required"`
+	GroupID      string  `json:"group_id" binding:"required"`
 	GroupName    string  `json:"group_name" binding:"required"`     // Group display name
 	Name         string  `json:"name" binding:"required"`           // PVC display name
 	Capacity     int     `json:"capacity" binding:"required,min=1"` // Size in Gi
@@ -30,7 +30,7 @@ type CreateGroupStorageRequest struct {
 
 // ListGroupStorageResponse represents the response for listing group storage
 type ListGroupStorageResponse struct {
-	GroupID uint           `json:"group_id"`
+	GroupID string         `json:"group_id"`
 	PVCs    []GroupPVCSpec `json:"pvcs"`
 	Total   int            `json:"total"`
 }
@@ -48,8 +48,8 @@ type DeleteGroupStorageRequest struct {
 
 // GroupStorageInfo represents group storage information
 type GroupStorageInfo struct {
-	ID         uint      `json:"id"`
-	GroupID    uint      `json:"group_id"`
+	ID         string    `json:"id"`
+	GroupID    string    `json:"group_id"`
 	GroupName  string    `json:"group_name"`
 	Namespace  string    `json:"namespace"`
 	PVCName    string    `json:"pvc_name"`
@@ -82,7 +82,7 @@ type UserStorageInfo struct {
 
 // GroupPVCOutput represents the output for group PVC information
 type GroupPVCOutput struct {
-	GroupID   uint      `json:"group_id"`
+	GroupID   string    `json:"group_id"`
 	Name      string    `json:"name"`
 	Capacity  string    `json:"capacity"`
 	Status    string    `json:"status"`

@@ -61,7 +61,7 @@ func (am *AuthMiddleware) GroupAdmin(extractor IDExtractor) gin.HandlerFunc {
 
 		// Extract group ID from request
 		groupID := extractor(c, am.repos)
-		if groupID == 0 {
+		if groupID == "" {
 			// Extractor already set error response
 			c.Abort()
 			return
@@ -103,7 +103,7 @@ func (am *AuthMiddleware) GroupManager(extractor IDExtractor) gin.HandlerFunc {
 
 		// Extract group ID from request
 		groupID := extractor(c, am.repos)
-		if groupID == 0 {
+		if groupID == "" {
 			// Extractor already set error response
 			c.Abort()
 			return
@@ -154,7 +154,7 @@ func (am *AuthMiddleware) GroupMember(extractor IDExtractor) gin.HandlerFunc {
 
 		// Extract group ID from request
 		groupID := extractor(c, am.repos)
-		if groupID == 0 {
+		if groupID == "" {
 			// Extractor already set error response
 			c.Abort()
 			return
@@ -195,8 +195,8 @@ func (am *AuthMiddleware) UserOrAdmin() gin.HandlerFunc {
 		}
 
 		// Extract user ID from URL parameter
-		userID := c.GetUint("id")
-		if userID == 0 {
+		userID := c.Param("id")
+		if userID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
 			c.Abort()
 			return

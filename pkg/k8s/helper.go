@@ -33,7 +33,7 @@ func ToSafeK8sName(rawName string) string {
 // GenerateSafeResourceName generates a unique and K8s-compliant resource name.
 // Format: prefix-{sanitized_name}-{short_hash}
 // Constraint: Kubernetes names must be max 63 characters, lowercase, alphanumeric, or hyphen.
-func GenerateSafeResourceName(prefix string, name string, id uint) string {
+func GenerateSafeResourceName(prefix string, name string, id string) string {
 	// 1. Sanitize Name: Keep only lowercase alphanumeric characters and hyphens.
 	// Replace invalid characters with a hyphen.
 	reg := regexp.MustCompile("[^a-z0-9]+")
@@ -42,7 +42,7 @@ func GenerateSafeResourceName(prefix string, name string, id uint) string {
 
 	// 2. Generate Short Hash from ID to ensure uniqueness.
 	// Using the ID as a seed ensures that the same Project ID always generates the same namespace name.
-	hashInput := fmt.Sprintf("project-%d", id)
+	hashInput := fmt.Sprintf("project-%s", id)
 	hash := sha256.Sum256([]byte(hashInput))
 	shortHash := fmt.Sprintf("%x", hash)[:6] // Take the first 6 characters of the hash
 

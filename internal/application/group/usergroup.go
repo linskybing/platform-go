@@ -29,10 +29,10 @@ func NewUserGroupService(repos *repository.Repos) *UserGroupService {
 	}
 }
 
-func (s *UserGroupService) AllocateGroupResource(gid uint, userName string) error {
+func (s *UserGroupService) AllocateGroupResource(gid string, userName string) error {
 	projects, err := s.Repos.Project.ListProjectsByGroup(gid)
 	if err != nil {
-		return fmt.Errorf("failed to list projects for group %d: %w", gid, err)
+		return fmt.Errorf("failed to list projects for group %s: %w", gid, err)
 	}
 
 	safeUsername := k8s.ToSafeK8sName(userName)
@@ -58,10 +58,10 @@ func (s *UserGroupService) AllocateGroupResource(gid uint, userName string) erro
 	return nil
 }
 
-func (s *UserGroupService) RemoveGroupResource(gid uint, userName string) error {
+func (s *UserGroupService) RemoveGroupResource(gid string, userName string) error {
 	projects, err := s.Repos.Project.ListProjectsByGroup(gid)
 	if err != nil {
-		return fmt.Errorf("failed to list projects for group %d: %w", gid, err)
+		return fmt.Errorf("failed to list projects for group %s: %w", gid, err)
 	}
 
 	safeUsername := k8s.ToSafeK8sName(userName)
@@ -105,7 +105,7 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 	}
 
 	utils.LogAuditWithConsole(c, "create", "user_group",
-		fmt.Sprintf("u_id=%d,g_id=%d", userGroup.UID, userGroup.GID),
+		fmt.Sprintf("u_id=%s,g_id=%s", userGroup.UID, userGroup.GID),
 		nil, *userGroup, "", s.Repos.Audit)
 
 	return userGroup, nil
@@ -129,13 +129,13 @@ func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *group.User
 	}
 
 	utils.LogAuditWithConsole(c, "update", "user_group",
-		fmt.Sprintf("u_id=%d,g_id=%d", userGroup.UID, userGroup.GID),
+		fmt.Sprintf("u_id=%s,g_id=%s", userGroup.UID, userGroup.GID),
 		existing, *userGroup, "", s.Repos.Audit)
 
 	return userGroup, nil
 }
 
-func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid uint) error {
+func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid string) error {
 	oldUserGroup, err := s.Repos.UserGroup.GetUserGroup(uid, gid)
 	if err != nil {
 		return err
@@ -148,11 +148,6 @@ func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid uint) error 
 		if err == nil && username == config.ReservedAdminUsername {
 			return ErrCannotRemoveAdminFromSuper
 		}
-	}
-
-	// Check if this is the admin user or super group (legacy check, kept for backward compatibility)
-	if uid == 1 && gid == 1 {
-		return ErrReservedUser
 	}
 
 	slog.Debug("removing user from group", "user_id", uid, "group_id", gid)
@@ -170,26 +165,26 @@ func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid uint) error 
 	}
 
 	utils.LogAuditWithConsole(c, "delete", "user_group",
-		fmt.Sprintf("u_id=%d,g_id=%d", uid, gid),
+		fmt.Sprintf("u_id=%s,g_id=%s", uid, gid),
 		oldUserGroup, nil, "", s.Repos.Audit)
 
 	return nil
 }
 
-func (s *UserGroupService) GetUserGroup(uid, gid uint) (group.UserGroup, error) {
+func (s *UserGroupService) GetUserGroup(uid, gid string) (group.UserGroup, error) {
 	return s.Repos.UserGroup.GetUserGroup(uid, gid)
 }
 
-func (s *UserGroupService) GetUserGroupsByUID(uid uint) ([]group.UserGroup, error) {
+func (s *UserGroupService) GetUserGroupsByUID(uid string) ([]group.UserGroup, error) {
 	return s.Repos.UserGroup.GetUserGroupsByUID(uid)
 }
 
-func (s *UserGroupService) GetUserGroupsByGID(gid uint) ([]group.UserGroup, error) {
+func (s *UserGroupService) GetUserGroupsByGID(gid string) ([]group.UserGroup, error) {
 	return s.Repos.UserGroup.GetUserGroupsByGID(gid)
 }
 
-func (s *UserGroupService) FormatByUID(records []group.UserGroup) map[uint]map[string]interface{} {
-	result := make(map[uint]map[string]interface{})
+func (s *UserGroupService) FormatByUID(records []group.UserGroup) map[string]map[string]interface{} {
+	result := make(map[string]map[string]interface{})
 
 	for _, r := range records {
 		// Get group name for this group
@@ -228,8 +223,8 @@ func (s *UserGroupService) FormatByUID(records []group.UserGroup) map[uint]map[s
 	return result
 }
 
-func (s *UserGroupService) FormatByGID(records []group.UserGroup) map[uint]map[string]interface{} {
-	result := make(map[uint]map[string]interface{})
+func (s *UserGroupService) FormatByGID(records []group.UserGroup) map[string]map[string]interface{} {
+	result := make(map[string]map[string]interface{})
 
 	for _, r := range records {
 		// Get username for this user

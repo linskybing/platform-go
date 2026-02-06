@@ -7,14 +7,14 @@ import (
 )
 
 type ProjectRepo interface {
-	GetProjectByID(id uint) (project.Project, error)
-	GetGroupIDByProjectID(pID uint) (uint, error)
+	GetProjectByID(id string) (project.Project, error)
+	GetGroupIDByProjectID(pID string) (string, error)
 	CreateProject(p *project.Project) error
 	UpdateProject(p *project.Project) error
-	DeleteProject(id uint) error
+	DeleteProject(id string) error
 	ListProjects() ([]project.Project, error)
-	ListProjectsByGroup(id uint) ([]project.Project, error)
-	ListProjectsByUserID(userID uint) ([]view.ProjectUserView, error)
+	ListProjectsByGroup(id string) ([]project.Project, error)
+	ListProjectsByUserID(userID string) ([]view.ProjectUserView, error)
 	GetAllProjectGroupViews() ([]view.ProjectGroupView, error)
 	WithTx(tx *gorm.DB) ProjectRepo
 }
@@ -29,43 +29,31 @@ func NewProjectRepo(db *gorm.DB) *DBProjectRepo {
 	}
 }
 
-func (r *DBProjectRepo) GetProjectByID(id uint) (project.Project, error) {
+func (r *DBProjectRepo) GetProjectByID(id string) (project.Project, error) {
 	var project project.Project
-	err := r.db.First(&project, id).Error
+	err := r.db.First(&project, "p_id = ?", id).Error
 	return project, err
 }
 
-func (r *DBProjectRepo) GetGroupIDByProjectID(pID uint) (uint, error) {
-	var gID uint
+func (r *DBProjectRepo) GetGroupIDByProjectID(pID string) (string, error) {
+	var gID string
 	err := r.db.Model(&project.Project{}).Select("g_id").Where("p_id = ?", pID).Scan(&gID).Error
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return gID, nil
 }
 
 func (r *DBProjectRepo) CreateProject(p *project.Project) error {
-	if err := r.db.Create(p).Error; err != nil {
-		return err
-	}
-
-	var created project.Project
-	if err := r.db.Where("project_name = ? AND g_id = ?", p.ProjectName, p.GID).
-		Order("create_at DESC").
-		First(&created).Error; err != nil {
-		return err
-	}
-
-	p.PID = created.PID
-	return nil
+	return r.db.Create(p).Error
 }
 
 func (r *DBProjectRepo) UpdateProject(p *project.Project) error {
 	return r.db.Save(p).Error
 }
 
-func (r *DBProjectRepo) DeleteProject(id uint) error {
-	return r.db.Delete(&project.Project{}, id).Error
+func (r *DBProjectRepo) DeleteProject(id string) error {
+	return r.db.Delete(&project.Project{}, "p_id = ?", id).Error
 }
 
 func (r *DBProjectRepo) ListProjects() ([]project.Project, error) {
@@ -74,7 +62,7 @@ func (r *DBProjectRepo) ListProjects() ([]project.Project, error) {
 	return projects, err
 }
 
-func (r *DBProjectRepo) ListProjectsByGroup(id uint) ([]project.Project, error) {
+func (r *DBProjectRepo) ListProjectsByGroup(id string) ([]project.Project, error) {
 	var projects []project.Project
 	if err := r.db.Where("g_id = ?", id).Find(&projects).Error; err != nil {
 		return nil, err
@@ -82,7 +70,7 @@ func (r *DBProjectRepo) ListProjectsByGroup(id uint) ([]project.Project, error) 
 	return projects, nil
 }
 
-func (r *DBProjectRepo) ListProjectsByUserID(userID uint) ([]view.ProjectUserView, error) {
+func (r *DBProjectRepo) ListProjectsByUserID(userID string) ([]view.ProjectUserView, error) {
 	var results []view.ProjectUserView
 
 	err := r.db.Table("project_list p").

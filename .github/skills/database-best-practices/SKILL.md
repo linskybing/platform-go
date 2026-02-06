@@ -1,7 +1,12 @@
 ---
 name: database-best-practices
 description: Database design, ORM usage with GORM, query optimization, transactions, and migrations for PostgreSQL in platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Database Best Practices
 

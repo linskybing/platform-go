@@ -2,44 +2,73 @@ package middleware
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/linskybing/platform-go/internal/repository"
 )
 
 // IDExtractor extracts a group ID from the request context.
 // Used by authorization middleware to determine which group a resource belongs to.
-type IDExtractor func(*gin.Context, *repository.Repos) uint
+type IDExtractor func(*gin.Context, *repository.Repos) string
 
 // FromGroupIDParam extracts group ID directly from URL parameter /:group_id.
 func FromGroupIDParam() IDExtractor {
-	return func(c *gin.Context, repos *repository.Repos) uint {
+	return func(c *gin.Context, repos *repository.Repos) string {
 		groupIDStr := c.Param("id")
-		groupID, err := strconv.ParseUint(groupIDStr, 10, 32)
-		if err != nil {
+		if groupIDStr == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
-			return 0
+			return ""
 		}
-		return uint(groupID)
+		return groupIDStr
+	}
+}
+
+// FromGroupIDParamName extracts group ID from a named URL parameter.
+func FromGroupIDParamName(paramName string) IDExtractor {
+	return func(c *gin.Context, repos *repository.Repos) string {
+		groupIDStr := c.Param(paramName)
+		if groupIDStr == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
+			return ""
+		}
+		return groupIDStr
 	}
 }
 
 // FromProjectIDParam extracts group ID by looking up project's group.
 // Use when URL has /:id representing a project ID.
 func FromProjectIDParam(repos *repository.Repos) IDExtractor {
-	return func(c *gin.Context, r *repository.Repos) uint {
+	return func(c *gin.Context, r *repository.Repos) string {
 		projectIDStr := c.Param("id")
-		projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
-		if err != nil {
+		if projectIDStr == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
-			return 0
+			return ""
 		}
 
-		project, err := repos.Project.GetProjectByID(uint(projectID))
+		project, err := repos.Project.GetProjectByID(projectIDStr)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
-			return 0
+			return ""
+		}
+
+		return project.GID
+	}
+}
+
+// FromProjectIDParamName extracts group ID by looking up project using a named URL parameter.
+func FromProjectIDParamName(paramName string) IDExtractor {
+	return func(c *gin.Context, r *repository.Repos) string {
+		projectIDStr := c.Param(paramName)
+		if projectIDStr == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
+			return ""
+		}
+
+		project, err := r.Project.GetProjectByID(projectIDStr)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+			return ""
 		}
 
 		return project.GID
@@ -49,24 +78,23 @@ func FromProjectIDParam(repos *repository.Repos) IDExtractor {
 // FromConfigFileIDParam extracts group ID by looking up config file's project's group.
 // Use when URL has /:id representing a config file ID.
 func FromConfigFileIDParam(repos *repository.Repos) IDExtractor {
-	return func(c *gin.Context, r *repository.Repos) uint {
+	return func(c *gin.Context, r *repository.Repos) string {
 		configIDStr := c.Param("id")
-		configID, err := strconv.ParseUint(configIDStr, 10, 32)
-		if err != nil {
+		if configIDStr == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config file ID"})
-			return 0
+			return ""
 		}
 
-		configFile, err := repos.ConfigFile.GetConfigFileByID(uint(configID))
+		configFile, err := repos.ConfigFile.GetConfigFileByID(configIDStr)
 		if err != nil || configFile == nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "config file not found"})
-			return 0
+			return ""
 		}
 
 		project, err := repos.Project.GetProjectByID(configFile.ProjectID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
-			return 0
+			return ""
 		}
 
 		return project.GID
@@ -76,20 +104,20 @@ func FromConfigFileIDParam(repos *repository.Repos) IDExtractor {
 // FromProjectIDInPayload extracts group ID from project_id field in JSON body.
 // Use when creating resources that have project_id in the request payload.
 func FromProjectIDInPayload() IDExtractor {
-	return func(c *gin.Context, repos *repository.Repos) uint {
+	return func(c *gin.Context, repos *repository.Repos) string {
 		var payload struct {
-			ProjectID uint `json:"project_id" form:"project_id"`
+			ProjectID string `json:"project_id" form:"project_id"`
 		}
 
-		if err := c.ShouldBind(&payload); err != nil {
+		if err := bindPayload(c, &payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-			return 0
+			return ""
 		}
 
 		project, err := repos.Project.GetProjectByID(payload.ProjectID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
-			return 0
+			return ""
 		}
 
 		return project.GID
@@ -99,21 +127,32 @@ func FromProjectIDInPayload() IDExtractor {
 // FromGroupIDInPayload extracts group ID directly from request body.
 // Use when creating resources that have group_id in the request payload.
 func FromGroupIDInPayload() IDExtractor {
-	return func(c *gin.Context, repos *repository.Repos) uint {
+	return func(c *gin.Context, repos *repository.Repos) string {
 		var payload struct {
-			GroupID uint `json:"group_id" form:"group_id"`
+			GroupID string `json:"group_id" form:"group_id"`
 		}
 
-		if err := c.ShouldBind(&payload); err != nil {
+		if err := bindPayload(c, &payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-			return 0
+			return ""
 		}
 
-		if payload.GroupID == 0 {
+		if payload.GroupID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "group_id is required"})
-			return 0
+			return ""
 		}
 
 		return payload.GroupID
+	}
+}
+
+func bindPayload(c *gin.Context, payload interface{}) error {
+	switch c.ContentType() {
+	case binding.MIMEJSON:
+		return c.ShouldBindBodyWith(payload, binding.JSON)
+	case binding.MIMEXML, binding.MIMEXML2:
+		return c.ShouldBindBodyWith(payload, binding.XML)
+	default:
+		return c.ShouldBind(payload)
 	}
 }

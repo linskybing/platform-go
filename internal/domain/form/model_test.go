@@ -55,7 +55,7 @@ func TestFormStructure(t *testing.T) {
 			name: "minimal_form_creation",
 			setupForm: func() Form {
 				return Form{
-					UserID:      1,
+					UserID:      "1",
 					Title:       "Test Form",
 					Description: "This is a test form",
 					Tag:         "general",
@@ -63,16 +63,16 @@ func TestFormStructure(t *testing.T) {
 				}
 			},
 			verify: func(f Form) bool {
-				return f.UserID == 1 && f.Title == "Test Form" && f.Status == FormStatusPending
+				return f.UserID == "1" && f.Title == "Test Form" && f.Status == FormStatusPending
 			},
 			scenario: "Create form with minimum required fields",
 		},
 		{
 			name: "form_with_project_id",
 			setupForm: func() Form {
-				projectID := uint(42)
+				projectID := "42"
 				return Form{
-					UserID:      2,
+					UserID:      "2",
 					ProjectID:   &projectID,
 					Title:       "Project Form",
 					Description: "Form linked to project",
@@ -81,7 +81,7 @@ func TestFormStructure(t *testing.T) {
 				}
 			},
 			verify: func(f Form) bool {
-				return f.ProjectID != nil && *f.ProjectID == 42
+				return f.ProjectID != nil && *f.ProjectID == "42"
 			},
 			scenario: "Create form with optional project reference",
 		},
@@ -89,7 +89,7 @@ func TestFormStructure(t *testing.T) {
 			name: "form_without_project_id",
 			setupForm: func() Form {
 				return Form{
-					UserID:      3,
+					UserID:      "3",
 					ProjectID:   nil,
 					Title:       "Standalone Form",
 					Description: "Form without project",
@@ -98,7 +98,7 @@ func TestFormStructure(t *testing.T) {
 				}
 			},
 			verify: func(f Form) bool {
-				return f.ProjectID == nil && f.UserID == 3
+				return f.ProjectID == nil && f.UserID == "3"
 			},
 			scenario: "Create standalone form",
 		},
@@ -106,7 +106,7 @@ func TestFormStructure(t *testing.T) {
 			name: "form_status_transitions",
 			setupForm: func() Form {
 				return Form{
-					UserID:      4,
+					UserID:      "4",
 					Title:       "Processing Form",
 					Description: "Form being processed",
 					Tag:         "urgent",
@@ -122,7 +122,7 @@ func TestFormStructure(t *testing.T) {
 			name: "form_with_empty_messages",
 			setupForm: func() Form {
 				return Form{
-					UserID:      5,
+					UserID:      "5",
 					Title:       "Form with Messages",
 					Description: "Form that will have messages",
 					Messages:    []FormMessage{},
@@ -139,7 +139,7 @@ func TestFormStructure(t *testing.T) {
 			setupForm: func() Form {
 				longDesc := "This is a very long description that contains multiple lines and detailed information about the form purpose, requirements, and expectations. It demonstrates proper handling of long text fields in the form structure."
 				return Form{
-					UserID:      6,
+					UserID:      "6",
 					Title:       "Complex Form",
 					Description: longDesc,
 					Tag:         "detailed",
@@ -155,7 +155,7 @@ func TestFormStructure(t *testing.T) {
 			name: "form_rejected_status",
 			setupForm: func() Form {
 				return Form{
-					UserID:      7,
+					UserID:      "7",
 					Title:       "Rejected Form",
 					Description: "This form was rejected",
 					Tag:         "rejected",
@@ -171,7 +171,7 @@ func TestFormStructure(t *testing.T) {
 			name: "form_completed_status",
 			setupForm: func() Form {
 				return Form{
-					UserID:      8,
+					UserID:      "8",
 					Title:       "Completed Form",
 					Description: "This form is completed",
 					Tag:         "done",
@@ -207,13 +207,13 @@ func TestFormMessageStructure(t *testing.T) {
 			name: "message_minimal",
 			setupMsg: func() FormMessage {
 				return FormMessage{
-					FormID:  1,
-					UserID:  100,
+					FormID:  "1",
+					UserID:  "100",
 					Content: "This is a test message",
 				}
 			},
 			verify: func(m FormMessage) bool {
-				return m.FormID == 1 && m.UserID == 100 && m.Content != ""
+				return m.FormID == "1" && m.UserID == "100" && m.Content != ""
 			},
 			scenario: "Create minimal form message",
 		},
@@ -221,14 +221,14 @@ func TestFormMessageStructure(t *testing.T) {
 			name: "message_with_id",
 			setupMsg: func() FormMessage {
 				return FormMessage{
-					ID:      99,
-					FormID:  2,
-					UserID:  101,
+					ID:      "99",
+					FormID:  "2",
+					UserID:  "101",
 					Content: "Message with ID",
 				}
 			},
 			verify: func(m FormMessage) bool {
-				return m.ID == 99 && m.FormID == 2
+				return m.ID == "99" && m.FormID == "2"
 			},
 			scenario: "Message with predefined ID",
 		},
@@ -237,9 +237,9 @@ func TestFormMessageStructure(t *testing.T) {
 			setupMsg: func() FormMessage {
 				now := time.Now()
 				return FormMessage{
-					ID:        1,
-					FormID:    3,
-					UserID:    102,
+					ID:        "1",
+					FormID:    "3",
+					UserID:    "102",
 					Content:   "Timestamped message",
 					CreatedAt: now,
 				}
@@ -254,8 +254,8 @@ func TestFormMessageStructure(t *testing.T) {
 			setupMsg: func() FormMessage {
 				longContent := "This is a very long message that spans multiple lines and contains detailed information. It tests the ability of the system to handle longer text content in form messages without truncation or errors."
 				return FormMessage{
-					FormID:  4,
-					UserID:  103,
+					FormID:  "4",
+					UserID:  "103",
 					Content: longContent,
 				}
 			},
@@ -268,8 +268,8 @@ func TestFormMessageStructure(t *testing.T) {
 			name: "message_empty_content_boundary",
 			setupMsg: func() FormMessage {
 				return FormMessage{
-					FormID:  5,
-					UserID:  104,
+					FormID:  "5",
+					UserID:  "104",
 					Content: "",
 				}
 			},
@@ -310,13 +310,13 @@ func TestFormDTOStructure(t *testing.T) {
 		{
 			name: "create_form_dto_with_project",
 			createDTO: &CreateFormDTO{
-				ProjectID:   ptrUint(10),
+				ProjectID:   ptrString("10"),
 				Title:       "Project Form",
 				Description: "Form for project",
 				Tag:         "project-tag",
 			},
 			verifyCreate: func(dto *CreateFormDTO) bool {
-				return dto.ProjectID != nil && *dto.ProjectID == 10
+				return dto.ProjectID != nil && *dto.ProjectID == "10"
 			},
 		},
 		{

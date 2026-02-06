@@ -154,7 +154,7 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 			if err := s.Repos.Resource.UpdateResource(&val); err != nil {
 				return fmt.Errorf("failed to update resource %s: %w", name, err)
 			}
-			utils.LogAuditWithConsole(c, "update", "resource", fmt.Sprintf("r_id=%d", val.RID), oldTarget, val, "", s.Repos.Audit)
+			utils.LogAuditWithConsole(c, "update", "resource", fmt.Sprintf("r_id=%s", val.RID), oldTarget, val, "", s.Repos.Audit)
 		} else {
 			// Create
 			newRes.CFID = cf.CFID
@@ -164,7 +164,7 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 			if err := s.Repos.Resource.CreateResource(newRes); err != nil {
 				return fmt.Errorf("failed to create resource %s: %w", name, err)
 			}
-			utils.LogAuditWithConsole(c, "create", "resource", fmt.Sprintf("r_id=%d", newRes.RID), nil, *newRes, "", s.Repos.Audit)
+			utils.LogAuditWithConsole(c, "create", "resource", fmt.Sprintf("r_id=%s", newRes.RID), nil, *newRes, "", s.Repos.Audit)
 		}
 	}
 
@@ -177,7 +177,7 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 			if err := s.Repos.Resource.DeleteResource(res.RID); err != nil {
 				return fmt.Errorf("failed to delete unused resource %s: %w", name, err)
 			}
-			utils.LogAuditWithConsole(c, "delete", "resource", fmt.Sprintf("r_id=%d", res.RID), res, nil, "", s.Repos.Audit)
+			utils.LogAuditWithConsole(c, "delete", "resource", fmt.Sprintf("r_id=%s", res.RID), res, nil, "", s.Repos.Audit)
 		}
 	}
 	return nil

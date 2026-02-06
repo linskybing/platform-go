@@ -17,13 +17,13 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	ctx := GetTestContext()
 	k8sValidator := NewK8sValidator()
 
-	var testConfigFileID uint
+	var testConfigFileID string
 
 	t.Run("CreateConfigFile - Success as Manager", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
 
 		formData := map[string]string{
-			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+			"project_id": ctx.TestProject.PID,
 			"filename":   "test-config.yaml",
 			"raw_yaml":   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: test-pod",
 		}
@@ -36,7 +36,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 		err = resp.DecodeJSON(&created)
 		require.NoError(t, err)
 		assert.Equal(t, "test-config.yaml", created.Filename)
-		assert.NotZero(t, created.CFID)
+		assert.NotEmpty(t, created.CFID)
 		testConfigFileID = created.CFID
 	})
 
@@ -44,7 +44,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
 		formData := map[string]string{
-			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+			"project_id": ctx.TestProject.PID,
 			"filename":   "unauthorized-config.yaml",
 			"raw_yaml":   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: unauthorized-pod",
 		}
@@ -110,13 +110,13 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("GetConfigFile - Success as Member", func(t *testing.T) {
-		if testConfigFileID == 0 {
+		if testConfigFileID == "" {
 			t.Skip("No config file to test")
 		}
 
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/config-files/%d", testConfigFileID)
+		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
 		resp, err := client.GET(path)
 
 		require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	t.Run("ListConfigFilesByProject - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/projects/%d/config-files", ctx.TestProject.PID)
+		path := fmt.Sprintf("/projects/%s/config-files", ctx.TestProject.PID)
 		resp, err := client.GET(path)
 
 		require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("UpdateConfigFile - Success as Manager", func(t *testing.T) {
-		if testConfigFileID == 0 {
+		if testConfigFileID == "" {
 			t.Skip("No config file to test")
 		}
 
@@ -168,7 +168,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 			"raw_yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: updated-pod",
 		}
 
-		path := fmt.Sprintf("/config-files/%d", testConfigFileID)
+		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
 		resp, err := client.PUTForm(path, formData)
 
 		require.NoError(t, err)
@@ -185,7 +185,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("UpdateConfigFile - Forbidden for Regular User", func(t *testing.T) {
-		if testConfigFileID == 0 {
+		if testConfigFileID == "" {
 			t.Skip("No config file to test")
 		}
 
@@ -195,7 +195,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 			"filename": "forbidden-update.yaml",
 		}
 
-		path := fmt.Sprintf("/config-files/%d", testConfigFileID)
+		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
 		resp, err := client.PUTForm(path, formData)
 
 		require.NoError(t, err)
@@ -203,13 +203,13 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("CreateInstance - Success with K8s Verification", func(t *testing.T) {
-		if testConfigFileID == 0 {
+		if testConfigFileID == "" {
 			t.Skip("No config file to test")
 		}
 
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/instance/%d", testConfigFileID)
+		path := fmt.Sprintf("/instance/%s", testConfigFileID)
 		resp, err := client.POST(path, nil)
 
 		require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 		}
 		// Only verify K8s deployment if K8s is available and creation succeeded
 		if resp.StatusCode == http.StatusOK && k8sValidator != nil {
-			namespace := fmt.Sprintf("proj-%d", ctx.TestProject.PID)
+			namespace := fmt.Sprintf("proj-%s", ctx.TestProject.PID)
 			deploymentName := "test-config-deployment"
 
 			exists, err := k8sValidator.DeploymentExists(namespace, deploymentName)
@@ -231,13 +231,13 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("DestructInstance - Success as Member", func(t *testing.T) {
-		if testConfigFileID == 0 {
+		if testConfigFileID == "" {
 			t.Skip("No config file to test")
 		}
 
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/instance/%d", testConfigFileID)
+		path := fmt.Sprintf("/instance/%s", testConfigFileID)
 		resp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -249,7 +249,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
 
 		formData := map[string]string{
-			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+			"project_id": ctx.TestProject.PID,
 			"filename":   "config-to-delete.yaml",
 			"raw_yaml":   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: config-to-delete\nspec:\n  containers:\n  - name: nginx\n    image: nginx:latest\n",
 		}
@@ -262,7 +262,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Delete it
-		path := fmt.Sprintf("/config-files/%d", created.CFID)
+		path := fmt.Sprintf("/config-files/%s", created.CFID)
 		deleteResp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -276,13 +276,13 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("DeleteConfigFile - Forbidden for Regular User", func(t *testing.T) {
-		if testConfigFileID == 0 {
+		if testConfigFileID == "" {
 			t.Skip("No config file to test")
 		}
 
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/config-files/%d", testConfigFileID)
+		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
 		resp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -343,7 +343,7 @@ func TestConfigFileHandler_ResourceLimits(t *testing.T) {
 			client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
 
 			formData := map[string]string{
-				"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
+				"project_id": ctx.TestProject.PID,
 				"filename":   "resource-test-" + tt.name + ".yaml",
 				"raw_yaml":   fmt.Sprintf("apiVersion: v1\nkind: Pod\nmetadata:\n  name: resource-test\nspec:\n  containers:\n  - name: test\n    image: nginx:latest\n    resources:\n      requests:\n        cpu: %s\n        memory: %s\n      limits:\n        cpu: %s\n        memory: %s", tt.cpuRequest, tt.memRequest, tt.cpuLimit, tt.memLimit),
 			}
@@ -358,136 +358,4 @@ func TestConfigFileHandler_ResourceLimits(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestConfigFileGPUMPSConfiguration tests GPU MPS configuration validation and injection
-func TestConfigFileGPUMPSConfiguration(t *testing.T) {
-	ctx := GetTestContext()
-	if ctx.TestProject.GPUQuota == 0 {
-		t.Skip("Project GPU quota not set up for testing")
-	}
-
-	client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
-
-	t.Run("CreateConfigFile with GPU request without MPS config - Should fail", func(t *testing.T) {
-		// Test with a project that has no MPS configuration
-		gpuPodYAML := `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: gpu-test-pod
-spec:
-  containers:
-  - name: gpu-container
-    image: nvidia/cuda:11.8.0-runtime
-    resources:
-      requests:
-        nvidia.com/gpu: "1"
-`
-		// Create test project without MPS config
-		formData := map[string]string{
-			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
-			"filename":   "gpu-test-no-mps.yaml",
-			"raw_yaml":   gpuPodYAML,
-		}
-
-		resp, err := client.POSTFormRaw("/config-files", formData)
-		require.NoError(t, err)
-		// Should succeed at creation time (no GPU request check during config creation)
-		assert.Equal(t, http.StatusCreated, resp.StatusCode)
-	})
-
-	t.Run("CreateConfigFile with GPU request and valid MPS config", func(t *testing.T) {
-		gpuPodYAML := `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: gpu-mps-pod
-spec:
-  containers:
-  - name: gpu-container
-    image: nvidia/cuda:11.8.0-runtime
-    resources:
-      requests:
-        nvidia.com/gpu: "1"
-      limits:
-        nvidia.com/gpu: "1"
-`
-		formData := map[string]string{
-			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
-			"filename":   "gpu-mps-valid.yaml",
-			"raw_yaml":   gpuPodYAML,
-		}
-
-		resp, err := client.POSTFormRaw("/config-files", formData)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusCreated, resp.StatusCode)
-
-		var created configfile.ConfigFile
-		err = resp.DecodeJSON(&created)
-		require.NoError(t, err)
-		assert.Equal(t, "gpu-mps-valid.yaml", created.Filename)
-	})
-
-	t.Run("CreateConfigFile with non-GPU workload ignores MPS config", func(t *testing.T) {
-		// Pod without GPU request should not have MPS config validated or injected
-		regularPodYAML := `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: regular-pod
-spec:
-  containers:
-  - name: app-container
-    image: nginx:latest
-    resources:
-      requests:
-        cpu: "100m"
-        memory: "128Mi"
-`
-		formData := map[string]string{
-			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
-			"filename":   "regular-pod.yaml",
-			"raw_yaml":   regularPodYAML,
-		}
-
-		resp, err := client.POSTFormRaw("/config-files", formData)
-		require.NoError(t, err)
-		// Should succeed - no GPU validation needed for non-GPU workloads
-		assert.Equal(t, http.StatusCreated, resp.StatusCode)
-	})
-
-	t.Run("CreateConfigFile with Deployment containing GPU request", func(t *testing.T) {
-		deploymentYAML := `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: gpu-deployment
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: gpu-app
-  template:
-    metadata:
-      labels:
-        app: gpu-app
-    spec:
-      containers:
-      - name: gpu-container
-        image: nvidia/cuda:11.8.0-runtime
-        resources:
-          requests:
-            nvidia.com/gpu: "1"
-`
-		formData := map[string]string{
-			"project_id": fmt.Sprintf("%d", ctx.TestProject.PID),
-			"filename":   "gpu-deployment.yaml",
-			"raw_yaml":   deploymentYAML,
-		}
-
-		resp, err := client.POSTFormRaw("/config-files", formData)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusCreated, resp.StatusCode)
-	})
 }

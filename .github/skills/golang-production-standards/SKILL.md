@@ -1,7 +1,12 @@
 ---
 name: golang-production-standards
 description: Enforce production-grade Golang coding standards, best practices, error handling, and performance optimization for the platform-go project
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Golang Production Standards
 

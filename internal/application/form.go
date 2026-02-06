@@ -15,7 +15,7 @@ func NewFormService(repo repository.FormRepo) *FormService {
 	return &FormService{repo: repo}
 }
 
-func (s *FormService) CreateForm(userID uint, input form.CreateFormDTO) (*form.Form, error) {
+func (s *FormService) CreateForm(userID string, input form.CreateFormDTO) (*form.Form, error) {
 	f := &form.Form{
 		UserID:      userID,
 		ProjectID:   input.ProjectID,
@@ -31,11 +31,11 @@ func (s *FormService) GetAllForms() ([]form.Form, error) {
 	return s.repo.FindAll()
 }
 
-func (s *FormService) GetUserForms(userID uint) ([]form.Form, error) {
+func (s *FormService) GetUserForms(userID string) ([]form.Form, error) {
 	return s.repo.FindByUserID(userID)
 }
 
-func (s *FormService) UpdateFormStatus(id uint, status string) (*form.Form, error) {
+func (s *FormService) UpdateFormStatus(id string, status string) (*form.Form, error) {
 	f, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (s *FormService) UpdateFormStatus(id uint, status string) (*form.Form, erro
 	return f, s.repo.Update(f)
 }
 
-func (s *FormService) AddMessage(formID, userID uint, content string) (*form.FormMessage, error) {
+func (s *FormService) AddMessage(formID, userID string, content string) (*form.FormMessage, error) {
 	f, err := s.repo.FindByID(formID)
 	if err != nil {
 		return nil, err
@@ -57,6 +57,6 @@ func (s *FormService) AddMessage(formID, userID uint, content string) (*form.For
 	return msg, s.repo.CreateMessage(msg)
 }
 
-func (s *FormService) ListMessages(formID uint) ([]form.FormMessage, error) {
+func (s *FormService) ListMessages(formID string) ([]form.FormMessage, error) {
 	return s.repo.ListMessages(formID)
 }

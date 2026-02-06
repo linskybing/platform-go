@@ -110,13 +110,13 @@ func TestContainerTagStructure(t *testing.T) {
 			name: "minimal_tag",
 			setupTag: func() ContainerTag {
 				return ContainerTag{
-					RepositoryID: 1,
+					RepositoryID: "1",
 					Name:         "latest",
 					Digest:       "sha256:1234567890abcdef",
 				}
 			},
 			verify: func(tag ContainerTag) bool {
-				return tag.RepositoryID == 1 && tag.Name == "latest"
+				return tag.RepositoryID == "1" && tag.Name == "latest"
 			},
 			scenario: "Create container tag",
 		},
@@ -124,7 +124,7 @@ func TestContainerTagStructure(t *testing.T) {
 			name: "tag_with_size",
 			setupTag: func() ContainerTag {
 				return ContainerTag{
-					RepositoryID: 2,
+					RepositoryID: "2",
 					Name:         "v1.0",
 					Digest:       "sha256:abcdef1234567890",
 					Size:         1073741824, // 1GB
@@ -140,7 +140,7 @@ func TestContainerTagStructure(t *testing.T) {
 			setupTag: func() ContainerTag {
 				pushedAt := time.Now().Add(-24 * time.Hour)
 				return ContainerTag{
-					RepositoryID: 3,
+					RepositoryID: "3",
 					Name:         "stable",
 					Digest:       "sha256:xyz789abc",
 					PushedAt:     &pushedAt,
@@ -155,7 +155,7 @@ func TestContainerTagStructure(t *testing.T) {
 			name: "tag_without_push_time",
 			setupTag: func() ContainerTag {
 				return ContainerTag{
-					RepositoryID: 4,
+					RepositoryID: "4",
 					Name:         "dev",
 					Digest:       "sha256:qwe123rty",
 					PushedAt:     nil,
@@ -191,8 +191,8 @@ func TestImageAllowListStructure(t *testing.T) {
 			setupAL: func() ImageAllowList {
 				return ImageAllowList{
 					ProjectID:    nil,
-					TagID:        ptrUint(10),
-					RepositoryID: 5,
+					TagID:        ptrString("10"),
+					RepositoryID: "5",
 					IsEnabled:    true,
 				}
 			},
@@ -204,16 +204,16 @@ func TestImageAllowListStructure(t *testing.T) {
 		{
 			name: "project_specific_rule",
 			setupAL: func() ImageAllowList {
-				projectID := uint(100)
+				projectID := "100"
 				return ImageAllowList{
 					ProjectID:    &projectID,
-					TagID:        ptrUint(20),
-					RepositoryID: 6,
+					TagID:        ptrString("20"),
+					RepositoryID: "6",
 					IsEnabled:    true,
 				}
 			},
 			verify: func(al ImageAllowList) bool {
-				return al.ProjectID != nil && *al.ProjectID == 100
+				return al.ProjectID != nil && *al.ProjectID == "100"
 			},
 			scenario: "Project-specific allow rule",
 		},
@@ -222,8 +222,8 @@ func TestImageAllowListStructure(t *testing.T) {
 			setupAL: func() ImageAllowList {
 				return ImageAllowList{
 					ProjectID:    nil,
-					TagID:        ptrUint(30),
-					RepositoryID: 7,
+					TagID:        ptrString("30"),
+					RepositoryID: "7",
 					IsEnabled:    false,
 				}
 			},
@@ -237,14 +237,14 @@ func TestImageAllowListStructure(t *testing.T) {
 			setupAL: func() ImageAllowList {
 				return ImageAllowList{
 					ProjectID:    nil,
-					TagID:        ptrUint(40),
-					RepositoryID: 8,
-					CreatedBy:    999,
+					TagID:        ptrString("40"),
+					RepositoryID: "8",
+					CreatedBy:    "999",
 					IsEnabled:    true,
 				}
 			},
 			verify: func(al ImageAllowList) bool {
-				return al.CreatedBy == 999
+				return al.CreatedBy == "999"
 			},
 			scenario: "Rule with creator information",
 		},
@@ -272,8 +272,8 @@ func TestImageRequestStructure(t *testing.T) {
 			name: "pending_request",
 			setupIR: func() ImageRequest {
 				return ImageRequest{
-					UserID:         1,
-					ProjectID:      ptrUint(50),
+					UserID:         "1",
+					ProjectID:      ptrString("50"),
 					InputRegistry:  "docker.io",
 					InputImageName: "ubuntu",
 					InputTag:       "latest",
@@ -290,13 +290,13 @@ func TestImageRequestStructure(t *testing.T) {
 			setupIR: func() ImageRequest {
 				reviewedAt := time.Now()
 				return ImageRequest{
-					UserID:         2,
+					UserID:         "2",
 					ProjectID:      nil,
 					InputRegistry:  "gcr.io",
 					InputImageName: "my-app",
 					InputTag:       "v1.0",
 					Status:         "approved",
-					ReviewerID:     ptrUint(100),
+					ReviewerID:     ptrString("100"),
 					ReviewedAt:     &reviewedAt,
 					ReviewerNote:   "Approved for production",
 				}
@@ -311,13 +311,13 @@ func TestImageRequestStructure(t *testing.T) {
 			setupIR: func() ImageRequest {
 				reviewedAt := time.Now()
 				return ImageRequest{
-					UserID:         3,
-					ProjectID:      ptrUint(51),
+					UserID:         "3",
+					ProjectID:      ptrString("51"),
 					InputRegistry:  "quay.io",
 					InputImageName: "untrusted-image",
 					InputTag:       "v0.1",
 					Status:         "rejected",
-					ReviewerID:     ptrUint(101),
+					ReviewerID:     ptrString("101"),
 					ReviewedAt:     &reviewedAt,
 					ReviewerNote:   "Security concerns detected",
 				}
@@ -331,7 +331,7 @@ func TestImageRequestStructure(t *testing.T) {
 			name: "unreviewed_request",
 			setupIR: func() ImageRequest {
 				return ImageRequest{
-					UserID:         4,
+					UserID:         "4",
 					ProjectID:      nil,
 					InputRegistry:  "docker.io",
 					InputImageName: "postgres",
@@ -370,27 +370,25 @@ func TestClusterImageStatusStructure(t *testing.T) {
 			name: "unpulled_image",
 			setupCIS: func() ClusterImageStatus {
 				return ClusterImageStatus{
-					TagID:    100,
+					TagID:    "4",
 					IsPulled: false,
 				}
 			},
 			verify: func(cis ClusterImageStatus) bool {
-				return cis.TagID == 100 && !cis.IsPulled
+				return cis.TagID == "4" && !cis.IsPulled
 			},
 			scenario: "Image not yet pulled",
 		},
 		{
 			name: "successfully_pulled_image",
 			setupCIS: func() ClusterImageStatus {
-				pulledAt := time.Now()
 				return ClusterImageStatus{
-					TagID:        101,
-					IsPulled:     true,
-					LastPulledAt: &pulledAt,
+					TagID:    "101",
+					IsPulled: true,
 				}
 			},
 			verify: func(cis ClusterImageStatus) bool {
-				return cis.IsPulled && cis.LastPulledAt != nil
+				return cis.IsPulled
 			},
 			scenario: "Successfully pulled image",
 		},
@@ -398,29 +396,25 @@ func TestClusterImageStatusStructure(t *testing.T) {
 			name: "failed_pull_attempt",
 			setupCIS: func() ClusterImageStatus {
 				return ClusterImageStatus{
-					TagID:     102,
-					IsPulled:  false,
-					PullError: "Connection timeout",
+					TagID:    "102",
+					IsPulled: false,
 				}
 			},
 			verify: func(cis ClusterImageStatus) bool {
-				return !cis.IsPulled && cis.PullError != ""
+				return !cis.IsPulled
 			},
 			scenario: "Failed pull attempt",
 		},
 		{
 			name: "image_with_last_pull_time",
 			setupCIS: func() ClusterImageStatus {
-				pulledAt := time.Now().Add(-48 * time.Hour)
 				return ClusterImageStatus{
-					TagID:        103,
-					IsPulled:     true,
-					LastPulledAt: &pulledAt,
-					PullError:    "",
+					TagID:    "103",
+					IsPulled: true,
 				}
 			},
 			verify: func(cis ClusterImageStatus) bool {
-				return cis.LastPulledAt != nil && cis.PullError == ""
+				return cis.IsPulled
 			},
 			scenario: "Image with pull history",
 		},
@@ -436,7 +430,7 @@ func TestClusterImageStatusStructure(t *testing.T) {
 	}
 }
 
-// Helper function
+// Helper functions
 func ptrUint(u uint) *uint {
 	return &u
 }

@@ -51,7 +51,7 @@ func (mr *MockGroupRepoMockRecorder) CreateGroup(group interface{}) *gomock.Call
 }
 
 // DeleteGroup mocks base method.
-func (m *MockGroupRepo) DeleteGroup(id uint) error {
+func (m *MockGroupRepo) DeleteGroup(id string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteGroup", id)
 	ret0, _ := ret[0].(error)
@@ -80,7 +80,7 @@ func (mr *MockGroupRepoMockRecorder) GetAllGroups() *gomock.Call {
 }
 
 // GetGroupByID mocks base method.
-func (m *MockGroupRepo) GetGroupByID(id uint) (group.Group, error) {
+func (m *MockGroupRepo) GetGroupByID(id string) (group.Group, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupByID", id)
 	ret0, _ := ret[0].(group.Group)

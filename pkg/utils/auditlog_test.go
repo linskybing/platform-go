@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ func (m *mockAuditRepo) WithTx(tx *gorm.DB) repository.AuditRepo {
 func TestLogAudit(t *testing.T) {
 	tests := []struct {
 		name         string
-		userID       uint
+		userID       string
 		ip           string
 		ua           string
 		action       string
@@ -62,7 +63,7 @@ func TestLogAudit(t *testing.T) {
 	}{
 		{
 			name:         "create action",
-			userID:       1,
+			userID:       "1",
 			ip:           "192.168.1.1",
 			ua:           "Mozilla/5.0",
 			action:       "create",
@@ -77,7 +78,7 @@ func TestLogAudit(t *testing.T) {
 		},
 		{
 			name:         "update action",
-			userID:       2,
+			userID:       "2",
 			ip:           "10.0.0.1",
 			ua:           "Chrome",
 			action:       "update",
@@ -93,7 +94,7 @@ func TestLogAudit(t *testing.T) {
 		},
 		{
 			name:         "delete action",
-			userID:       3,
+			userID:       "3",
 			ip:           "::1",
 			ua:           "Safari",
 			action:       "delete",
@@ -107,7 +108,7 @@ func TestLogAudit(t *testing.T) {
 		},
 		{
 			name:         "no before/after",
-			userID:       4,
+			userID:       "4",
 			ip:           "127.0.0.1",
 			ua:           "Firefox",
 			action:       "view",
@@ -119,7 +120,7 @@ func TestLogAudit(t *testing.T) {
 		},
 		{
 			name:         "complex nested data",
-			userID:       5,
+			userID:       "5",
 			ip:           "192.168.0.1",
 			ua:           "API Client",
 			action:       "modify",
@@ -200,7 +201,7 @@ func TestLogAuditDataSerialization(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockAuditRepo{createdLogs: make([]*audit.AuditLog, 0)}
 
-			err := LogAudit(1, "127.0.0.1", "test", "action", "resource", "id",
+			err := LogAudit("1", "127.0.0.1", "test", "action", "resource", "id",
 				tt.data, nil, "test", repo)
 
 			assert.NoError(t, err, tt.description)
@@ -221,19 +222,16 @@ func TestLogAuditDataSerialization(t *testing.T) {
 func TestLogAuditWithConsole(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
 		action      string
 		description string
 	}{
 		{
 			name:        "async logging",
-			userID:      1,
 			action:      "create",
 			description: "should log asynchronously",
 		},
 		{
 			name:        "multiple concurrent logs",
-			userID:      2,
 			action:      "update",
 			description: "should handle concurrent logging",
 		},
@@ -269,21 +267,21 @@ func TestLogAuditWithConsole(t *testing.T) {
 func TestLogAuditWithContextData(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
+		userID      string
 		username    string
 		action      string
 		description string
 	}{
 		{
 			name:        "with user context",
-			userID:      1,
+			userID:      "1",
 			username:    "alice",
 			action:      "create",
 			description: "should extract user ID from context",
 		},
 		{
 			name:        "with different user",
-			userID:      2,
+			userID:      "2",
 			username:    "bob",
 			action:      "delete",
 			description: "should use provided user ID",
@@ -301,7 +299,7 @@ func TestLogAuditWithContextData(t *testing.T) {
 			c.Request = req
 			// Set up claims
 			c.Set("claims", &struct {
-				UserID   uint
+				UserID   string
 				Username string
 			}{UserID: tt.userID, Username: tt.username})
 
@@ -342,7 +340,7 @@ func TestLogAuditErrorHandling(t *testing.T) {
 			repo := &mockAuditRepo{createdLogs: make([]*audit.AuditLog, 0)}
 
 			// Use data that's valid to marshal
-			err := LogAudit(1, "127.0.0.1", "test", "action", "resource", "id",
+			err := LogAudit("1", "127.0.0.1", "test", "action", "resource", "id",
 				map[string]interface{}{"key": "value"},
 				map[string]interface{}{"key": "new_value"},
 				"test", repo)
@@ -360,7 +358,7 @@ func TestAuditLogCreation(t *testing.T) {
 	beforeData := map[string]interface{}{"status": "active"}
 	afterData := map[string]interface{}{"status": "inactive"}
 
-	err := LogAudit(42, "192.168.1.100", "Chrome/90", "status_change", "user", "user_789",
+	err := LogAudit("42", "192.168.1.100", "Chrome/90", "status_change", "user", "user_789",
 		beforeData, afterData, "User status changed", repo)
 
 	require.NoError(t, err)
@@ -370,7 +368,7 @@ func TestAuditLogCreation(t *testing.T) {
 
 	// Verify all fields
 	t.Run("audit log fields", func(t *testing.T) {
-		assert.Equal(t, uint(42), log.UserID)
+		assert.Equal(t, "42", log.UserID)
 		assert.Equal(t, "192.168.1.100", log.IPAddress)
 		assert.Equal(t, "Chrome/90", log.UserAgent)
 		assert.Equal(t, "status_change", log.Action)
@@ -402,7 +400,7 @@ func TestLogAuditConcurrency(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
 			_ = LogAudit(
-				uint(id), "127.0.0.1", "test", "action",
+				strconv.Itoa(id), "127.0.0.1", "test", "action",
 				"resource", "id_"+string(rune(id)),
 				nil, nil, "test", repo,
 			)

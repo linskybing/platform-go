@@ -57,7 +57,7 @@ func (g *TestDataGenerator) GenerateGroup(prefix string) *group.Group {
 }
 
 // GenerateProject generates a random test project
-func (g *TestDataGenerator) GenerateProject(prefix string, gid uint) *project.Project {
+func (g *TestDataGenerator) GenerateProject(prefix string, gid string) *project.Project {
 	return &project.Project{
 		ProjectName: fmt.Sprintf("%s-project-%d", prefix, g.rand.Intn(10000)),
 		GID:         gid,
@@ -80,7 +80,7 @@ func (g *TestDataGenerator) CreateTestProject(p *project.Project) error {
 }
 
 // AddUserToGroup adds a user to a group with specified role
-func (g *TestDataGenerator) AddUserToGroup(uid, gid uint, role string) error {
+func (g *TestDataGenerator) AddUserToGroup(uid, gid string, role string) error {
 	ug := &group.UserGroup{
 		UID:  uid,
 		GID:  gid,
@@ -179,32 +179,32 @@ func isTestNamespace(namespace string) bool {
 
 // DatabaseCleaner cleans up database records after tests
 type DatabaseCleaner struct {
-	userIDs    []uint
-	groupIDs   []uint
-	projectIDs []uint
+	userIDs    []string
+	groupIDs   []string
+	projectIDs []string
 }
 
 // NewDatabaseCleaner creates a new database cleaner
 func NewDatabaseCleaner() *DatabaseCleaner {
 	return &DatabaseCleaner{
-		userIDs:    make([]uint, 0),
-		groupIDs:   make([]uint, 0),
-		projectIDs: make([]uint, 0),
+		userIDs:    make([]string, 0),
+		groupIDs:   make([]string, 0),
+		projectIDs: make([]string, 0),
 	}
 }
 
 // RegisterUser registers a user for cleanup
-func (c *DatabaseCleaner) RegisterUser(uid uint) {
+func (c *DatabaseCleaner) RegisterUser(uid string) {
 	c.userIDs = append(c.userIDs, uid)
 }
 
 // RegisterGroup registers a group for cleanup
-func (c *DatabaseCleaner) RegisterGroup(gid uint) {
+func (c *DatabaseCleaner) RegisterGroup(gid string) {
 	c.groupIDs = append(c.groupIDs, gid)
 }
 
 // RegisterProject registers a project for cleanup
-func (c *DatabaseCleaner) RegisterProject(pid uint) {
+func (c *DatabaseCleaner) RegisterProject(pid string) {
 	c.projectIDs = append(c.projectIDs, pid)
 }
 
@@ -214,10 +214,10 @@ func (c *DatabaseCleaner) Cleanup() error {
 
 	// Delete user groups
 	for _, uid := range c.userIDs {
-		_ = db.DB.Where("uid = ?", uid).Delete(&group.UserGroup{}).Error
+		_ = db.DB.Where("u_id = ?", uid).Delete(&group.UserGroup{}).Error
 	}
 	for _, gid := range c.groupIDs {
-		_ = db.DB.Where("gid = ?", gid).Delete(&group.UserGroup{}).Error
+		_ = db.DB.Where("g_id = ?", gid).Delete(&group.UserGroup{}).Error
 	}
 
 	// Delete projects

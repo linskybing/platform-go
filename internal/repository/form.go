@@ -9,10 +9,10 @@ type FormRepo interface {
 	Create(form *form.Form) error
 	CreateMessage(msg *form.FormMessage) error
 	FindAll() ([]form.Form, error)
-	FindByUserID(userID uint) ([]form.Form, error)
-	FindByID(id uint) (*form.Form, error)
+	FindByUserID(userID string) ([]form.Form, error)
+	FindByID(id string) (*form.Form, error)
 	Update(form *form.Form) error
-	ListMessages(formID uint) ([]form.FormMessage, error)
+	ListMessages(formID string) ([]form.FormMessage, error)
 	WithTx(tx *gorm.DB) FormRepo
 }
 
@@ -40,23 +40,24 @@ func (r *DBFormRepo) FindAll() ([]form.Form, error) {
 	return forms, err
 }
 
-func (r *DBFormRepo) FindByUserID(userID uint) ([]form.Form, error) {
+func (r *DBFormRepo) FindByUserID(userID string) ([]form.Form, error) {
 	var forms []form.Form
 	err := r.db.Where("user_id = ?", userID).Preload("User").Preload("Project").Order("created_at desc").Find(&forms).Error
 	return forms, err
 }
 
-func (r *DBFormRepo) FindByID(id uint) (*form.Form, error) {
-	var form form.Form
-	err := r.db.Preload("User").Preload("Project").Preload("Messages").First(&form, id).Error
-	return &form, err
+func (r *DBFormRepo) FindByID(id string) (*form.Form, error) {
+	var f form.Form
+	// Use "id = ?" to be safe with string PKs in First
+	err := r.db.Preload("User").Preload("Project").Preload("Messages").First(&f, "id = ?", id).Error
+	return &f, err
 }
 
 func (r *DBFormRepo) Update(form *form.Form) error {
 	return r.db.Save(form).Error
 }
 
-func (r *DBFormRepo) ListMessages(formID uint) ([]form.FormMessage, error) {
+func (r *DBFormRepo) ListMessages(formID string) ([]form.FormMessage, error) {
 	var msgs []form.FormMessage
 	err := r.db.Where("form_id = ?", formID).Order("created_at asc").Find(&msgs).Error
 	return msgs, err

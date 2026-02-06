@@ -4,24 +4,20 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/cache"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 const (
-	// PVC ID generation constants
-	uuidShortLength = 8
-
 	// Namespace naming patterns
-	groupNamespacePattern = "group-%d-storage"
-	groupPVCIDPattern     = "group-%d-%s"
+	groupNamespacePattern = "group-%s-storage"
 )
 
 type StorageManager struct {
 	repos      *repository.Repos
 	cache      *cache.Service
-	pvcCache   map[uint]*CacheEntry // Updated type to use CacheEntry
+	pvcCache   map[string]*CacheEntry // Updated to use string keys
 	cacheMutex sync.RWMutex
 }
 
@@ -29,14 +25,20 @@ func NewStorageManager(repos *repository.Repos, cacheSvc *cache.Service) *Storag
 	return &StorageManager{
 		repos:    repos,
 		cache:    cacheSvc,
-		pvcCache: make(map[uint]*CacheEntry),
+		pvcCache: make(map[string]*CacheEntry),
 	}
 }
 
-func (sm *StorageManager) generateGroupPVCID(groupID uint) string {
-	return fmt.Sprintf(groupPVCIDPattern, groupID, uuid.New().String()[:uuidShortLength])
+func (sm *StorageManager) generateGroupPVCID(groupID string) (string, error) {
+	// Generate a short NanoID for the suffix
+	suffix, err := gonanoid.Generate("abcdefghijklmnopqrstuvwxyz0123456789", 10)
+	if err != nil {
+		return "", err
+	}
+	// Return format: group-{gid}-{suffix}
+	return fmt.Sprintf("group-%s-%s", groupID, suffix), nil
 }
 
-func (sm *StorageManager) getGroupNamespace(groupID uint) string {
+func (sm *StorageManager) getGroupNamespace(groupID string) string {
 	return fmt.Sprintf(groupNamespacePattern, groupID)
 }

@@ -300,9 +300,8 @@ func (s *ImageService) markImageAsPulled(name, tag string) {
 	}
 
 	status := &image.ClusterImageStatus{
-		TagID:        tagEntity.ID,
-		IsPulled:     true,
-		LastPulledAt: ptrTime(time.Now()),
+		TagID:    tagEntity.ID,
+		IsPulled: true,
 	}
 
 	if err := s.repo.UpdateClusterStatus(status); err != nil {

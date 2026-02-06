@@ -9,7 +9,7 @@ import (
 
 // ImageValidator defines the contract used to validate image access by project.
 type ImageValidator interface {
-	ValidateImageForProject(name, tag string, projectID *uint) (bool, error)
+	ValidateImageForProject(name, tag string, projectID *string) (bool, error)
 }
 
 // K8sService orchestrates Kubernetes-related operations.
@@ -19,6 +19,7 @@ type K8sService struct {
 	StorageManager     *StorageManager
 	FileBrowserManager *FileBrowserManager
 	PVCBindingManager  *PVCBindingManager
+	PermissionManager  *PermissionManager
 	userStorageManager *UserStorageManager
 }
 
@@ -35,6 +36,7 @@ func NewK8sService(repos *repository.Repos, imageValidator ImageValidator, cache
 		repos:              repos,
 		FileBrowserManager: NewFileBrowserManager(),
 		PVCBindingManager:  NewPVCBindingManager(repos, cacheSvc),
+		PermissionManager:  NewPermissionManager(repos),
 		userStorageManager: NewUserStorageManager(),
 		StorageManager:     NewStorageManager(repos, cacheSvc),
 	}

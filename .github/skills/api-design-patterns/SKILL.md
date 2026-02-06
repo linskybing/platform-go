@@ -1,7 +1,12 @@
 ---
 name: api-design-patterns
 description: RESTful API design patterns, Gin framework best practices, error handling, validation, and response formatting for platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # API Design Patterns
 

@@ -53,7 +53,7 @@ func (h *ConfigFileHandler) GetConfigFileHandler(c *gin.Context) {
 		return
 	}
 
-	configFile, err := h.svc.GetConfigFile(uint(id))
+	configFile, err := h.svc.GetConfigFile(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "config file not found"})
 		return
@@ -81,7 +81,7 @@ func (h *ConfigFileHandler) CreateConfigFileHandler(c *gin.Context) {
 		return
 	}
 
-	if input.Filename == "" || input.RawYaml == "" || input.ProjectID == 0 {
+	if input.Filename == "" || input.RawYaml == "" || input.ProjectID == "" {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "filename, raw_yaml, and project_id are required"})
 		return
 	}
@@ -122,7 +122,7 @@ func (h *ConfigFileHandler) UpdateConfigFileHandler(c *gin.Context) {
 		return
 	}
 
-	updatedConfigFile, err := h.svc.UpdateConfigFile(c, uint(id), input)
+	updatedConfigFile, err := h.svc.UpdateConfigFile(c, id, input)
 	if err != nil {
 		if err == application.ErrConfigFileNotFound {
 			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "config file not found"})
@@ -152,7 +152,7 @@ func (h *ConfigFileHandler) DeleteConfigFileHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.DeleteConfigFile(c, uint(id))
+	err = h.svc.DeleteConfigFile(c, id)
 	if err != nil {
 		if err == application.ErrConfigFileNotFound {
 			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "config file not found"})
@@ -182,7 +182,7 @@ func (h *ConfigFileHandler) ListConfigFilesByProjectIDHandler(c *gin.Context) {
 		return
 	}
 
-	configFiles, err := h.svc.ListConfigFilesByProjectID(uint(id))
+	configFiles, err := h.svc.ListConfigFilesByProjectID(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
 		return
@@ -193,8 +193,7 @@ func (h *ConfigFileHandler) ListConfigFilesByProjectIDHandler(c *gin.Context) {
 
 // CreateInstanceHandler godoc
 // @Summary Instantiate a config file instance
-// @Description Creates a Kubernetes instance from a config file. Validates GPU resource requests against project MPS limits.
-// GPU resources (nvidia.com/gpu) must match project MPS configuration. Non-GPU workloads skip MPS validation.
+// @Description Creates a Kubernetes instance from a config file.
 // @Tags Instance
 // @Security BearerAuth
 // @Produce json

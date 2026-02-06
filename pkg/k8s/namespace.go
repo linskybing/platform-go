@@ -1,7 +1,5 @@
 package k8s
 
-import ()
-
 import (
 	"context"
 	"fmt"
@@ -9,7 +7,9 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -99,6 +99,6 @@ func CheckNamespaceExists(name string) (bool, error) {
 	return true, nil
 }
 
-func FormatNamespaceName(projectID uint, userName string) string {
-	return fmt.Sprintf("proj-%d-%s", projectID, userName)
+func FormatNamespaceName(projectID string, userName string) string {
+	return fmt.Sprintf("proj-%s-%s", projectID, userName)
 }

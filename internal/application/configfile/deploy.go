@@ -16,7 +16,7 @@ import (
 )
 
 // CreateInstance deploys resources to Kubernetes with a high-performance pipeline.
-func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
+func (s *ConfigFileService) CreateInstance(c *gin.Context, id string) error {
 	// 1. Fetch Data
 	resources, err := s.Repos.Resource.ListResourcesByConfigFileID(id)
 	if err != nil {
@@ -104,7 +104,7 @@ func (s *ConfigFileService) CreateInstance(c *gin.Context, id uint) error {
 	return nil
 }
 
-func (s *ConfigFileService) DeleteInstance(c *gin.Context, id uint) error {
+func (s *ConfigFileService) DeleteInstance(c *gin.Context, id string) error {
 	data, err := s.Repos.Resource.ListResourcesByConfigFileID(id)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (s *ConfigFileService) DeleteInstance(c *gin.Context, id uint) error {
 	return nil
 }
 
-func (s *ConfigFileService) DeleteConfigFileInstance(id uint) error {
+func (s *ConfigFileService) DeleteConfigFileInstance(id string) error {
 	configfile, err := s.Repos.ConfigFile.GetConfigFileByID(id)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (s *ConfigFileService) bindProjectAndUserVolumes(targetNs string, project p
 	userStorageNs := fmt.Sprintf(config.UserStorageNs, safeUsername)
 	userPvcName := fmt.Sprintf(config.UserStoragePVC, safeUsername)
 	groupStorageNs := k8s.GenerateSafeResourceName("group", project.ProjectName, project.PID)
-	groupPvcName := fmt.Sprintf("group-%d-disk", project.PID)
+	groupPvcName := fmt.Sprintf("group-%s-disk", project.PID)
 
 	targetUserPvcName := userPvcName
 	if err := k8s.MountExistingVolumeToNamespace(userStorageNs, userPvcName, targetNs, targetUserPvcName); err != nil {
@@ -225,7 +225,7 @@ func (s *ConfigFileService) buildTemplateValues(cf *configfile.ConfigFile, names
 		"originalUsername": claims.Username,
 		"safeUsername":     k8s.ToSafeK8sName(claims.Username),
 		"namespace":        namespace,
-		"projectId":        fmt.Sprintf("%d", cf.ProjectID),
+		"projectId":        fmt.Sprintf("%s", cf.ProjectID),
 		"userVolume":       userPvc,
 		"groupVolume":      groupPvc,
 	}

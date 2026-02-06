@@ -19,7 +19,7 @@ func TestClaimsStructure(t *testing.T) {
 			name: "admin_claims",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   1,
+					UserID:   "1",
 					Username: "admin",
 					IsAdmin:  true,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -29,7 +29,7 @@ func TestClaimsStructure(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == 1 && c.IsAdmin && c.Username == "admin"
+				return c.UserID == "1" && c.IsAdmin && c.Username == "admin"
 			},
 			scenario: "Admin user claims",
 		},
@@ -37,7 +37,7 @@ func TestClaimsStructure(t *testing.T) {
 			name: "regular_user_claims",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   100,
+					UserID:   "100",
 					Username: "john_doe",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -47,7 +47,7 @@ func TestClaimsStructure(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == 100 && !c.IsAdmin && c.Username == "john_doe"
+				return c.UserID == "100" && !c.IsAdmin && c.Username == "john_doe"
 			},
 			scenario: "Regular user claims",
 		},
@@ -55,7 +55,7 @@ func TestClaimsStructure(t *testing.T) {
 			name: "service_account_claims",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   9999,
+					UserID:   "9999",
 					Username: "service-account",
 					IsAdmin:  true,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -73,7 +73,7 @@ func TestClaimsStructure(t *testing.T) {
 			name: "user_zero_id",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   0,
+					UserID:   "0",
 					Username: "anonymous",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -83,7 +83,7 @@ func TestClaimsStructure(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == 0
+				return c.UserID == "0"
 			},
 			scenario: "User with zero ID",
 		},
@@ -91,7 +91,7 @@ func TestClaimsStructure(t *testing.T) {
 			name: "expired_claims",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   200,
+					UserID:   "200",
 					Username: "expired_user",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -101,7 +101,7 @@ func TestClaimsStructure(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == 200 && c.RegisteredClaims.ExpiresAt != nil
+				return c.UserID == "200" && c.RegisteredClaims.ExpiresAt != nil
 			},
 			scenario: "Expired claims",
 		},
@@ -128,19 +128,19 @@ func TestClaimsFieldValidation(t *testing.T) {
 		{
 			name: "valid_user_id",
 			claims: Claims{
-				UserID:   12345,
+				UserID:   "12345",
 				Username: "user12345",
 				IsAdmin:  false,
 			},
 			verify: func(c Claims) bool {
-				return c.UserID > 0
+				return c.UserID != ""
 			},
 			scenario: "Valid positive user ID",
 		},
 		{
 			name: "empty_username",
 			claims: Claims{
-				UserID:   1,
+				UserID:   "1",
 				Username: "",
 				IsAdmin:  false,
 			},
@@ -152,7 +152,7 @@ func TestClaimsFieldValidation(t *testing.T) {
 		{
 			name: "long_username",
 			claims: Claims{
-				UserID:   1,
+				UserID:   "1",
 				Username: "this_is_a_very_long_username_that_exceeds_normal_length",
 				IsAdmin:  false,
 			},
@@ -164,7 +164,7 @@ func TestClaimsFieldValidation(t *testing.T) {
 		{
 			name: "username_with_special_chars",
 			claims: Claims{
-				UserID:   2,
+				UserID:   "2",
 				Username: "user@example.com",
 				IsAdmin:  false,
 			},
@@ -176,7 +176,7 @@ func TestClaimsFieldValidation(t *testing.T) {
 		{
 			name: "admin_flag_true",
 			claims: Claims{
-				UserID:   1,
+				UserID:   "1",
 				Username: "admin",
 				IsAdmin:  true,
 			},
@@ -188,7 +188,7 @@ func TestClaimsFieldValidation(t *testing.T) {
 		{
 			name: "admin_flag_false",
 			claims: Claims{
-				UserID:   100,
+				UserID:   "100",
 				Username: "user",
 				IsAdmin:  false,
 			},
@@ -220,7 +220,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 			name: "claims_with_issued_at",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   1,
+					UserID:   "1",
 					Username: "user",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -237,7 +237,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 			name: "claims_with_expiry",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   2,
+					UserID:   "2",
 					Username: "user",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -254,7 +254,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 			name: "claims_with_subject",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   3,
+					UserID:   "3",
 					Username: "user",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -271,7 +271,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 			name: "claims_with_issuer",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   4,
+					UserID:   "4",
 					Username: "user",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -288,7 +288,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 			name: "claims_with_audience",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   5,
+					UserID:   "5",
 					Username: "user",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -305,7 +305,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 			name: "claims_with_not_before",
 			setupClaim: func() Claims {
 				return Claims{
-					UserID:   6,
+					UserID:   "6",
 					Username: "user",
 					IsAdmin:  false,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -323,7 +323,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 			setupClaim: func() Claims {
 				now := time.Now()
 				return Claims{
-					UserID:   7,
+					UserID:   "7",
 					Username: "admin",
 					IsAdmin:  true,
 					RegisteredClaims: jwt.RegisteredClaims{
@@ -337,7 +337,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == 7 && c.IsAdmin && c.RegisteredClaims.IssuedAt != nil &&
+				return c.UserID == "7" && c.IsAdmin && c.RegisteredClaims.IssuedAt != nil &&
 					c.RegisteredClaims.ExpiresAt != nil && len(c.RegisteredClaims.Audience) > 0
 			},
 			scenario: "Claims with all registered fields",
@@ -365,31 +365,31 @@ func TestClaimsBoundaryConditions(t *testing.T) {
 		{
 			name: "max_user_id",
 			claims: Claims{
-				UserID:   4294967295, // Max uint32
+				UserID:   "4294967295", // Max uint32
 				Username: "maxuser",
 				IsAdmin:  false,
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == 4294967295
+				return c.UserID == "4294967295"
 			},
 			scenario: "Maximum uint user ID",
 		},
 		{
 			name: "min_user_id",
 			claims: Claims{
-				UserID:   0,
+				UserID:   "0",
 				Username: "minuser",
 				IsAdmin:  false,
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == 0
+				return c.UserID == "0"
 			},
 			scenario: "Minimum user ID (zero)",
 		},
 		{
 			name: "single_char_username",
 			claims: Claims{
-				UserID:   1,
+				UserID:   "1",
 				Username: "a",
 				IsAdmin:  false,
 			},
@@ -401,7 +401,7 @@ func TestClaimsBoundaryConditions(t *testing.T) {
 		{
 			name: "very_long_username",
 			claims: Claims{
-				UserID:   1,
+				UserID:   "1",
 				Username: "a" + string(make([]byte, 1000)),
 				IsAdmin:  false,
 			},

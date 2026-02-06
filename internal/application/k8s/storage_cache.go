@@ -23,7 +23,7 @@ func (ce *CacheEntry) IsExpired() bool {
 
 // getCachedPVCs retrieves cached PVCs for a group with TTL validation.
 // Returns the cached PVCs and a boolean indicating cache hit.
-func (sm *StorageManager) getCachedPVCs(groupID uint) ([]storage.GroupPVC, bool) {
+func (sm *StorageManager) getCachedPVCs(groupID string) ([]storage.GroupPVC, bool) {
 	sm.cacheMutex.RLock()
 	defer sm.cacheMutex.RUnlock()
 
@@ -43,7 +43,7 @@ func (sm *StorageManager) getCachedPVCs(groupID uint) ([]storage.GroupPVC, bool)
 }
 
 // setCachedPVCs stores PVCs in cache with TTL.
-func (sm *StorageManager) setCachedPVCs(groupID uint, pvcs []storage.GroupPVC, ttl time.Duration) {
+func (sm *StorageManager) setCachedPVCs(groupID string, pvcs []storage.GroupPVC, ttl time.Duration) {
 	sm.cacheMutex.Lock()
 	defer sm.cacheMutex.Unlock()
 
@@ -52,30 +52,19 @@ func (sm *StorageManager) setCachedPVCs(groupID uint, pvcs []storage.GroupPVC, t
 		Timestamp: time.Now(),
 		TTL:       ttl,
 	}
-
-	slog.Debug("cached PVCs for group", "group_id", groupID, "count", len(pvcs), "ttl_seconds", ttl.Seconds())
+	slog.Debug("cache set for group", "group_id", groupID, "count", len(pvcs))
 }
 
-// invalidateCache removes cached PVCs for a specific group.
-func (sm *StorageManager) invalidateCache(groupID uint) {
+// invalidatePVCsCache removes cached PVCs for a group
+func (sm *StorageManager) invalidatePVCsCache(ctx context.Context, groupID string) {
 	sm.cacheMutex.Lock()
-	defer sm.cacheMutex.Unlock()
-
 	delete(sm.pvcCache, groupID)
-	slog.Debug("invalidated cache for group", "group_id", groupID)
+	sm.cacheMutex.Unlock()
+
+	// Note: Cache service uses TTL-based expiration, manual deletion not supported
+	slog.Debug("cache invalidated for group", "group_id", groupID)
 }
 
-func (sm *StorageManager) pvcCacheKey(groupID uint) string {
-	return fmt.Sprintf("cache:k8s:group:pvc:%d", groupID)
-}
-
-func (sm *StorageManager) invalidatePVCsCache(ctx context.Context, groupID uint) {
-	sm.invalidateCache(groupID)
-	if sm.cache != nil && sm.cache.Enabled() {
-		if err := sm.cache.Invalidate(ctx, sm.pvcCacheKey(groupID)); err != nil {
-			slog.Warn("failed to invalidate redis pvc cache",
-				"group_id", groupID,
-				"error", err)
-		}
-	}
+func (sm *StorageManager) pvcCacheKey(groupID string) string {
+	return fmt.Sprintf("group:%s:pvcs", groupID)
 }

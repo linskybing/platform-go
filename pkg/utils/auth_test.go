@@ -14,19 +14,19 @@ import (
 )
 
 type mockUserGroupRepo struct {
-	roles       map[uint]map[uint][]string
-	superAdmins map[uint]bool
+	roles       map[string]map[string][]string
+	superAdmins map[string]bool
 	shouldErr   bool
 }
 
-func (m *mockUserGroupRepo) IsSuperAdmin(uid uint) (bool, error) {
+func (m *mockUserGroupRepo) IsSuperAdmin(uid string) (bool, error) {
 	if m.shouldErr {
 		return false, errors.New("database error")
 	}
 	return m.superAdmins[uid], nil
 }
 
-func (m *mockUserGroupRepo) GetRoles(uid, gid uint) ([]string, error) {
+func (m *mockUserGroupRepo) GetRoles(uid, gid string) ([]string, error) {
 	if m.shouldErr {
 		return nil, errors.New("database error")
 	}
@@ -44,23 +44,23 @@ func (m *mockUserGroupRepo) UpdateUserGroup(userGroup *group.UserGroup) error {
 	return nil
 }
 
-func (m *mockUserGroupRepo) DeleteUserGroup(uid, gid uint) error {
+func (m *mockUserGroupRepo) DeleteUserGroup(uid, gid string) error {
 	return nil
 }
 
-func (m *mockUserGroupRepo) GetUserGroupsByUID(uid uint) ([]group.UserGroup, error) {
+func (m *mockUserGroupRepo) GetUserGroupsByUID(uid string) ([]group.UserGroup, error) {
 	return nil, nil
 }
 
-func (m *mockUserGroupRepo) GetUserGroupsByGID(gid uint) ([]group.UserGroup, error) {
+func (m *mockUserGroupRepo) GetUserGroupsByGID(gid string) ([]group.UserGroup, error) {
 	return nil, nil
 }
 
-func (m *mockUserGroupRepo) GetUserGroup(uid, gid uint) (group.UserGroup, error) {
+func (m *mockUserGroupRepo) GetUserGroup(uid, gid string) (group.UserGroup, error) {
 	return group.UserGroup{}, nil
 }
 
-func (m *mockUserGroupRepo) GetUserRoleInGroup(uid uint, gid uint) (string, error) {
+func (m *mockUserGroupRepo) GetUserRoleInGroup(uid string, gid string) (string, error) {
 	return "", nil
 }
 
@@ -72,7 +72,7 @@ func (m *mockUserGroupRepo) WithTx(tx *gorm.DB) repository.UserGroupRepo {
 func TestIsSuperAdmin(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
+		userID      string
 		isAdmin     bool
 		dbErr       bool
 		wantErr     bool
@@ -81,8 +81,8 @@ func TestIsSuperAdmin(t *testing.T) {
 	}{
 		{
 			name:        "super admin user 1",
-			userID:      1,
-			isAdmin:     false,
+			userID:      "1",
+			isAdmin:     true,
 			dbErr:       false,
 			wantErr:     false,
 			wantAdmin:   true,
@@ -90,7 +90,7 @@ func TestIsSuperAdmin(t *testing.T) {
 		},
 		{
 			name:        "non-admin user",
-			userID:      2,
+			userID:      "2",
 			isAdmin:     false,
 			dbErr:       false,
 			wantErr:     false,
@@ -99,7 +99,7 @@ func TestIsSuperAdmin(t *testing.T) {
 		},
 		{
 			name:        "admin user",
-			userID:      3,
+			userID:      "3",
 			isAdmin:     true,
 			dbErr:       false,
 			wantErr:     false,
@@ -108,7 +108,7 @@ func TestIsSuperAdmin(t *testing.T) {
 		},
 		{
 			name:        "database error",
-			userID:      2,
+			userID:      "2",
 			isAdmin:     false,
 			dbErr:       true,
 			wantErr:     true,
@@ -120,7 +120,7 @@ func TestIsSuperAdmin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockUserGroupRepo{
-				superAdmins: map[uint]bool{tt.userID: tt.isAdmin},
+				superAdmins: map[string]bool{tt.userID: tt.isAdmin},
 				shouldErr:   tt.dbErr,
 			}
 
@@ -140,42 +140,42 @@ func TestIsSuperAdmin(t *testing.T) {
 func TestGetUserIDFromContext(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
+		userID      string
 		username    string
 		hasClaims   bool
 		validType   bool
 		wantErr     bool
-		wantUserID  uint
+		wantUserID  string
 		description string
 	}{
 		{
 			name:        "valid claims",
-			userID:      123,
+			userID:      "123",
 			username:    "testuser",
 			hasClaims:   true,
 			validType:   true,
 			wantErr:     false,
-			wantUserID:  123,
+			wantUserID:  "123",
 			description: "should extract user ID from valid claims",
 		},
 		{
 			name:        "no claims in context",
-			userID:      0,
+			userID:      "",
 			username:    "",
 			hasClaims:   false,
 			validType:   false,
 			wantErr:     true,
-			wantUserID:  0,
+			wantUserID:  "",
 			description: "should error when claims not in context",
 		},
 		{
 			name:        "invalid claims type",
-			userID:      0,
+			userID:      "",
 			username:    "",
 			hasClaims:   true,
 			validType:   false,
 			wantErr:     true,
-			wantUserID:  0,
+			wantUserID:  "",
 			description: "should error on type assertion failure",
 		},
 	}
@@ -213,7 +213,7 @@ func TestGetUserIDFromContext(t *testing.T) {
 func TestGetUserNameFromContext(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
+		userID      string
 		username    string
 		hasClaims   bool
 		validType   bool
@@ -223,7 +223,7 @@ func TestGetUserNameFromContext(t *testing.T) {
 	}{
 		{
 			name:        "valid claims",
-			userID:      123,
+			userID:      "123",
 			username:    "alice",
 			hasClaims:   true,
 			validType:   true,
@@ -233,7 +233,7 @@ func TestGetUserNameFromContext(t *testing.T) {
 		},
 		{
 			name:        "empty username",
-			userID:      456,
+			userID:      "456",
 			username:    "",
 			hasClaims:   true,
 			validType:   true,
@@ -243,7 +243,7 @@ func TestGetUserNameFromContext(t *testing.T) {
 		},
 		{
 			name:        "no claims",
-			userID:      0,
+			userID:      "",
 			username:    "",
 			hasClaims:   false,
 			validType:   false,
@@ -286,29 +286,29 @@ func TestGetUserNameFromContext(t *testing.T) {
 func TestHasGroupRole(t *testing.T) {
 	tests := []struct {
 		name        string
-		uid         uint
-		gid         uint
+		uid         string
+		gid         string
 		roles       []string
 		description string
 	}{
 		{
 			name:        "check admin role",
-			uid:         1,
-			gid:         1,
+			uid:         "1",
+			gid:         "1",
 			roles:       []string{"admin"},
 			description: "should check for admin role",
 		},
 		{
 			name:        "check viewer role",
-			uid:         2,
-			gid:         1,
+			uid:         "2",
+			gid:         "1",
 			roles:       []string{"viewer", "member"},
 			description: "should check multiple roles",
 		},
 		{
 			name:        "empty roles list",
-			uid:         3,
-			gid:         2,
+			uid:         "3",
+			gid:         "2",
 			roles:       []string{},
 			description: "should handle empty roles list",
 		},
@@ -327,8 +327,8 @@ func TestHasGroupRole(t *testing.T) {
 func TestCheckGroupPermission(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
-		groupID     uint
+		userID      string
+		groupID     string
 		isAdmin     bool
 		dbErr       bool
 		wantErr     bool
@@ -337,8 +337,8 @@ func TestCheckGroupPermission(t *testing.T) {
 	}{
 		{
 			name:        "super admin has permission",
-			userID:      1,
-			groupID:     1,
+			userID:      "1",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       false,
 			wantErr:     false,
@@ -347,8 +347,8 @@ func TestCheckGroupPermission(t *testing.T) {
 		},
 		{
 			name:        "admin user has permission",
-			userID:      2,
-			groupID:     1,
+			userID:      "2",
+			groupID:     "1",
 			isAdmin:     true,
 			dbErr:       false,
 			wantErr:     false,
@@ -357,8 +357,8 @@ func TestCheckGroupPermission(t *testing.T) {
 		},
 		{
 			name:        "non-admin no permission",
-			userID:      3,
-			groupID:     1,
+			userID:      "3",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       false,
 			wantErr:     true,
@@ -367,8 +367,8 @@ func TestCheckGroupPermission(t *testing.T) {
 		},
 		{
 			name:        "database error",
-			userID:      2,
-			groupID:     1,
+			userID:      "2",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       true,
 			wantErr:     true,
@@ -387,7 +387,7 @@ func TestCheckGroupPermission(t *testing.T) {
 				// Verify the logic: super admin (isAdmin=true) should have permission
 				assert.False(t, tt.isAdmin, "test expects non-admin user ID but admin flag is true")
 				// For user 1 (hardcoded as super admin in mock), should have permission
-				assert.Equal(t, uint(1), tt.userID, "super admin test case")
+				assert.Equal(t, "1", tt.userID, "super admin test case")
 			}
 		})
 	}
@@ -397,8 +397,8 @@ func TestCheckGroupPermission(t *testing.T) {
 func TestCheckGroupManagePermission(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
-		groupID     uint
+		userID      string
+		groupID     string
 		isAdmin     bool
 		dbErr       bool
 		wantErr     bool
@@ -407,8 +407,8 @@ func TestCheckGroupManagePermission(t *testing.T) {
 	}{
 		{
 			name:        "super admin can manage",
-			userID:      1,
-			groupID:     1,
+			userID:      "1",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       false,
 			wantErr:     false,
@@ -417,8 +417,8 @@ func TestCheckGroupManagePermission(t *testing.T) {
 		},
 		{
 			name:        "manager can manage",
-			userID:      2,
-			groupID:     1,
+			userID:      "2",
+			groupID:     "1",
 			isAdmin:     true,
 			dbErr:       false,
 			wantErr:     false,
@@ -427,8 +427,8 @@ func TestCheckGroupManagePermission(t *testing.T) {
 		},
 		{
 			name:        "non-manager cannot manage",
-			userID:      3,
-			groupID:     1,
+			userID:      "3",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       false,
 			wantErr:     true,
@@ -437,8 +437,8 @@ func TestCheckGroupManagePermission(t *testing.T) {
 		},
 		{
 			name:        "database error",
-			userID:      2,
-			groupID:     1,
+			userID:      "2",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       true,
 			wantErr:     true,
@@ -456,7 +456,7 @@ func TestCheckGroupManagePermission(t *testing.T) {
 			// when integrated with actual database in e2e tests.
 			if tt.name == "super admin can manage" {
 				// Verify test data consistency
-				assert.Equal(t, uint(1), tt.userID, "super admin test case")
+				assert.Equal(t, "1", tt.userID, "super admin test case")
 			}
 		})
 	}
@@ -466,8 +466,8 @@ func TestCheckGroupManagePermission(t *testing.T) {
 func TestCheckGroupAdminPermission(t *testing.T) {
 	tests := []struct {
 		name        string
-		userID      uint
-		groupID     uint
+		userID      string
+		groupID     string
 		isAdmin     bool
 		dbErr       bool
 		wantErr     bool
@@ -476,8 +476,8 @@ func TestCheckGroupAdminPermission(t *testing.T) {
 	}{
 		{
 			name:        "super admin can administer",
-			userID:      1,
-			groupID:     1,
+			userID:      "1",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       false,
 			wantErr:     false,
@@ -486,8 +486,8 @@ func TestCheckGroupAdminPermission(t *testing.T) {
 		},
 		{
 			name:        "group admin can administer",
-			userID:      2,
-			groupID:     1,
+			userID:      "2",
+			groupID:     "1",
 			isAdmin:     true,
 			dbErr:       false,
 			wantErr:     false,
@@ -496,8 +496,8 @@ func TestCheckGroupAdminPermission(t *testing.T) {
 		},
 		{
 			name:        "non-admin cannot administer",
-			userID:      3,
-			groupID:     1,
+			userID:      "3",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       false,
 			wantErr:     true,
@@ -506,8 +506,8 @@ func TestCheckGroupAdminPermission(t *testing.T) {
 		},
 		{
 			name:        "database error",
-			userID:      2,
-			groupID:     1,
+			userID:      "2",
+			groupID:     "1",
 			isAdmin:     false,
 			dbErr:       true,
 			wantErr:     true,
@@ -523,7 +523,7 @@ func TestCheckGroupAdminPermission(t *testing.T) {
 			// This is an integration test limitation - the function is tested
 			// when integrated with actual database in e2e tests.
 			if tt.name == "super admin can administer" {
-				assert.Equal(t, uint(1), tt.userID, "super admin test case")
+				assert.Equal(t, "1", tt.userID, "super admin test case")
 			}
 		})
 	}

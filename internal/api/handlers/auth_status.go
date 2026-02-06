@@ -7,6 +7,13 @@ import (
 )
 
 // AuthStatusHandler returns the status of the user's token (valid/expired)
+// @Summary Check auth token status
+// @Tags auth
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} response.SuccessResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Router /auth/status [get]
 func AuthStatusHandler(c *gin.Context) {
 	uid, err := utils.GetUserIDFromContext(c)
 	if err != nil {

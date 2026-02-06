@@ -2,14 +2,13 @@ package k8s
 
 import (
 	"context"
-	"fmt"
 
 	k8sclient "github.com/linskybing/platform-go/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (sm *StorageManager) ensureGroupNamespace(ctx context.Context, nsName string, groupID uint) error {
+func (sm *StorageManager) ensureGroupNamespace(ctx context.Context, nsName string, groupID string) error {
 	if k8sclient.Clientset == nil {
 		return nil
 	}
@@ -25,7 +24,7 @@ func (sm *StorageManager) ensureGroupNamespace(ctx context.Context, nsName strin
 			Labels: map[string]string{
 				"managed-by": "platform",
 				"type":       "group-storage",
-				"group-id":   fmt.Sprintf("%d", groupID),
+				"group-id":   groupID,
 			},
 		},
 	}

@@ -1,7 +1,12 @@
 ---
 name: error-handling-guide
 description: Comprehensive error handling, custom error types, error wrapping, logging, and recovery patterns for platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Error Handling Guide
 

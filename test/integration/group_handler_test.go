@@ -17,7 +17,7 @@ import (
 func TestGroupHandler_Integration(t *testing.T) {
 	ctx := GetTestContext()
 
-	var testGroupID uint
+	var testGroupID string
 
 	t.Run("GetGroups - Success for All Users", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
@@ -47,7 +47,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 		err = resp.DecodeJSON(&created)
 		require.NoError(t, err)
 		assert.Equal(t, "test-integration-group", created.GroupName)
-		assert.NotZero(t, created.GID)
+		assert.NotEmpty(t, created.GID)
 		testGroupID = created.GID
 	})
 
@@ -102,7 +102,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 	t.Run("GetGroupByID - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/groups/%d", ctx.TestGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.TestGroup.GID)
 		resp, err := client.GET(path)
 
 		require.NoError(t, err)
@@ -123,7 +123,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("UpdateGroup - Success as Admin", func(t *testing.T) {
-		if testGroupID == 0 {
+		if testGroupID == "" {
 			t.Skip("No test group created")
 		}
 
@@ -133,7 +133,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 			"group_name": "updated-group-name",
 		}
 
-		path := fmt.Sprintf("/groups/%d", testGroupID)
+		path := fmt.Sprintf("/groups/%s", testGroupID)
 		resp, err := client.PUTForm(path, updateDTO)
 
 		require.NoError(t, err)
@@ -156,7 +156,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 			"group_name": "hacked",
 		}
 
-		path := fmt.Sprintf("/groups/%d", ctx.TestGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.TestGroup.GID)
 		resp, err := client.PUTForm(path, updateDTO)
 
 		require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 			"group_name": "new-super-name",
 		}
 
-		path := fmt.Sprintf("/groups/%d", ctx.SuperGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.SuperGroup.GID)
 		resp, err := client.PUTForm(path, updateDTO)
 
 		require.NoError(t, err)
@@ -203,7 +203,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Delete it
-		path := fmt.Sprintf("/groups/%d", created.GID)
+		path := fmt.Sprintf("/groups/%s", created.GID)
 		deleteResp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -216,13 +216,13 @@ func TestGroupHandler_Integration(t *testing.T) {
 	})
 
 	t.Run("DeleteGroup - Forbidden for Manager", func(t *testing.T) {
-		if testGroupID == 0 {
+		if testGroupID == "" {
 			t.Skip("No test group")
 		}
 
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
 
-		path := fmt.Sprintf("/groups/%d", testGroupID)
+		path := fmt.Sprintf("/groups/%s", testGroupID)
 		resp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestGroupHandler_Integration(t *testing.T) {
 	t.Run("DeleteGroup - Cannot Delete Reserved Group", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		path := fmt.Sprintf("/groups/%d", ctx.SuperGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.SuperGroup.GID)
 		resp, err := client.DELETE(path)
 
 		require.NoError(t, err)

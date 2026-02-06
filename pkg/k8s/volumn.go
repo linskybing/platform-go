@@ -266,7 +266,7 @@ func MountExistingVolumeToNamespace(sourceNs, sourcePvcName, targetNs, targetPvc
 
 // DeleteGroupStorageCompletely handles the cleanup for a group.
 // It iterates over ALL PVCs in the group namespace to ensure all shared pointers are removed.
-func DeleteGroupStorageCompletely(ctx context.Context, projectName string, projectID uint) error {
+func DeleteGroupStorageCompletely(ctx context.Context, projectName string, projectID string) error {
 	nsName := GenerateSafeResourceName("group", projectName, projectID)
 
 	logger.Info("starting project cleanup", "project", projectName, "namespace", nsName)

@@ -6,28 +6,28 @@ import "time"
 
 // SetStoragePermissionRequest defines the payload for setting user permission on a group PVC
 type SetStoragePermissionRequest struct {
-	GroupID    uint              `json:"group_id" binding:"required"`
+	GroupID    string            `json:"group_id" binding:"required"`
 	PVCID      string            `json:"pvc_id" binding:"required"` // group-{gid}-{uuid}
-	UserID     uint              `json:"user_id" binding:"required"`
+	UserID     string            `json:"user_id" binding:"required"`
 	Permission StoragePermission `json:"permission" binding:"required,oneof=none read write"`
 }
 
 // BatchSetPermissionsRequest allows setting permissions for multiple users at once
 type BatchSetPermissionsRequest struct {
-	GroupID     uint             `json:"group_id" binding:"required"`
+	GroupID     string           `json:"group_id" binding:"required"`
 	PVCID       string           `json:"pvc_id" binding:"required"`
 	Permissions []UserPermission `json:"permissions" binding:"required,dive"`
 }
 
 // UserPermission represents a single user's permission
 type UserPermission struct {
-	UserID     uint              `json:"user_id" binding:"required"`
+	UserID     string            `json:"user_id" binding:"required"`
 	Permission StoragePermission `json:"permission" binding:"required,oneof=none read write"`
 }
 
 // SetStorageAccessPolicyRequest defines default access policy for a group PVC
 type SetStorageAccessPolicyRequest struct {
-	GroupID           uint              `json:"group_id" binding:"required"`
+	GroupID           string            `json:"group_id" binding:"required"`
 	PVCID             string            `json:"pvc_id" binding:"required"`
 	DefaultPermission StoragePermission `json:"default_permission" binding:"required,oneof=none read write"`
 	AdminOnly         bool              `json:"admin_only"`
@@ -35,12 +35,12 @@ type SetStorageAccessPolicyRequest struct {
 
 // StoragePermissionInfo represents permission information for display
 type StoragePermissionInfo struct {
-	UserID     uint              `json:"user_id"`
+	UserID     string            `json:"user_id"`
 	Username   string            `json:"username"`
 	Permission StoragePermission `json:"permission"`
 	CanRead    bool              `json:"can_read"`
 	CanWrite   bool              `json:"can_write"`
-	GrantedBy  uint              `json:"granted_by"`
+	GrantedBy  string            `json:"granted_by"`
 	GrantedAt  time.Time         `json:"granted_at"`
 }
 
@@ -54,7 +54,7 @@ type GroupPVCWithPermissions struct {
 
 // CreateProjectPVCBindingRequest defines the payload for creating a PVC binding in project namespace
 type CreateProjectPVCBindingRequest struct {
-	ProjectID  uint   `json:"project_id" binding:"required"`
+	ProjectID  string `json:"project_id" binding:"required"`
 	GroupPVCID string `json:"group_pvc_id" binding:"required"` // Source group PVC
 	PVCName    string `json:"pvc_name" binding:"required"`     // Name in project namespace
 	ReadOnly   bool   `json:"read_only"`                       // Mount as read-only
@@ -62,8 +62,8 @@ type CreateProjectPVCBindingRequest struct {
 
 // ProjectPVCBindingInfo represents project PVC binding information
 type ProjectPVCBindingInfo struct {
-	ID               uint      `json:"id"`
-	ProjectID        uint      `json:"project_id"`
+	ID               string    `json:"id"`
+	ProjectID        string    `json:"project_id"`
 	ProjectName      string    `json:"project_name"`
 	GroupPVCID       string    `json:"group_pvc_id"`
 	ProjectPVCName   string    `json:"project_pvc_name"`
@@ -75,9 +75,9 @@ type ProjectPVCBindingInfo struct {
 
 // FileBrowserAccessRequest defines request for accessing FileBrowser
 type FileBrowserAccessRequest struct {
-	GroupID uint   `json:"group_id" binding:"required"`
+	GroupID string `json:"group_id" binding:"required"`
 	PVCID   string `json:"pvc_id" binding:"required"`
-	UserID  uint   `json:"user_id" binding:"required"`
+	UserID  string `json:"user_id" binding:"required"`
 }
 
 // FileBrowserAccessResponse contains FileBrowser connection info

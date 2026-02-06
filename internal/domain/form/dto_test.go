@@ -4,6 +4,11 @@ import (
 	"testing"
 )
 
+// ptrString returns a pointer to a string
+func ptrString(s string) *string {
+	return &s
+}
+
 // TestCreateFormDTOValidation tests CreateFormDTO validation
 func TestCreateFormDTOValidation(t *testing.T) {
 	tests := []struct {
@@ -27,13 +32,13 @@ func TestCreateFormDTOValidation(t *testing.T) {
 		{
 			name: "create_form_dto_with_project_id",
 			dto: CreateFormDTO{
-				ProjectID:   ptrUint(123),
+				ProjectID:   ptrString("123"),
 				Title:       "Project Associated Form",
 				Description: "Form linked to project 123",
 				Tag:         "project",
 			},
 			isValid: func(d CreateFormDTO) bool {
-				return d.ProjectID != nil && *d.ProjectID == 123
+				return d.ProjectID != nil && *d.ProjectID == "123"
 			},
 			scenario: "Form DTO with project association",
 		},

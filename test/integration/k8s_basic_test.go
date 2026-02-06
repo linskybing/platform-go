@@ -77,7 +77,15 @@ func TestK8sPodOperations(t *testing.T) {
 	})
 
 	t.Run("delete pod", func(t *testing.T) {
-		err := tc.Client.CoreV1().Pods(tc.Namespace).Delete(ctx, "test-pod", metav1.DeleteOptions{})
+		// Use grace period 0 for immediate deletion
+		gracePeriod := int64(0)
+		err := tc.Client.CoreV1().Pods(tc.Namespace).Delete(ctx, "test-pod", metav1.DeleteOptions{
+			GracePeriodSeconds: &gracePeriod,
+		})
+		require.NoError(t, err)
+
+		// Wait for pod to be fully deleted
+		err = tc.WaitForPodDeleted(ctx, tc.Namespace, "test-pod", 60*time.Second)
 		require.NoError(t, err)
 
 		// Verify pod is deleted

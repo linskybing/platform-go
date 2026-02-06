@@ -1,6 +1,11 @@
 package user
 
-import "time"
+import (
+	"time"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
+	"gorm.io/gorm"
+)
 
 type UserStatus string
 
@@ -26,7 +31,7 @@ const (
 )
 
 type User struct {
-	UID       uint      `gorm:"primaryKey;column:u_id"`
+	UID       string    `gorm:"primaryKey;column:u_id;size:20"`
 	Username  string    `gorm:"size:50;not null;unique" json:"Username"`
 	Password  string    `gorm:"size:255;not null" json:"-"`
 	Email     *string   `gorm:"size:100"`
@@ -37,8 +42,18 @@ type User struct {
 	UpdatedAt time.Time `gorm:"column:update_at;autoUpdateTime"`
 }
 
+func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
+	if u.UID == "" {
+		u.UID, err = gonanoid.New(12)
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
 type UserWithSuperAdmin struct {
-	UID          uint      `gorm:"column:u_id" json:"UID"`
+	UID          string    `gorm:"column:u_id" json:"UID"`
 	Username     string    `gorm:"column:username" json:"Username"`
 	Password     string    `gorm:"column:password" json:"-"`
 	Email        string    `gorm:"column:email" json:"Email"`

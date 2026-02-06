@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/application/k8s"
 	"github.com/linskybing/platform-go/internal/domain/storage"
 	"github.com/linskybing/platform-go/pkg/response"
+	"github.com/linskybing/platform-go/pkg/utils"
 )
 
 // StoragePermissionHandler handles group storage permission APIs
@@ -26,6 +26,7 @@ func NewStoragePermissionHandler(pm *k8s.PermissionManager) *StoragePermissionHa
 // @Summary Set user permission for group storage
 // @Description Group admin sets permission for a user on a specific PVC
 // @Tags Group Storage Permissions
+// @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param request body storage.SetStoragePermissionRequest true "Permission request"
@@ -33,7 +34,7 @@ func NewStoragePermissionHandler(pm *k8s.PermissionManager) *StoragePermissionHa
 // @Failure 400 {object} response.Response
 // @Failure 403 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /api/v1/storage/permissions [post]
+// @Router /storage/permissions [post]
 func (h *StoragePermissionHandler) SetPermission(c *gin.Context) {
 	var req storage.SetStoragePermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -42,13 +43,13 @@ func (h *StoragePermissionHandler) SetPermission(c *gin.Context) {
 	}
 
 	// Get admin ID from context (set by auth middleware)
-	adminID, exists := c.Get("user_id")
-	if !exists {
+	adminID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
 		response.Error(c, http.StatusUnauthorized, "User not authenticated")
 		return
 	}
 
-	if err := h.permManager.SetPermission(c.Request.Context(), &req, adminID.(uint)); err != nil {
+	if err := h.permManager.SetPermission(c.Request.Context(), &req, adminID); err != nil {
 		if err.Error() == "only group admins can set permissions" {
 			response.Error(c, http.StatusForbidden, err.Error())
 			return
@@ -64,6 +65,7 @@ func (h *StoragePermissionHandler) SetPermission(c *gin.Context) {
 // @Summary Batch set permissions for multiple users
 // @Description Group admin sets permissions for multiple users at once
 // @Tags Group Storage Permissions
+// @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param request body storage.BatchSetPermissionsRequest true "Batch permissions request"
@@ -71,7 +73,7 @@ func (h *StoragePermissionHandler) SetPermission(c *gin.Context) {
 // @Failure 400 {object} response.Response
 // @Failure 403 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /api/v1/storage/permissions/batch [post]
+// @Router /storage/permissions/batch [post]
 func (h *StoragePermissionHandler) BatchSetPermissions(c *gin.Context) {
 	var req storage.BatchSetPermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -79,13 +81,13 @@ func (h *StoragePermissionHandler) BatchSetPermissions(c *gin.Context) {
 		return
 	}
 
-	adminID, exists := c.Get("user_id")
-	if !exists {
+	adminID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
 		response.Error(c, http.StatusUnauthorized, "User not authenticated")
 		return
 	}
 
-	if err := h.permManager.BatchSetPermissions(c.Request.Context(), &req, adminID.(uint)); err != nil {
+	if err := h.permManager.BatchSetPermissions(c.Request.Context(), &req, adminID); err != nil {
 		response.Error(c, http.StatusInternalServerError, "Failed to batch set permissions: "+err.Error())
 		return
 	}
@@ -97,16 +99,17 @@ func (h *StoragePermissionHandler) BatchSetPermissions(c *gin.Context) {
 // @Summary Get user's permission for a specific PVC
 // @Description Retrieve permission level for current user on a group PVC
 // @Tags Group Storage Permissions
+// @Security BearerAuth
 // @Produce json
 // @Param group_id path int true "Group ID"
 // @Param pvc_id path string true "PVC ID"
 // @Success 200 {object} response.Response{data=storage.GroupStoragePermission}
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /api/v1/storage/permissions/group/{group_id}/pvc/{pvc_id} [get]
+// @Router /storage/permissions/group/{group_id}/pvc/{pvc_id} [get]
 func (h *StoragePermissionHandler) GetUserPermission(c *gin.Context) {
-	groupID, err := strconv.ParseUint(c.Param("group_id"), 10, 32)
-	if err != nil {
+	groupID := c.Param("group_id")
+	if groupID == "" {
 		response.Error(c, http.StatusBadRequest, "Invalid group ID")
 		return
 	}
@@ -117,13 +120,13 @@ func (h *StoragePermissionHandler) GetUserPermission(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
 		response.Error(c, http.StatusUnauthorized, "User not authenticated")
 		return
 	}
 
-	perm, err := h.permManager.GetUserPermission(c.Request.Context(), userID.(uint), uint(groupID), pvcID)
+	perm, err := h.permManager.GetUserPermission(c.Request.Context(), userID, groupID, pvcID)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "Failed to get permission: "+err.Error())
 		return
@@ -136,6 +139,7 @@ func (h *StoragePermissionHandler) GetUserPermission(c *gin.Context) {
 // @Summary Set default access policy for a group PVC
 // @Description Group admin sets default permission policy for new members
 // @Tags Group Storage Permissions
+// @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param request body storage.SetStorageAccessPolicyRequest true "Access policy request"
@@ -143,7 +147,7 @@ func (h *StoragePermissionHandler) GetUserPermission(c *gin.Context) {
 // @Failure 400 {object} response.Response
 // @Failure 403 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /api/v1/storage/policies [post]
+// @Router /storage/policies [post]
 func (h *StoragePermissionHandler) SetAccessPolicy(c *gin.Context) {
 	var req storage.SetStorageAccessPolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -151,13 +155,13 @@ func (h *StoragePermissionHandler) SetAccessPolicy(c *gin.Context) {
 		return
 	}
 
-	adminID, exists := c.Get("user_id")
-	if !exists {
+	adminID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
 		response.Error(c, http.StatusUnauthorized, "User not authenticated")
 		return
 	}
 
-	if err := h.permManager.SetAccessPolicy(c.Request.Context(), &req, adminID.(uint)); err != nil {
+	if err := h.permManager.SetAccessPolicy(c.Request.Context(), &req, adminID); err != nil {
 		if err.Error() == "only group admins can set access policies" {
 			response.Error(c, http.StatusForbidden, err.Error())
 			return

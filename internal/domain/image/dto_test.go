@@ -4,6 +4,11 @@ import (
 	"testing"
 )
 
+// ptrString returns a pointer to a string
+func ptrString(s string) *string {
+	return &s
+}
+
 // TestCreateImageRequestDTOValidation tests CreateImageRequestDTO
 func TestCreateImageRequestDTOValidation(t *testing.T) {
 	tests := []struct {
@@ -30,10 +35,10 @@ func TestCreateImageRequestDTOValidation(t *testing.T) {
 				Registry:  "gcr.io",
 				ImageName: "my-app",
 				Tag:       "v1.0",
-				ProjectID: ptrUintImg(25),
+				ProjectID: ptrString("25"),
 			},
 			isValid: func(d CreateImageRequestDTO) bool {
-				return d.ProjectID != nil && *d.ProjectID == 25
+				return d.ProjectID != nil && *d.ProjectID == "25"
 			},
 			scenario: "Image request for specific project",
 		},
@@ -205,7 +210,7 @@ func TestAllowedImageDTOStructure(t *testing.T) {
 		{
 			name: "global_allowed_image",
 			dto: AllowedImageDTO{
-				ID:        1,
+				ID:        "1",
 				Registry:  "docker.io",
 				ImageName: "ubuntu",
 				Tag:       "latest",
@@ -222,24 +227,24 @@ func TestAllowedImageDTOStructure(t *testing.T) {
 		{
 			name: "project_specific_allowed_image",
 			dto: AllowedImageDTO{
-				ID:        2,
+				ID:        "2",
 				Registry:  "gcr.io",
 				ImageName: "my-project/app",
 				Tag:       "v1.0",
 				Digest:    "sha256:xyz789abc123",
-				ProjectID: ptrUintImg(100),
+				ProjectID: ptrString("100"),
 				IsGlobal:  false,
 				IsPulled:  true,
 			},
 			verify: func(d AllowedImageDTO) bool {
-				return !d.IsGlobal && d.ProjectID != nil && *d.ProjectID == 100
+				return !d.IsGlobal && d.ProjectID != nil && *d.ProjectID == "100"
 			},
 			scenario: "Project-specific allowed image",
 		},
 		{
 			name: "unpulled_allowed_image",
 			dto: AllowedImageDTO{
-				ID:        3,
+				ID:        "3",
 				Registry:  "quay.io",
 				ImageName: "org/image",
 				Tag:       "main",
@@ -256,12 +261,12 @@ func TestAllowedImageDTOStructure(t *testing.T) {
 		{
 			name: "allowed_image_with_full_details",
 			dto: AllowedImageDTO{
-				ID:        4,
+				ID:        "4",
 				Registry:  "docker.io",
 				ImageName: "library/postgres",
 				Tag:       "15-alpine",
 				Digest:    "sha256:444555666",
-				ProjectID: ptrUintImg(50),
+				ProjectID: ptrStringImg("50"),
 				IsGlobal:  false,
 				IsPulled:  true,
 			},
@@ -284,4 +289,8 @@ func TestAllowedImageDTOStructure(t *testing.T) {
 // Helper function
 func ptrUintImg(u uint) *uint {
 	return &u
+}
+
+func ptrStringImg(s string) *string {
+	return &s
 }

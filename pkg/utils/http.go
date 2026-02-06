@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,17 +10,18 @@ var (
 	ErrEmptyParameter = errors.New("empty parameter")
 )
 
-func ParseIDParam(c *gin.Context, param string) (uint, error) {
+func ParseIDParam(c *gin.Context, param string) (string, error) {
 	idStr := c.Param(param)
-	idUint64, err := strconv.ParseUint(idStr, 10, 64)
-	return uint(idUint64), err
+	if idStr == "" {
+		return "", errors.New("empty parameter")
+	}
+	return idStr, nil
 }
 
-func ParseQueryUintParam(c *gin.Context, param string) (uint, error) {
+func ParseQueryIDParam(c *gin.Context, param string) (string, error) {
 	valStr := c.Query(param)
 	if valStr == "" {
-		return 0, ErrEmptyParameter
+		return "", ErrEmptyParameter
 	}
-	valUint64, err := strconv.ParseUint(valStr, 10, 64)
-	return uint(valUint64), err
+	return valStr, nil
 }

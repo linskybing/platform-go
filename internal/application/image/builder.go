@@ -10,7 +10,7 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/image"
 )
 
-func (s *ImageService) ApproveRequest(id uint, note string, isGlobal bool, approverID uint) error {
+func (s *ImageService) ApproveRequest(id string, note string, isGlobal bool, approverID string) error {
 	req, err := s.repo.FindRequestByID(id)
 	if err != nil {
 		return err
@@ -34,7 +34,7 @@ func (s *ImageService) ApproveRequest(id uint, note string, isGlobal bool, appro
 	return s.createCoreAndPolicyFromRequest(req, approverID)
 }
 
-func (s *ImageService) createCoreAndPolicyFromRequest(req *image.ImageRequest, adminID uint) error {
+func (s *ImageService) createCoreAndPolicyFromRequest(req *image.ImageRequest, adminID string) error {
 	fullName := req.InputImageName
 	if req.InputRegistry != "" && req.InputRegistry != "docker.io" {
 		fullName = fmt.Sprintf("%s/%s", req.InputRegistry, req.InputImageName)
@@ -87,9 +87,8 @@ func (s *ImageService) createCoreAndPolicyFromRequest(req *image.ImageRequest, a
 	harborPrefixLower := strings.ToLower(cfg.HarborPrivatePrefix)
 	if strings.HasPrefix(fullNameLower, harborPrefixLower) {
 		status := &image.ClusterImageStatus{
-			TagID:        tagEntity.ID,
-			IsPulled:     true,
-			LastPulledAt: ptrTime(time.Now()),
+			TagID:    tagEntity.ID,
+			IsPulled: true,
 		}
 		if err := s.repo.UpdateClusterStatus(status); err != nil {
 			slog.Error("failed to mark image as pulled",

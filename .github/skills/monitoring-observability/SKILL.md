@@ -1,7 +1,12 @@
 ---
 name: monitoring-observability
 description: Logging, metrics collection, tracing, alerting, and observability best practices for production platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Monitoring and Observability
 

@@ -10,12 +10,12 @@ import (
 type UserGroupRepo interface {
 	CreateUserGroup(userGroup *group.UserGroup) error
 	UpdateUserGroup(userGroup *group.UserGroup) error
-	DeleteUserGroup(uid, gid uint) error
-	GetUserGroupsByUID(uid uint) ([]group.UserGroup, error)
-	GetUserGroupsByGID(gid uint) ([]group.UserGroup, error)
-	GetUserGroup(uid, gid uint) (group.UserGroup, error)
-	IsSuperAdmin(uid uint) (bool, error)
-	GetUserRoleInGroup(uid uint, gid uint) (string, error)
+	DeleteUserGroup(uid, gid string) error
+	GetUserGroupsByUID(uid string) ([]group.UserGroup, error)
+	GetUserGroupsByGID(gid string) ([]group.UserGroup, error)
+	GetUserGroup(uid, gid string) (group.UserGroup, error)
+	IsSuperAdmin(uid string) (bool, error)
+	GetUserRoleInGroup(uid string, gid string) (string, error)
 	WithTx(tx *gorm.DB) UserGroupRepo
 }
 
@@ -37,11 +37,11 @@ func (r *DBUserGroupRepo) UpdateUserGroup(userGroup *group.UserGroup) error {
 	return r.db.Save(userGroup).Error
 }
 
-func (r *DBUserGroupRepo) DeleteUserGroup(uid, gid uint) error {
+func (r *DBUserGroupRepo) DeleteUserGroup(uid, gid string) error {
 	return r.db.Where("u_id = ? AND g_id = ?", uid, gid).Delete(&group.UserGroup{}).Error
 }
 
-func (r *DBUserGroupRepo) GetUserGroupsByUID(uid uint) ([]group.UserGroup, error) {
+func (r *DBUserGroupRepo) GetUserGroupsByUID(uid string) ([]group.UserGroup, error) {
 	var userGroups []group.UserGroup
 	err := r.db.
 		Where("u_id = ?", uid).
@@ -49,7 +49,7 @@ func (r *DBUserGroupRepo) GetUserGroupsByUID(uid uint) ([]group.UserGroup, error
 	return userGroups, err
 }
 
-func (r *DBUserGroupRepo) GetUserGroupsByGID(gid uint) ([]group.UserGroup, error) {
+func (r *DBUserGroupRepo) GetUserGroupsByGID(gid string) ([]group.UserGroup, error) {
 	var userGroups []group.UserGroup
 	err := r.db.
 		Where("g_id = ?", gid).
@@ -57,13 +57,13 @@ func (r *DBUserGroupRepo) GetUserGroupsByGID(gid uint) ([]group.UserGroup, error
 	return userGroups, err
 }
 
-func (r *DBUserGroupRepo) GetUserGroup(uid, gid uint) (group.UserGroup, error) {
+func (r *DBUserGroupRepo) GetUserGroup(uid, gid string) (group.UserGroup, error) {
 	var userGroup group.UserGroup
 	err := r.db.First(&userGroup, "u_id = ? AND g_id = ?", uid, gid).Error
 	return userGroup, err
 }
 
-func (r *DBUserGroupRepo) IsSuperAdmin(uid uint) (bool, error) {
+func (r *DBUserGroupRepo) IsSuperAdmin(uid string) (bool, error) {
 	var count int64
 	err := r.db.Table("user_group").
 		Joins("JOIN group_list g ON g.g_id = user_group.g_id").
@@ -76,7 +76,7 @@ func (r *DBUserGroupRepo) IsSuperAdmin(uid uint) (bool, error) {
 	return count > 0, nil
 }
 
-func (r *DBUserGroupRepo) GetUserRoleInGroup(uid uint, gid uint) (string, error) {
+func (r *DBUserGroupRepo) GetUserRoleInGroup(uid string, gid string) (string, error) {
 	var role string
 	err := r.db.Table("user_group").
 		Select("role").

@@ -15,7 +15,7 @@ type MessageResponse struct {
 
 type TokenResponse struct {
 	Token    string `json:"token"`
-	UID      uint   `json:"user_id"`
+	UID      string `json:"user_id"`
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"is_super_admin"`
 }

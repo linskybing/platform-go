@@ -7,18 +7,17 @@ import (
 
 // ResourceMetrics represents current resource usage
 type ResourceMetrics struct {
-	TotalCPU     float64
-	UsedCPU      float64
-	TotalMemory  int64
-	UsedMemory   int64
-	TotalGPU     int
-	UsedGPU      int
-	AvailableMPS int
-	Timestamp    time.Time
-	NodeName     string
-	PodCount     int
-	JobCount     int
-	CourseCount  int
+	TotalCPU    float64
+	UsedCPU     float64
+	TotalMemory int64
+	UsedMemory  int64
+	TotalGPU    int
+	UsedGPU     int
+	Timestamp   time.Time
+	NodeName    string
+	PodCount    int
+	JobCount    int
+	CourseCount int
 }
 
 // CPUUsagePercent returns CPU usage percentage

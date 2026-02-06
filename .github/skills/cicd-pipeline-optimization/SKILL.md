@@ -1,7 +1,12 @@
 ---
 name: cicd-pipeline-optimization
 description: GitHub Actions CI/CD configuration, build optimization, automated testing, and deployment strategies for platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # CI/CD Pipeline Optimization
 
@@ -649,7 +654,3 @@ func TestPodCreation(t *testing.T) {
     assert.Equal(t, corev1.PodRunning, runningPod.Status.Phase)
 }
 ```
-
----
-
-Last Updated: 2026-02-02

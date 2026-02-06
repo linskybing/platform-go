@@ -51,7 +51,7 @@ func (mr *MockConfigFileRepoMockRecorder) CreateConfigFile(cf interface{}) *gomo
 }
 
 // GetConfigFileByID mocks base method.
-func (m *MockConfigFileRepo) GetConfigFileByID(id uint) (*configfile.ConfigFile, error) {
+func (m *MockConfigFileRepo) GetConfigFileByID(id string) (*configfile.ConfigFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetConfigFileByID", id)
 	ret0, _ := ret[0].(*configfile.ConfigFile)
@@ -80,7 +80,7 @@ func (mr *MockConfigFileRepoMockRecorder) UpdateConfigFile(cf interface{}) *gomo
 }
 
 // DeleteConfigFile mocks base method.
-func (m *MockConfigFileRepo) DeleteConfigFile(id uint) error {
+func (m *MockConfigFileRepo) DeleteConfigFile(id string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteConfigFile", id)
 	ret0, _ := ret[0].(error)
@@ -109,7 +109,7 @@ func (mr *MockConfigFileRepoMockRecorder) ListConfigFiles() *gomock.Call {
 }
 
 // GetConfigFilesByProjectID mocks base method.
-func (m *MockConfigFileRepo) GetConfigFilesByProjectID(projectID uint) ([]configfile.ConfigFile, error) {
+func (m *MockConfigFileRepo) GetConfigFilesByProjectID(projectID string) ([]configfile.ConfigFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetConfigFilesByProjectID", projectID)
 	ret0, _ := ret[0].([]configfile.ConfigFile)
@@ -124,10 +124,10 @@ func (mr *MockConfigFileRepoMockRecorder) GetConfigFilesByProjectID(projectID in
 }
 
 // GetGroupIDByConfigFileID mocks base method.
-func (m *MockConfigFileRepo) GetGroupIDByConfigFileID(cfID uint) (uint, error) {
+func (m *MockConfigFileRepo) GetGroupIDByConfigFileID(cfID string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupIDByConfigFileID", cfID)
-	ret0, _ := ret[0].(uint)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/linskybing/platform-go/internal/application"
 	repo "github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/response"
-	"github.com/linskybing/platform-go/pkg/utils"
 )
 
 type AuditHandler struct {
@@ -41,12 +39,7 @@ func NewAuditHandler(svc *application.AuditService) *AuditHandler {
 func (h *AuditHandler) GetAuditLogs(c *gin.Context) {
 	var params repo.AuditQueryParams
 
-	if uid, err := utils.ParseQueryUintParam(c, "user_id"); err != nil {
-		if !errors.Is(err, utils.ErrEmptyParameter) {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid user_id"})
-			return
-		}
-	} else {
+	if uid := c.Query("user_id"); uid != "" {
 		params.UserID = &uid
 	}
 

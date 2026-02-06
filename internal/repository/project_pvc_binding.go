@@ -12,14 +12,14 @@ import (
 type ProjectPVCBindingRepo interface {
 	// ProjectPVCBinding operations
 	CreateBinding(ctx context.Context, binding *storage.ProjectPVCBinding) error
-	GetBinding(ctx context.Context, id uint) (*storage.ProjectPVCBinding, error)
+	GetBinding(ctx context.Context, id string) (*storage.ProjectPVCBinding, error)
 	GetBindingByProjectPVC(ctx context.Context, namespace, pvcName string) (*storage.ProjectPVCBinding, error)
-	ListBindings(ctx context.Context, projectID uint) ([]storage.ProjectPVCBinding, error)
-	ListBindingsByUser(ctx context.Context, userID uint) ([]storage.ProjectPVCBinding, error)
+	ListBindings(ctx context.Context, projectID string) ([]storage.ProjectPVCBinding, error)
+	ListBindingsByUser(ctx context.Context, userID string) ([]storage.ProjectPVCBinding, error)
 	ListBindingsByGroupPVC(ctx context.Context, groupPVCID string) ([]storage.ProjectPVCBinding, error)
 	UpdateBinding(ctx context.Context, binding *storage.ProjectPVCBinding) error
-	UpdateBindingStatus(ctx context.Context, id uint, status string) error
-	DeleteBinding(ctx context.Context, id uint) error
+	UpdateBindingStatus(ctx context.Context, id string, status string) error
+	DeleteBinding(ctx context.Context, id string) error
 	DeleteBindingByProjectPVC(ctx context.Context, namespace, pvcName string) error
 
 	WithTx(tx *gorm.DB) ProjectPVCBindingRepo
@@ -35,7 +35,7 @@ func NewProjectPVCBindingRepo(db *gorm.DB) ProjectPVCBindingRepo {
 	return &ProjectPVCBindingRepoImpl{db: db}
 }
 
-// CreateBinding creates a new project PVC binding
+// CreateBinding creates a new binding record
 func (r *ProjectPVCBindingRepoImpl) CreateBinding(ctx context.Context, binding *storage.ProjectPVCBinding) error {
 	if err := r.db.WithContext(ctx).Create(binding).Error; err != nil {
 		return fmt.Errorf("failed to create binding: %w", err)
@@ -44,15 +44,11 @@ func (r *ProjectPVCBindingRepoImpl) CreateBinding(ctx context.Context, binding *
 }
 
 // GetBinding retrieves a binding by ID
-func (r *ProjectPVCBindingRepoImpl) GetBinding(ctx context.Context, id uint) (*storage.ProjectPVCBinding, error) {
+func (r *ProjectPVCBindingRepoImpl) GetBinding(ctx context.Context, id string) (*storage.ProjectPVCBinding, error) {
 	var binding storage.ProjectPVCBinding
-	if err := r.db.WithContext(ctx).
-		Where("id = ?", id).
-		First(&binding).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("binding not found")
-		}
-		return nil, fmt.Errorf("failed to get binding: %w", err)
+	err := r.db.WithContext(ctx).First(&binding, "id = ?", id).Error
+	if err != nil {
+		return nil, err
 	}
 	return &binding, nil
 }
@@ -60,91 +56,73 @@ func (r *ProjectPVCBindingRepoImpl) GetBinding(ctx context.Context, id uint) (*s
 // GetBindingByProjectPVC retrieves a binding by project namespace and PVC name
 func (r *ProjectPVCBindingRepoImpl) GetBindingByProjectPVC(ctx context.Context, namespace, pvcName string) (*storage.ProjectPVCBinding, error) {
 	var binding storage.ProjectPVCBinding
-	if err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Where("project_namespace = ? AND project_pvc_name = ?", namespace, pvcName).
-		First(&binding).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("binding not found")
-		}
-		return nil, fmt.Errorf("failed to get binding: %w", err)
+		First(&binding).Error
+	if err != nil {
+		return nil, err
 	}
 	return &binding, nil
 }
 
-// ListBindings lists all bindings for a project
-func (r *ProjectPVCBindingRepoImpl) ListBindings(ctx context.Context, projectID uint) ([]storage.ProjectPVCBinding, error) {
+// ListBindings retrieves all bindings for a project
+func (r *ProjectPVCBindingRepoImpl) ListBindings(ctx context.Context, projectID string) ([]storage.ProjectPVCBinding, error) {
 	var bindings []storage.ProjectPVCBinding
-	if err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Where("project_id = ?", projectID).
-		Order("created_at DESC").
-		Find(&bindings).Error; err != nil {
-		return nil, fmt.Errorf("failed to list bindings: %w", err)
-	}
-	return bindings, nil
+		Find(&bindings).Error
+	return bindings, err
 }
 
-// ListBindingsByUser lists all bindings created by a user
-func (r *ProjectPVCBindingRepoImpl) ListBindingsByUser(ctx context.Context, userID uint) ([]storage.ProjectPVCBinding, error) {
+// ListBindingsByUser retrieves all bindings for a user
+func (r *ProjectPVCBindingRepoImpl) ListBindingsByUser(ctx context.Context, userID string) ([]storage.ProjectPVCBinding, error) {
 	var bindings []storage.ProjectPVCBinding
-	if err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Where("user_id = ?", userID).
-		Order("created_at DESC").
-		Find(&bindings).Error; err != nil {
-		return nil, fmt.Errorf("failed to list user bindings: %w", err)
-	}
-	return bindings, nil
+		Find(&bindings).Error
+	return bindings, err
 }
 
 // ListBindingsByGroupPVC lists all bindings for a group PVC
 func (r *ProjectPVCBindingRepoImpl) ListBindingsByGroupPVC(ctx context.Context, groupPVCID string) ([]storage.ProjectPVCBinding, error) {
 	var bindings []storage.ProjectPVCBinding
-	if err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Where("group_pvc_id = ?", groupPVCID).
-		Order("created_at DESC").
-		Find(&bindings).Error; err != nil {
-		return nil, fmt.Errorf("failed to list group PVC bindings: %w", err)
-	}
-	return bindings, nil
+		Find(&bindings).Error
+	return bindings, err
 }
 
-// UpdateBinding updates an existing binding
+// UpdateBinding updates a binding
 func (r *ProjectPVCBindingRepoImpl) UpdateBinding(ctx context.Context, binding *storage.ProjectPVCBinding) error {
-	if err := r.db.WithContext(ctx).Model(binding).Updates(binding).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(binding).Error; err != nil {
 		return fmt.Errorf("failed to update binding: %w", err)
 	}
 	return nil
 }
 
-// UpdateBindingStatus updates only the status of a binding
-func (r *ProjectPVCBindingRepoImpl) UpdateBindingStatus(ctx context.Context, id uint, status string) error {
-	if err := r.db.WithContext(ctx).
+// UpdateBindingStatus updates binding status
+func (r *ProjectPVCBindingRepoImpl) UpdateBindingStatus(ctx context.Context, id string, status string) error {
+	return r.db.WithContext(ctx).
 		Model(&storage.ProjectPVCBinding{}).
 		Where("id = ?", id).
-		Update("status", status).Error; err != nil {
-		return fmt.Errorf("failed to update binding status: %w", err)
-	}
-	return nil
+		Update("status", status).Error
 }
 
-// DeleteBinding deletes a binding by ID
-func (r *ProjectPVCBindingRepoImpl) DeleteBinding(ctx context.Context, id uint) error {
-	if err := r.db.WithContext(ctx).Delete(&storage.ProjectPVCBinding{}, id).Error; err != nil {
-		return fmt.Errorf("failed to delete binding: %w", err)
-	}
-	return nil
+// DeleteBinding deletes a binding record
+func (r *ProjectPVCBindingRepoImpl) DeleteBinding(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).
+		Delete(&storage.ProjectPVCBinding{}, "id = ?", id).Error
 }
 
-// DeleteBindingByProjectPVC deletes a binding by project namespace and PVC name
+// DeleteBindingByProjectPVC deletes a binding by project PVC
 func (r *ProjectPVCBindingRepoImpl) DeleteBindingByProjectPVC(ctx context.Context, namespace, pvcName string) error {
-	if err := r.db.WithContext(ctx).
-		Where("project_namespace = ? AND project_pvc_name = ?", namespace, pvcName).
-		Delete(&storage.ProjectPVCBinding{}).Error; err != nil {
-		return fmt.Errorf("failed to delete binding: %w", err)
-	}
-	return nil
+	return r.db.WithContext(ctx).
+		Delete(&storage.ProjectPVCBinding{}, "project_namespace = ? AND project_pvc_name = ?", namespace, pvcName).Error
 }
 
-// WithTx returns a repository using a transaction
 func (r *ProjectPVCBindingRepoImpl) WithTx(tx *gorm.DB) ProjectPVCBindingRepo {
+	if tx == nil {
+		return r
+	}
 	return &ProjectPVCBindingRepoImpl{db: tx}
 }

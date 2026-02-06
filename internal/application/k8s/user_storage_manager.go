@@ -8,14 +8,18 @@ import (
 	"strings"
 
 	"github.com/linskybing/platform-go/internal/config"
+	"github.com/linskybing/platform-go/pkg/filebrowser"
 	k8sclient "github.com/linskybing/platform-go/pkg/k8s"
-	"github.com/linskybing/platform-go/pkg/utils"
 )
 
-type UserStorageManager struct{}
+type UserStorageManager struct {
+	fbManager filebrowser.SessionManager
+}
 
 func NewUserStorageManager() *UserStorageManager {
-	return &UserStorageManager{}
+	return &UserStorageManager{
+		fbManager: filebrowser.NewSessionManager(),
+	}
 }
 
 func (m *UserStorageManager) CheckExists(ctx context.Context, username string) (bool, error) {
@@ -72,15 +76,32 @@ func (m *UserStorageManager) Delete(ctx context.Context, username string) error 
 
 func (m *UserStorageManager) OpenFileBrowser(ctx context.Context, username string) (string, error) {
 	safeUser := strings.ToLower(username)
-	port, err := utils.StartUserHubBrowser(ctx, safeUser)
-	if err != nil {
-		return "", err
+	nsName := fmt.Sprintf("user-%s-storage", safeUser)
+	pvcName := fmt.Sprintf("user-%s-disk", safeUser)
+	podName := fmt.Sprintf("fb-hub-%s", safeUser)
+	svcName := fmt.Sprintf("fb-hub-svc-%s", safeUser)
+
+	cfg := &filebrowser.Config{
+		Namespace:   nsName,
+		PodName:     podName,
+		ServiceName: svcName,
+		PVCName:     pvcName,
+		ReadOnly:    false,
 	}
 
-	return port, nil
+	nodePort, err := m.fbManager.GetOrCreate(ctx, cfg)
+	if err != nil {
+		return "", fmt.Errorf("failed to start filebrowser: %w", err)
+	}
+
+	return nodePort, nil
 }
 
 func (m *UserStorageManager) CloseFileBrowser(ctx context.Context, username string) error {
 	safeUser := strings.ToLower(username)
-	return utils.StopUserHubBrowser(ctx, safeUser)
+	nsName := fmt.Sprintf("user-%s-storage", safeUser)
+	podName := fmt.Sprintf("fb-hub-%s", safeUser)
+	svcName := fmt.Sprintf("fb-hub-svc-%s", safeUser)
+
+	return m.fbManager.Stop(ctx, nsName, podName, svcName)
 }

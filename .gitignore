@@ -13,3 +13,5 @@ IMPLEMENTATION_CHECKLIST.md
 *.bin
 platform-api
 platform-scheduler
+
+backup

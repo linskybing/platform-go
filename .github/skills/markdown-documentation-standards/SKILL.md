@@ -1,7 +1,12 @@
 ---
 name: markdown-documentation-standards
 description: Markdown documentation standards, file organization, and formatting guidelines for platform-go project documentation
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Markdown Documentation Standards
 
@@ -32,20 +37,6 @@ This skill ensures all documentation follows consistent formatting, structure, a
 5. [Documentation Checklist](#documentation-checklist)
 6. [Keep It Simple](#keep-it-simple)
 
----
-
-## When to Use
-
-Apply this skill when:
-- Writing README files
-- Creating user documentation
-- Writing API documentation
-- Creating implementation guides
-- Documenting configuration
-- Writing troubleshooting guides
-- Creating architectural documentation
-
----
 
 ## Quick Rules
 
@@ -156,69 +147,6 @@ Common issues and solutions.
 - [Link 2](./file2.md)
 ```
 
----
-
-## Best Practices
-
-### No Unnecessary Elements
-
-- **No emoji** - Professional documentation only
-- **No non-English content** - All documentation in English
-- **No ASCII art diagrams** - Use external tools or description
-- **No flowcharts** - Text description or external tools only
-- **No colored text** - Markdown does not support it properly
-- **No HTML markup** - Use markdown syntax only
-- **No special characters** - Stick to standard ASCII
-
-Keep documentation clean, professional, and universally readable.
-
-### Code Examples
-
-```bash
-# Shell examples show commands and output
-$ command here
-expected output here
-```
-
-```go
-// Go code examples must be valid
-func Example() error {
-    return nil
-}
-```
-
-Each code block should be:
-- Valid and runnable
-- Under 20 lines (reference only)
-- Properly formatted with indentation
-
-### Table Format
-
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Row 1    | Data     | Data     |
-| Row 2    | Data     | Data     |
-
-Use pipes for clear separation. Keep tables simple (max 4 columns).
-
-### Line Length
-
-Keep lines under 100 characters where possible. Exception: URLs.
-
-### Paragraph Structure
-
-- One idea per paragraph
-- Maximum 3 sentences per paragraph
-- Use blank lines between sections
-- Lead with key information
-
-### File Naming
-
-Use lowercase with hyphens:
-- Good: `deployment-guide.md`, `api-reference.md`
-- Bad: `DeploymentGuide.md`, `API_Reference.md`, `api reference.md`
-
----
 
 ## Common Sections
 
@@ -274,27 +202,6 @@ Key configuration options with defaults.
 **Solution**: Verify credentials...
 ```
 
----
-
-## Documentation Checklist
-
-Before publishing documentation:
-
-- [ ] Title clearly states topic
-- [ ] Headings are properly hierarchical
-- [ ] Code blocks have language identifiers
-- [ ] All links work and are relative paths
-- [ ] No markdown syntax errors
-- [ ] Line length under 100 characters
-- [ ] Consistent formatting throughout
-- [ ] No unnecessary blank lines
-- [ ] Table content is accurate
-- [ ] Examples are runnable
-- [ ] Spelling and grammar correct
-- [ ] No emoji or special characters
-- [ ] Related links section complete
-
----
 
 ## Keep It Simple
 
@@ -306,7 +213,3 @@ Goal: Clear, scannable, maintainable documentation.
 - Use code formatting for technical terms
 - Remove unnecessary words
 - One topic per file
-
----
-
-Last Updated: 2026-02-02

@@ -32,7 +32,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
 	cron.StartCleanupTask(services.Audit)
 
 	// Register public routes (no JWT protection)
-	registerAuthRoutes(r)
+	registerAuthRoutes(r, handlers)
 
 	// Register protected routes (JWT required)
 	auth := r.Group("/")
@@ -42,6 +42,11 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
 		registerConfigFileRoutes(auth, handlers, authMiddleware, repos)
 		registerGroupRoutes(auth, handlers, authMiddleware)
 		registerFormRoutes(auth, handlers, authMiddleware)
+		registerImageRoutes(auth, handlers, authMiddleware)
 		registerStorageRoutes(auth, handlers, authMiddleware)
+		registerProjectRoutes(auth, handlers, authMiddleware)
+		registerUserRoutes(auth, handlers, authMiddleware)
+		registerK8sRoutes(auth, handlers, authMiddleware)
+		registerWebSocketRoutes(auth, services)
 	}
 }

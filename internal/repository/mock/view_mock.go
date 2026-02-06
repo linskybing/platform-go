@@ -50,10 +50,10 @@ func (mr *MockViewRepoMockRecorder) GetAllProjectGroupViews() *gomock.Call {
 }
 
 // GetGroupIDByConfigFileID mocks base method.
-func (m *MockViewRepo) GetGroupIDByConfigFileID(cfID uint) (uint, error) {
+func (m *MockViewRepo) GetGroupIDByConfigFileID(cfID string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupIDByConfigFileID", cfID)
-	ret0, _ := ret[0].(uint)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -65,10 +65,10 @@ func (mr *MockViewRepoMockRecorder) GetGroupIDByConfigFileID(cfID interface{}) *
 }
 
 // GetGroupIDByResourceID mocks base method.
-func (m *MockViewRepo) GetGroupIDByResourceID(rID uint) (uint, error) {
+func (m *MockViewRepo) GetGroupIDByResourceID(rID string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupIDByResourceID", rID)
-	ret0, _ := ret[0].(uint)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -80,7 +80,7 @@ func (mr *MockViewRepoMockRecorder) GetGroupIDByResourceID(rID interface{}) *gom
 }
 
 // GetGroupResourcesByGroupID mocks base method.
-func (m *MockViewRepo) GetGroupResourcesByGroupID(groupID uint) ([]view.GroupResourceView, error) {
+func (m *MockViewRepo) GetGroupResourcesByGroupID(groupID string) ([]view.GroupResourceView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupResourcesByGroupID", groupID)
 	ret0, _ := ret[0].([]view.GroupResourceView)
@@ -95,7 +95,7 @@ func (mr *MockViewRepoMockRecorder) GetGroupResourcesByGroupID(groupID interface
 }
 
 // GetProjectResourcesByGroupID mocks base method.
-func (m *MockViewRepo) GetProjectResourcesByGroupID(groupID uint) ([]view.ProjectResourceView, error) {
+func (m *MockViewRepo) GetProjectResourcesByGroupID(groupID string) ([]view.ProjectResourceView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetProjectResourcesByGroupID", groupID)
 	ret0, _ := ret[0].([]view.ProjectResourceView)
@@ -110,7 +110,7 @@ func (mr *MockViewRepoMockRecorder) GetProjectResourcesByGroupID(groupID interfa
 }
 
 // GetUserRoleInGroup mocks base method.
-func (m *MockViewRepo) GetUserRoleInGroup(uid, gid uint) (string, error) {
+func (m *MockViewRepo) GetUserRoleInGroup(uid, gid string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserRoleInGroup", uid, gid)
 	ret0, _ := ret[0].(string)
@@ -125,7 +125,7 @@ func (mr *MockViewRepoMockRecorder) GetUserRoleInGroup(uid, gid interface{}) *go
 }
 
 // IsSuperAdmin mocks base method.
-func (m *MockViewRepo) IsSuperAdmin(uid uint) (bool, error) {
+func (m *MockViewRepo) IsSuperAdmin(uid string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsSuperAdmin", uid)
 	ret0, _ := ret[0].(bool)
@@ -140,7 +140,7 @@ func (mr *MockViewRepoMockRecorder) IsSuperAdmin(uid interface{}) *gomock.Call {
 }
 
 // ListProjectsByUserID mocks base method.
-func (m *MockViewRepo) ListProjectsByUserID(userID uint) ([]view.ProjectUserView, error) {
+func (m *MockViewRepo) ListProjectsByUserID(userID string) ([]view.ProjectUserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListProjectsByUserID", userID)
 	ret0, _ := ret[0].([]view.ProjectUserView)
@@ -155,7 +155,7 @@ func (mr *MockViewRepoMockRecorder) ListProjectsByUserID(userID interface{}) *go
 }
 
 // ListUsersByProjectID mocks base method.
-func (m *MockViewRepo) ListUsersByProjectID(projectID uint) ([]view.ProjectUserView, error) {
+func (m *MockViewRepo) ListUsersByProjectID(projectID string) ([]view.ProjectUserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsersByProjectID", projectID)
 	ret0, _ := ret[0].([]view.ProjectUserView)

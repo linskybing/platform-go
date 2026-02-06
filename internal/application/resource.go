@@ -19,10 +19,10 @@ func NewResourceService(repos *repository.Repos) *ResourceService {
 	}
 }
 
-func (s *ResourceService) ListResourcesByProjectID(projectID uint) ([]resource.Resource, error) {
+func (s *ResourceService) ListResourcesByProjectID(projectID string) ([]resource.Resource, error) {
 	return s.Repos.Resource.ListResourcesByProjectID(projectID)
 }
 
-func (s *ResourceService) ListResourcesByConfigFileID(cfID uint) ([]resource.Resource, error) {
+func (s *ResourceService) ListResourcesByConfigFileID(cfID string) ([]resource.Resource, error) {
 	return s.Repos.Resource.ListResourcesByConfigFileID(cfID)
 }

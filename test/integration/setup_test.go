@@ -27,6 +27,7 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/cache"
+	"github.com/linskybing/platform-go/pkg/k8s"
 	"gorm.io/gorm"
 )
 
@@ -63,6 +64,11 @@ func GetTestContext() *TestContext {
 func setupTestContext() *TestContext {
 	seedEnvFromDatabaseURL()
 	ensureDefaultTestEnv()
+
+	// Enable K8S mock mode for integration tests
+	if os.Getenv("K8S_MOCK") == "true" {
+		k8s.SetMockMode(true)
+	}
 
 	config.LoadConfig()
 	config.InitK8sConfig()
@@ -155,6 +161,10 @@ func ensureDefaultTestEnv() {
 	if os.Getenv("Issuer") == "" {
 		_ = os.Setenv("Issuer", "platform-test")
 	}
+	// Enable K8S mock by default for integration tests
+	if os.Getenv("K8S_MOCK") == "" {
+		_ = os.Setenv("K8S_MOCK", "true")
+	}
 	if os.Getenv("SKIP_K8S_TESTS") == "" {
 		_ = os.Setenv("SKIP_K8S_TESTS", "true")
 	}
@@ -246,14 +256,14 @@ func getOrCreateGroup(groupName string) *group.Group {
 	return &g
 }
 
-func ensureUserGroup(uid uint, gid uint, role string) {
+func ensureUserGroup(uid string, gid string, role string) {
 	var ug group.UserGroup
 	err := db.DB.Where("u_id = ? AND g_id = ?", uid, gid).First(&ug).Error
 	if err == nil {
 		return
 	}
 	if err != gorm.ErrRecordNotFound {
-		panic(fmt.Sprintf("failed to query user_group (uid=%d, gid=%d): %v", uid, gid, err))
+		panic(fmt.Sprintf("failed to query user_group (uid=%s, gid=%s): %v", uid, gid, err))
 	}
 
 	ug = group.UserGroup{
@@ -262,18 +272,18 @@ func ensureUserGroup(uid uint, gid uint, role string) {
 		Role: role,
 	}
 	if err := db.DB.Create(&ug).Error; err != nil {
-		panic(fmt.Sprintf("failed to create user_group (uid=%d, gid=%d, role=%s): %v", uid, gid, role, err))
+		panic(fmt.Sprintf("failed to create user_group (uid=%s, gid=%s, role=%s): %v", uid, gid, role, err))
 	}
 }
 
-func getOrCreateProject(name string, gid uint) *project.Project {
+func getOrCreateProject(name string, gid string) *project.Project {
 	var p project.Project
 	err := db.DB.Where("project_name = ? AND g_id = ?", name, gid).First(&p).Error
 	if err == nil {
 		return &p
 	}
 	if err != gorm.ErrRecordNotFound {
-		panic(fmt.Sprintf("failed to query project %s (gid=%d): %v", name, gid, err))
+		panic(fmt.Sprintf("failed to query project %s (gid=%s): %v", name, gid, err))
 	}
 
 	p = project.Project{
@@ -282,7 +292,7 @@ func getOrCreateProject(name string, gid uint) *project.Project {
 		Description: fmt.Sprintf("Test project %s", name),
 	}
 	if err := db.DB.Create(&p).Error; err != nil {
-		panic(fmt.Sprintf("failed to create project %s (gid=%d): %v", name, gid, err))
+		panic(fmt.Sprintf("failed to create project %s (gid=%s): %v", name, gid, err))
 	}
 	return &p
 }

@@ -13,22 +13,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func IsSuperAdmin(uid uint, repos repository.UserGroupRepo) (bool, error) {
-	if uid == 1 {
-		return true, nil
-	}
+func IsSuperAdmin(uid string, repos repository.UserGroupRepo) (bool, error) {
 	return repos.IsSuperAdmin(uid)
 }
 
-var GetUserIDFromContext = func(c *gin.Context) (uint, error) {
+var GetUserIDFromContext = func(c *gin.Context) (string, error) {
 	claimsVal, exists := c.Get("claims")
 	if !exists {
-		return 0, fmt.Errorf("user claims not found in context: missing claims")
+		return "", fmt.Errorf("user claims not found in context: missing claims")
 	}
 
 	claims, ok := claimsVal.(*types.Claims)
 	if !ok {
-		return 0, fmt.Errorf("invalid user claims type (expected *types.Claims): type assertion failed")
+		return "", fmt.Errorf("invalid user claims type (expected *types.Claims): type assertion failed")
 	}
 
 	return claims.UserID, nil
@@ -48,7 +45,7 @@ var GetUserNameFromContext = func(c *gin.Context) (string, error) {
 	return claims.Username, nil
 }
 
-func HasGroupRole(userID uint, gid uint, roles []string) (bool, error) {
+func HasGroupRole(userID string, gid string, roles []string) (bool, error) {
 	var v group.UserGroup
 	err := db.DB.
 		Where("u_id = ? AND g_id = ? AND role IN ?", userID, gid, roles).
@@ -70,7 +67,7 @@ func HasGroupRole(userID uint, gid uint, roles []string) (bool, error) {
 	return true, nil
 }
 
-func CheckGroupPermission(UID uint, GID uint, repos repository.UserGroupRepo) (bool, error) {
+func CheckGroupPermission(UID string, GID string, repos repository.UserGroupRepo) (bool, error) {
 	isMember, err := HasGroupRole(UID, GID, config.GroupAccessRoles)
 	if err != nil {
 		return false, err
@@ -87,10 +84,10 @@ func CheckGroupPermission(UID uint, GID uint, repos repository.UserGroupRepo) (b
 		return true, nil
 	}
 
-	return false, fmt.Errorf("user %d is not a group member: permission denied", UID)
+	return false, fmt.Errorf("user %s is not a group member: permission denied", UID)
 }
 
-func CheckGroupManagePermission(UID uint, GID uint, repos repository.UserGroupRepo) (bool, error) {
+func CheckGroupManagePermission(UID string, GID string, repos repository.UserGroupRepo) (bool, error) {
 	isManager, err := HasGroupRole(UID, GID, config.GroupUpdateRoles)
 	if err != nil {
 		return false, fmt.Errorf("failed to check group manager role: %w", err)
@@ -107,10 +104,10 @@ func CheckGroupManagePermission(UID uint, GID uint, repos repository.UserGroupRe
 		return true, nil
 	}
 
-	return false, fmt.Errorf("user %d cannot manage group %d: permission denied", UID, GID)
+	return false, fmt.Errorf("user %s cannot manage group %s: permission denied", UID, GID)
 }
 
-func CheckGroupAdminPermission(UID uint, GID uint, repos repository.UserGroupRepo) (bool, error) {
+func CheckGroupAdminPermission(UID string, GID string, repos repository.UserGroupRepo) (bool, error) {
 	isManager, err := HasGroupRole(UID, GID, config.GroupAdminRoles)
 	if err != nil {
 		return false, fmt.Errorf("failed to check group admin role: %w", err)
@@ -127,5 +124,5 @@ func CheckGroupAdminPermission(UID uint, GID uint, repos repository.UserGroupRep
 		return true, nil
 	}
 
-	return false, fmt.Errorf("user %d cannot administer group %d: permission denied", UID, GID)
+	return false, fmt.Errorf("user %s cannot administer group %s: permission denied", UID, GID)
 }

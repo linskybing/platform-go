@@ -11,15 +11,15 @@ import (
 
 type ResourceRepo interface {
 	CreateResource(resource *resource.Resource) error
-	GetResourceByID(rid uint) (*resource.Resource, error)
+	GetResourceByID(rid string) (*resource.Resource, error)
 	UpdateResource(resource *resource.Resource) error
-	DeleteResource(rid uint) error
-	ListResourcesByProjectID(pid uint) ([]resource.Resource, error)
-	ListResourcesByConfigFileID(cfID uint) ([]resource.Resource, error)
-	GetResourceByConfigFileIDAndName(cfID uint, name string) (*resource.Resource, error)
-	GetProjectResourcesByGroupID(groupID uint) ([]view.ProjectResourceView, error)
-	GetGroupResourcesByGroupID(groupID uint) ([]view.GroupResourceView, error)
-	GetGroupIDByResourceID(rID uint) (uint, error)
+	DeleteResource(rid string) error
+	ListResourcesByProjectID(pid string) ([]resource.Resource, error)
+	ListResourcesByConfigFileID(cfID string) ([]resource.Resource, error)
+	GetResourceByConfigFileIDAndName(cfID string, name string) (*resource.Resource, error)
+	GetProjectResourcesByGroupID(groupID string) ([]view.ProjectResourceView, error)
+	GetGroupResourcesByGroupID(groupID string) ([]view.GroupResourceView, error)
+	GetGroupIDByResourceID(rID string) (string, error)
 	WithTx(tx *gorm.DB) ResourceRepo
 }
 
@@ -37,7 +37,7 @@ func (r *DBResourceRepo) CreateResource(resource *resource.Resource) error {
 	return r.db.Create(resource).Error
 }
 
-func (r *DBResourceRepo) GetResourceByID(rid uint) (*resource.Resource, error) {
+func (r *DBResourceRepo) GetResourceByID(rid string) (*resource.Resource, error) {
 	var resource resource.Resource
 	err := r.db.First(&resource, "r_id = ?", rid).Error
 	if err != nil {
@@ -47,7 +47,7 @@ func (r *DBResourceRepo) GetResourceByID(rid uint) (*resource.Resource, error) {
 }
 
 func (r *DBResourceRepo) UpdateResource(resource *resource.Resource) error {
-	if resource.RID == 0 {
+	if resource.RID == "" {
 		return fmt.Errorf("resource RID is required: validation failed")
 	}
 	if err := r.db.Save(resource).Error; err != nil {
@@ -56,11 +56,11 @@ func (r *DBResourceRepo) UpdateResource(resource *resource.Resource) error {
 	return nil
 }
 
-func (r *DBResourceRepo) DeleteResource(rid uint) error {
+func (r *DBResourceRepo) DeleteResource(rid string) error {
 	return r.db.Delete(&resource.Resource{}, "r_id = ?", rid).Error
 }
 
-func (r *DBResourceRepo) ListResourcesByProjectID(pid uint) ([]resource.Resource, error) {
+func (r *DBResourceRepo) ListResourcesByProjectID(pid string) ([]resource.Resource, error) {
 	var resources []resource.Resource
 	err := r.db.
 		Joins("JOIN config_files cf ON cf.cf_id = resources.cf_id").
@@ -69,7 +69,7 @@ func (r *DBResourceRepo) ListResourcesByProjectID(pid uint) ([]resource.Resource
 	return resources, err
 }
 
-func (r *DBResourceRepo) ListResourcesByConfigFileID(cfID uint) ([]resource.Resource, error) {
+func (r *DBResourceRepo) ListResourcesByConfigFileID(cfID string) ([]resource.Resource, error) {
 	var resources []resource.Resource
 	err := r.db.
 		Where("cf_id = ?", cfID).
@@ -77,7 +77,7 @@ func (r *DBResourceRepo) ListResourcesByConfigFileID(cfID uint) ([]resource.Reso
 	return resources, err
 }
 
-func (r *DBResourceRepo) GetResourceByConfigFileIDAndName(cfID uint, name string) (*resource.Resource, error) {
+func (r *DBResourceRepo) GetResourceByConfigFileIDAndName(cfID string, name string) (*resource.Resource, error) {
 	var resource resource.Resource
 	err := r.db.
 		Where("cf_id = ? AND name = ?", cfID, name).
@@ -92,7 +92,7 @@ func (r *DBResourceRepo) GetResourceByConfigFileIDAndName(cfID uint, name string
 	return &resource, nil
 }
 
-func (r *DBResourceRepo) GetProjectResourcesByGroupID(groupID uint) ([]view.ProjectResourceView, error) {
+func (r *DBResourceRepo) GetProjectResourcesByGroupID(groupID string) ([]view.ProjectResourceView, error) {
 	var results []view.ProjectResourceView
 
 	err := r.db.Table("project_list p").
@@ -109,7 +109,7 @@ func (r *DBResourceRepo) GetProjectResourcesByGroupID(groupID uint) ([]view.Proj
 	return results, err
 }
 
-func (r *DBResourceRepo) GetGroupResourcesByGroupID(groupID uint) ([]view.GroupResourceView, error) {
+func (r *DBResourceRepo) GetGroupResourcesByGroupID(groupID string) ([]view.GroupResourceView, error) {
 	var results []view.GroupResourceView
 
 	err := r.db.Table("group_list g").
@@ -128,8 +128,8 @@ func (r *DBResourceRepo) GetGroupResourcesByGroupID(groupID uint) ([]view.GroupR
 	return results, err
 }
 
-func (r *DBResourceRepo) GetGroupIDByResourceID(rID uint) (uint, error) {
-	var gID uint
+func (r *DBResourceRepo) GetGroupIDByResourceID(rID string) (string, error) {
+	var gID string
 	err := r.db.Table("resources r").
 		Select("p.g_id").
 		Joins("JOIN config_files cf ON cf.cf_id = r.cf_id").
@@ -139,9 +139,9 @@ func (r *DBResourceRepo) GetGroupIDByResourceID(rID uint) (uint, error) {
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, nil
+			return "", nil
 		}
-		return 0, err
+		return "", err
 	}
 	return gID, nil
 }

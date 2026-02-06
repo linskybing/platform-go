@@ -8,33 +8,33 @@ import (
 )
 
 // CreateGroupPVC creates a new persistent volume claim for a group.
-func (s *K8sService) CreateGroupPVC(ctx context.Context, groupID uint, req *storage.CreateGroupStorageRequest, createdByID uint) (*storage.GroupPVC, error) {
-	if groupID == 0 {
+func (s *K8sService) CreateGroupPVC(ctx context.Context, groupID string, req *storage.CreateGroupStorageRequest, createdByID string) (*storage.GroupPVC, error) {
+	if groupID == "" {
 		return nil, fmt.Errorf("invalid group ID: %w", ErrInvalidID)
 	}
 	if req == nil {
 		return nil, fmt.Errorf("storage request is required: %w", ErrNilRequest)
 	}
-	if createdByID == 0 {
+	if createdByID == "" {
 		return nil, fmt.Errorf("invalid creator ID: %w", ErrInvalidID)
 	}
 
 	pvc, err := s.StorageManager.CreateGroupPVC(ctx, groupID, req, createdByID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create PVC for group %d: %w", groupID, err)
+		return nil, fmt.Errorf("failed to create PVC for group %s: %w", groupID, err)
 	}
 	return pvc, nil
 }
 
 // ListGroupPVCs returns all persistent volume claims for a group.
-func (s *K8sService) ListGroupPVCs(ctx context.Context, groupID uint) ([]storage.GroupPVC, error) {
-	if groupID == 0 {
+func (s *K8sService) ListGroupPVCs(ctx context.Context, groupID string) ([]storage.GroupPVC, error) {
+	if groupID == "" {
 		return nil, fmt.Errorf("invalid group ID: %w", ErrInvalidID)
 	}
 
 	pvcs, err := s.StorageManager.ListGroupPVCs(ctx, groupID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list PVCs for group %d: %w", groupID, err)
+		return nil, fmt.Errorf("failed to list PVCs for group %s: %w", groupID, err)
 	}
 	return pvcs, nil
 }
@@ -52,21 +52,21 @@ func (s *K8sService) DeleteGroupPVC(ctx context.Context, pvcID string) error {
 }
 
 // DeleteGroupStorage deletes all storage resources for a group.
-func (s *K8sService) DeleteGroupStorage(ctx context.Context, groupID uint) error {
-	if groupID == 0 {
+func (s *K8sService) DeleteGroupStorage(ctx context.Context, groupID string) error {
+	if groupID == "" {
 		return fmt.Errorf("invalid group ID: %w", ErrInvalidID)
 	}
 
 	// List all PVCs for the group
 	pvcs, err := s.ListGroupPVCs(ctx, groupID)
 	if err != nil {
-		return fmt.Errorf("failed to list PVCs for group %d: %w", groupID, err)
+		return fmt.Errorf("failed to list PVCs for group %s: %w", groupID, err)
 	}
 
 	// Delete each PVC
 	for _, pvc := range pvcs {
 		if err := s.DeleteGroupPVC(ctx, pvc.ID); err != nil {
-			return fmt.Errorf("failed to delete PVC %s for group %d: %w", pvc.ID, groupID, err)
+			return fmt.Errorf("failed to delete PVC %s for group %s: %w", pvc.ID, groupID, err)
 		}
 	}
 
@@ -84,8 +84,8 @@ func (s *K8sService) ListAllGroupStorages(ctx context.Context) (interface{}, err
 
 // CreateGroupPVC creates a new PVC for a group (handler-compatible wrapper).
 // This version accepts individual parameters for backward compatibility with handlers.
-func (s *K8sService) CreateGroupPVCFromParams(ctx context.Context, groupID uint, groupName string, name string, capacityGi int, storageClass *string) (interface{}, error) {
-	if groupID == 0 {
+func (s *K8sService) CreateGroupPVCFromParams(ctx context.Context, groupID string, groupName string, name string, capacityGi int, storageClass *string) (interface{}, error) {
+	if groupID == "" {
 		return nil, fmt.Errorf("invalid group ID: %w", ErrInvalidID)
 	}
 
@@ -97,10 +97,10 @@ func (s *K8sService) CreateGroupPVCFromParams(ctx context.Context, groupID uint,
 		StorageClass: storageClass,
 	}
 
-	// Note: Creator ID defaults to 0 (system). Future: Extract from context.Context user claims.
-	pvc, err := s.CreateGroupPVC(ctx, groupID, req, 0)
+	// Note: Creator ID defaults to "" (system/empty). Future: Extract from context.Context user claims.
+	pvc, err := s.CreateGroupPVC(ctx, groupID, req, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create PVC for group %d: %w", groupID, err)
+		return nil, fmt.Errorf("failed to create PVC for group %s: %w", groupID, err)
 	}
 
 	// Return the PVC name for handler compatibility

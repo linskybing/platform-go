@@ -11,7 +11,7 @@ import (
 )
 
 type PatchContext struct {
-	ProjectID       uint
+	ProjectID       string
 	Project         project.Project
 	UserIsAdmin     bool
 	ShouldEnforceRO bool

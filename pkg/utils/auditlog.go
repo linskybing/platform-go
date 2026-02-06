@@ -29,7 +29,7 @@ var LogAuditWithConsole = func(c *gin.Context, action, resourceType, resourceID 
 }
 
 var LogAudit = func(
-	userID uint,
+	userID string,
 	ip string,
 	ua string,
 	action string,

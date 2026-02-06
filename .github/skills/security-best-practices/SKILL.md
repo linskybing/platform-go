@@ -1,7 +1,12 @@
 ---
 name: security-best-practices
 description: Security guidelines, authentication, authorization, input validation, and secure coding practices for platform-go
+license: Proprietary
+metadata:
+  author: platform-go
+  version: "1.0"
 ---
+
 
 # Security Best Practices
 

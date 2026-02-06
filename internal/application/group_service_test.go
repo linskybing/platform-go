@@ -39,8 +39,8 @@ func TestGroupServiceCRUD(t *testing.T) {
 
 	t.Run("ListGroups success", func(t *testing.T) {
 		mockGroup.EXPECT().GetAllGroups().Return([]group.Group{
-			{GID: 1, GroupName: "dev"},
-			{GID: 2, GroupName: "ops"},
+			{GID: "1", GroupName: "dev"},
+			{GID: "2", GroupName: "ops"},
 		}, nil)
 
 		groups, err := svc.ListGroups()
@@ -53,8 +53,8 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("GetGroup success", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID(uint(1)).Return(group.Group{GID: 1, GroupName: "dev"}, nil)
-		group, err := svc.GetGroup(1)
+		mockGroup.EXPECT().GetGroupByID("1").Return(group.Group{GID: "1", GroupName: "dev"}, nil)
+		group, err := svc.GetGroup("1")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -64,8 +64,8 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("GetGroup not found", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID(uint(99)).Return(group.Group{}, errors.New("not found"))
-		_, err := svc.GetGroup(99)
+		mockGroup.EXPECT().GetGroupByID("99").Return(group.Group{}, errors.New("not found"))
+		_, err := svc.GetGroup("99")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -93,14 +93,14 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("UpdateGroup success", func(t *testing.T) {
-		old := group.Group{GID: 1, GroupName: "dev"}
-		mockGroup.EXPECT().GetGroupByID(uint(1)).Return(old, nil)
+		old := group.Group{GID: "1", GroupName: "dev"}
+		mockGroup.EXPECT().GetGroupByID("1").Return(old, nil)
 		mockGroup.EXPECT().UpdateGroup(gomock.Any()).Return(nil)
 
 		newName := "devops"
 		newDesc := "updated description"
 		input := group.GroupUpdateDTO{GroupName: &newName, Description: &newDesc}
-		group, err := svc.UpdateGroup(c, 1, input)
+		group, err := svc.UpdateGroup(c, "1", input)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -110,40 +110,40 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("UpdateGroup reserved name", func(t *testing.T) {
-		old := group.Group{GID: 1, GroupName: "dev"}
-		mockGroup.EXPECT().GetGroupByID(uint(1)).Return(old, nil)
+		old := group.Group{GID: "1", GroupName: "dev"}
+		mockGroup.EXPECT().GetGroupByID("1").Return(old, nil)
 		newName := "super"
 		input := group.GroupUpdateDTO{GroupName: &newName}
-		_, err := svc.UpdateGroup(c, 1, input)
+		_, err := svc.UpdateGroup(c, "1", input)
 		if !errors.Is(err, application.ErrReservedGroupName) {
 			t.Fatalf("expected reserved group name error, got %v", err)
 		}
 	})
 
 	t.Run("UpdateGroup not found", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID(uint(99)).Return(group.Group{}, errors.New("not found"))
+		mockGroup.EXPECT().GetGroupByID("99").Return(group.Group{}, errors.New("not found"))
 		newName := "newname"
 		input := group.GroupUpdateDTO{GroupName: &newName}
-		_, err := svc.UpdateGroup(c, 99, input)
+		_, err := svc.UpdateGroup(c, "99", input)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("DeleteGroup success", func(t *testing.T) {
-		existing := group.Group{GID: 1, GroupName: "dev"}
-		mockGroup.EXPECT().GetGroupByID(uint(1)).Return(existing, nil)
-		mockGroup.EXPECT().DeleteGroup(uint(1)).Return(nil)
+		existing := group.Group{GID: "1", GroupName: "dev"}
+		mockGroup.EXPECT().GetGroupByID("1").Return(existing, nil)
+		mockGroup.EXPECT().DeleteGroup("1").Return(nil)
 
-		err := svc.DeleteGroup(c, 1)
+		err := svc.DeleteGroup(c, "1")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("DeleteGroup not found", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID(uint(99)).Return(group.Group{}, errors.New("not found"))
-		err := svc.DeleteGroup(c, 99)
+		mockGroup.EXPECT().GetGroupByID("99").Return(group.Group{}, errors.New("not found"))
+		err := svc.DeleteGroup(c, "99")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

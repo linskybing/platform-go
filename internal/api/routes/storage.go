@@ -20,6 +20,9 @@ func registerStorageRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *midd
 		{
 			// Create PVC binding - group manager access (via project_id in payload)
 			pvcBinding.POST("", am.GroupManager(middleware.FromProjectIDInPayload()), h.PVCBinding.CreateBinding)
+
+			// Delete PVC binding - group manager access (via project_id in path)
+			pvcBinding.DELETE("/:project_id/:pvc_name", am.GroupManager(middleware.FromProjectIDParamName("project_id")), h.PVCBinding.DeleteBinding)
 		}
 
 		// FileBrowser access routes
@@ -27,7 +30,22 @@ func registerStorageRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *midd
 		{
 			// Get FileBrowser access - group member access
 			// Note: Handler should validate user has access to requested project/storage
-			filebrowser.GET("/access", h.FileBrowser.GetAccess)
+			filebrowser.POST("/access", h.FileBrowser.GetAccess)
 		}
+	}
+
+	// Storage permission routes
+	storage := auth.Group("/storage")
+	{
+		permissions := storage.Group("/permissions")
+		{
+			// Set permission - group admin only (via group_id in payload)
+			permissions.POST("", am.GroupAdmin(middleware.FromGroupIDInPayload()), h.StoragePerm.SetPermission)
+			permissions.POST("/batch", am.GroupAdmin(middleware.FromGroupIDInPayload()), h.StoragePerm.BatchSetPermissions)
+			permissions.GET("/group/:group_id/pvc/:pvc_id", am.GroupMember(middleware.FromGroupIDParamName("group_id")), h.StoragePerm.GetUserPermission)
+		}
+
+		// Access policy routes
+		storage.POST("/policies", am.GroupAdmin(middleware.FromGroupIDInPayload()), h.StoragePerm.SetAccessPolicy)
 	}
 }

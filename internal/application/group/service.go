@@ -53,7 +53,7 @@ func (s *GroupService) ListGroups() ([]group.Group, error) {
 	return groups, nil
 }
 
-func (s *GroupService) GetGroup(id uint) (group.Group, error) {
+func (s *GroupService) GetGroup(id string) (group.Group, error) {
 	if s.cache != nil && s.cache.Enabled() {
 		var cached group.Group
 		if err := s.cache.GetJSON(context.Background(), groupByIDKey(id), &cached); err == nil {
@@ -88,12 +88,12 @@ func (s *GroupService) CreateGroup(c *gin.Context, input group.GroupCreateDTO) (
 		return group.Group{}, err
 	}
 	s.invalidateGroupCache(grp.GID)
-	utils.LogAuditWithConsole(c, "create", "group", fmt.Sprintf("g_id=%d", grp.GID), nil, grp, "", s.Repos.Audit)
+	utils.LogAuditWithConsole(c, "create", "group", fmt.Sprintf("g_id=%s", grp.GID), nil, grp, "", s.Repos.Audit)
 
 	return grp, nil
 }
 
-func (s *GroupService) UpdateGroup(c *gin.Context, id uint, input group.GroupUpdateDTO) (group.Group, error) {
+func (s *GroupService) UpdateGroup(c *gin.Context, id string, input group.GroupUpdateDTO) (group.Group, error) {
 	grp, err := s.Repos.Group.GetGroupByID(id)
 	if err != nil {
 		return group.Group{}, err
@@ -126,12 +126,12 @@ func (s *GroupService) UpdateGroup(c *gin.Context, id uint, input group.GroupUpd
 	}
 	s.invalidateGroupCache(grp.GID)
 
-	utils.LogAuditWithConsole(c, "update", "group", fmt.Sprintf("g_id=%d", grp.GID), oldGroup, grp, "", s.Repos.Audit)
+	utils.LogAuditWithConsole(c, "update", "group", fmt.Sprintf("g_id=%s", grp.GID), oldGroup, grp, "", s.Repos.Audit)
 
 	return grp, nil
 }
 
-func (s *GroupService) DeleteGroup(c *gin.Context, id uint) error {
+func (s *GroupService) DeleteGroup(c *gin.Context, id string) error {
 	group, err := s.Repos.Group.GetGroupByID(id)
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func (s *GroupService) DeleteGroup(c *gin.Context, id uint) error {
 	}
 	s.invalidateGroupCache(group.GID)
 
-	utils.LogAuditWithConsole(c, "delete", "group", fmt.Sprintf("g_id=%d", group.GID), group, nil, "", s.Repos.Audit)
+	utils.LogAuditWithConsole(c, "delete", "group", fmt.Sprintf("g_id=%s", group.GID), group, nil, "", s.Repos.Audit)
 
 	return nil
 }
@@ -156,11 +156,11 @@ func groupListKey() string {
 	return "cache:group:list"
 }
 
-func groupByIDKey(id uint) string {
-	return fmt.Sprintf("cache:group:by-id:%d", id)
+func groupByIDKey(id string) string {
+	return fmt.Sprintf("cache:group:by-id:%s", id)
 }
 
-func (s *GroupService) invalidateGroupCache(id uint) {
+func (s *GroupService) invalidateGroupCache(id string) {
 	if s.cache == nil || !s.cache.Enabled() {
 		return
 	}

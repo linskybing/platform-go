@@ -7,10 +7,10 @@ import (
 
 type GroupRepo interface {
 	GetAllGroups() ([]group.Group, error)
-	GetGroupByID(id uint) (group.Group, error)
+	GetGroupByID(id string) (group.Group, error)
 	CreateGroup(group *group.Group) error
 	UpdateGroup(group *group.Group) error
-	DeleteGroup(id uint) error
+	DeleteGroup(id string) error
 	WithTx(tx *gorm.DB) GroupRepo
 }
 
@@ -30,9 +30,9 @@ func (r *DBGroupRepo) GetAllGroups() ([]group.Group, error) {
 	return groups, err
 }
 
-func (r *DBGroupRepo) GetGroupByID(id uint) (group.Group, error) {
+func (r *DBGroupRepo) GetGroupByID(id string) (group.Group, error) {
 	var group group.Group
-	err := r.db.First(&group, id).Error
+	err := r.db.First(&group, "g_id = ?", id).Error
 	return group, err
 }
 
@@ -44,8 +44,8 @@ func (r *DBGroupRepo) UpdateGroup(group *group.Group) error {
 	return r.db.Save(group).Error
 }
 
-func (r *DBGroupRepo) DeleteGroup(id uint) error {
-	return r.db.Delete(&group.Group{}, id).Error
+func (r *DBGroupRepo) DeleteGroup(id string) error {
+	return r.db.Delete(&group.Group{}, "g_id = ?", id).Error
 }
 
 func (r *DBGroupRepo) WithTx(tx *gorm.DB) GroupRepo {

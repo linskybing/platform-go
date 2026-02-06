@@ -20,7 +20,7 @@ func NewImageService(repo repository.ImageRepo) *ImageService {
 	return &ImageService{repo: repo}
 }
 
-func (s *ImageService) SubmitRequest(userID uint, registry, name, tag string, projectID *uint) (*image.ImageRequest, error) {
+func (s *ImageService) SubmitRequest(userID string, registry, name, tag string, projectID *string) (*image.ImageRequest, error) {
 	// If caller didn't provide a registry, try to parse it out from the name
 	// (e.g. "192.168.110.1:30003/library/pros-cameraapi" -> registry: "192.168.110.1:30003", name: "library/pros-cameraapi").
 	// If no registry is found, leave InputRegistry empty to represent Docker Hub/default behavior.
@@ -75,11 +75,11 @@ func (s *ImageService) SubmitRequest(userID uint, registry, name, tag string, pr
 	return req, nil
 }
 
-func (s *ImageService) ListRequests(projectID *uint, status string) ([]image.ImageRequest, error) {
+func (s *ImageService) ListRequests(projectID *string, status string) ([]image.ImageRequest, error) {
 	return s.repo.ListRequests(projectID, status)
 }
 
-func (s *ImageService) RejectRequest(id uint, note string, approverID uint) (*image.ImageRequest, error) {
+func (s *ImageService) RejectRequest(id string, note string, approverID string) (*image.ImageRequest, error) {
 	req, err := s.repo.FindRequestByID(id)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (s *ImageService) RejectRequest(id uint, note string, approverID uint) (*im
 	return req, nil
 }
 
-func (s *ImageService) GetAllowedImage(name, tag string, projectID uint) (*image.AllowedImageDTO, error) {
+func (s *ImageService) GetAllowedImage(name, tag string, projectID string) (*image.AllowedImageDTO, error) {
 	rule, err := s.repo.FindAllowListRule(&projectID, name, tag)
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (s *ImageService) GetAllowedImage(name, tag string, projectID uint) (*image
 	}, nil
 }
 
-func (s *ImageService) ListAllowedImages(projectID *uint) ([]image.AllowedImageDTO, error) {
+func (s *ImageService) ListAllowedImages(projectID *string) ([]image.AllowedImageDTO, error) {
 	rules, err := s.repo.ListAllowedImages(projectID)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (s *ImageService) ListAllowedImages(projectID *uint) ([]image.AllowedImageD
 	return dtos, nil
 }
 
-func (s *ImageService) AddProjectImage(userID uint, projectID uint, name, tag string) error {
+func (s *ImageService) AddProjectImage(userID string, projectID string, name, tag string) error {
 	if warn := s.validateNameAndTag(name, tag); warn != "" {
 		return fmt.Errorf("invalid image format: %s", warn)
 	}
@@ -174,7 +174,7 @@ func (s *ImageService) AddProjectImage(userID uint, projectID uint, name, tag st
 	return s.repo.CreateRequest(req)
 }
 
-func (s *ImageService) ValidateImageForProject(name, tag string, projectID *uint) (bool, error) {
+func (s *ImageService) ValidateImageForProject(name, tag string, projectID *string) (bool, error) {
 	fullName := name
 	// If the image already points to our Harbor private registry and the request
 	// is global (projectID == nil), consider it allowed automatically.
@@ -226,6 +226,6 @@ func (s *ImageService) validateNameAndTag(name, tag string) string {
 	return ""
 }
 
-func (s *ImageService) DisableAllowListRule(id uint) error {
+func (s *ImageService) DisableAllowListRule(id string) error {
 	return s.repo.DisableAllowListRule(id)
 }

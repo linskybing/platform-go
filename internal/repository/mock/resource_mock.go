@@ -52,7 +52,7 @@ func (mr *MockResourceRepoMockRecorder) CreateResource(resource interface{}) *go
 }
 
 // DeleteResource mocks base method.
-func (m *MockResourceRepo) DeleteResource(rid uint) error {
+func (m *MockResourceRepo) DeleteResource(rid string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteResource", rid)
 	ret0, _ := ret[0].(error)
@@ -66,7 +66,7 @@ func (mr *MockResourceRepoMockRecorder) DeleteResource(rid interface{}) *gomock.
 }
 
 // GetResourceByConfigFileIDAndName mocks base method.
-func (m *MockResourceRepo) GetResourceByConfigFileIDAndName(cfID uint, name string) (*resource.Resource, error) {
+func (m *MockResourceRepo) GetResourceByConfigFileIDAndName(cfID string, name string) (*resource.Resource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetResourceByConfigFileIDAndName", cfID, name)
 	ret0, _ := ret[0].(*resource.Resource)
@@ -81,7 +81,7 @@ func (mr *MockResourceRepoMockRecorder) GetResourceByConfigFileIDAndName(cfID, n
 }
 
 // GetResourceByID mocks base method.
-func (m *MockResourceRepo) GetResourceByID(rid uint) (*resource.Resource, error) {
+func (m *MockResourceRepo) GetResourceByID(rid string) (*resource.Resource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetResourceByID", rid)
 	ret0, _ := ret[0].(*resource.Resource)
@@ -96,7 +96,7 @@ func (mr *MockResourceRepoMockRecorder) GetResourceByID(rid interface{}) *gomock
 }
 
 // ListResourcesByConfigFileID mocks base method.
-func (m *MockResourceRepo) ListResourcesByConfigFileID(cfID uint) ([]resource.Resource, error) {
+func (m *MockResourceRepo) ListResourcesByConfigFileID(cfID string) ([]resource.Resource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListResourcesByConfigFileID", cfID)
 	ret0, _ := ret[0].([]resource.Resource)
@@ -111,7 +111,7 @@ func (mr *MockResourceRepoMockRecorder) ListResourcesByConfigFileID(cfID interfa
 }
 
 // ListResourcesByProjectID mocks base method.
-func (m *MockResourceRepo) ListResourcesByProjectID(pid uint) ([]resource.Resource, error) {
+func (m *MockResourceRepo) ListResourcesByProjectID(pid string) ([]resource.Resource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListResourcesByProjectID", pid)
 	ret0, _ := ret[0].([]resource.Resource)
@@ -140,10 +140,10 @@ func (mr *MockResourceRepoMockRecorder) UpdateResource(resource interface{}) *go
 }
 
 // GetGroupIDByResourceID mocks base method.
-func (m *MockResourceRepo) GetGroupIDByResourceID(rID uint) (uint, error) {
+func (m *MockResourceRepo) GetGroupIDByResourceID(rID string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupIDByResourceID", rID)
-	ret0, _ := ret[0].(uint)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -169,7 +169,7 @@ func (mr *MockResourceRepoMockRecorder) WithTx(tx interface{}) *gomock.Call {
 }
 
 // GetGroupResourcesByGroupID mocks base method.
-func (m *MockResourceRepo) GetGroupResourcesByGroupID(groupID uint) ([]view.GroupResourceView, error) {
+func (m *MockResourceRepo) GetGroupResourcesByGroupID(groupID string) ([]view.GroupResourceView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGroupResourcesByGroupID", groupID)
 	ret0, _ := ret[0].([]view.GroupResourceView)
@@ -184,7 +184,7 @@ func (mr *MockResourceRepoMockRecorder) GetGroupResourcesByGroupID(groupID inter
 }
 
 // GetProjectResourcesByGroupID mocks base method.
-func (m *MockResourceRepo) GetProjectResourcesByGroupID(groupID uint) ([]view.ProjectResourceView, error) {
+func (m *MockResourceRepo) GetProjectResourcesByGroupID(groupID string) ([]view.ProjectResourceView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetProjectResourcesByGroupID", groupID)
 	ret0, _ := ret[0].([]view.ProjectResourceView)

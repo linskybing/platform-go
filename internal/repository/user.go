@@ -9,13 +9,13 @@ import (
 type UserRepo interface {
 	GetAllUsers() ([]user.UserWithSuperAdmin, error)
 	ListUsersPaging(page, limit int) ([]user.UserWithSuperAdmin, error)
-	GetUserByID(id uint) (user.UserWithSuperAdmin, error)
-	GetUsernameByID(id uint) (string, error)
+	GetUserByID(id string) (user.UserWithSuperAdmin, error)
+	GetUsernameByID(id string) (string, error)
 	GetUserByUsername(username string) (user.User, error)
-	GetUserRawByID(id uint) (user.User, error)
+	GetUserRawByID(id string) (user.User, error)
 	SaveUser(user *user.User) error
-	DeleteUser(id uint) error
-	ListUsersByProjectID(projectID uint) ([]view.ProjectUserView, error)
+	DeleteUser(id string) error
+	ListUsersByProjectID(projectID string) ([]view.ProjectUserView, error)
 	WithTx(tx *gorm.DB) UserRepo
 }
 
@@ -70,7 +70,7 @@ func (r *DBUserRepo) ListUsersPaging(page, limit int) ([]user.UserWithSuperAdmin
 	return users, nil
 }
 
-func (r *DBUserRepo) GetUserByID(id uint) (user.UserWithSuperAdmin, error) {
+func (r *DBUserRepo) GetUserByID(id string) (user.UserWithSuperAdmin, error) {
 	var u user.UserWithSuperAdmin
 	if err := r.db.Table("users").Where("u_id = ?", id).First(&u).Error; err != nil {
 		return u, err
@@ -78,7 +78,7 @@ func (r *DBUserRepo) GetUserByID(id uint) (user.UserWithSuperAdmin, error) {
 	return u, nil
 }
 
-func (r *DBUserRepo) GetUsernameByID(id uint) (string, error) {
+func (r *DBUserRepo) GetUsernameByID(id string) (string, error) {
 	var username string
 	err := r.db.Model(&user.User{}).Select("username").Where("u_id = ?", id).First(&username).Error
 	if err != nil {
@@ -87,9 +87,9 @@ func (r *DBUserRepo) GetUsernameByID(id uint) (string, error) {
 	return username, nil
 }
 
-func (r *DBUserRepo) GetUserRawByID(id uint) (user.User, error) {
+func (r *DBUserRepo) GetUserRawByID(id string) (user.User, error) {
 	var u user.User
-	if err := r.db.First(&u, id).Error; err != nil {
+	if err := r.db.First(&u, "u_id = ?", id).Error; err != nil {
 		return u, err
 	}
 	return u, nil
@@ -99,11 +99,11 @@ func (r *DBUserRepo) SaveUser(user *user.User) error {
 	return r.db.Save(user).Error
 }
 
-func (r *DBUserRepo) DeleteUser(id uint) error {
-	return r.db.Delete(&user.User{}, id).Error
+func (r *DBUserRepo) DeleteUser(id string) error {
+	return r.db.Delete(&user.User{}, "u_id = ?", id).Error
 }
 
-func (r *DBUserRepo) ListUsersByProjectID(projectID uint) ([]view.ProjectUserView, error) {
+func (r *DBUserRepo) ListUsersByProjectID(projectID string) ([]view.ProjectUserView, error) {
 	var results []view.ProjectUserView
 
 	err := r.db.Table("users u").

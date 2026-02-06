@@ -23,7 +23,7 @@ func NewPermissionManager(repos *repository.Repos) *PermissionManager {
 }
 
 // SetPermission sets or updates a user's permission for a group PVC
-func (pm *PermissionManager) SetPermission(ctx context.Context, req *storage.SetStoragePermissionRequest, granterID uint) error {
+func (pm *PermissionManager) SetPermission(ctx context.Context, req *storage.SetStoragePermissionRequest, granterID string) error {
 	perm := &storage.GroupStoragePermission{
 		GroupID:    req.GroupID,
 		PVCID:      req.PVCID,
@@ -47,7 +47,7 @@ func (pm *PermissionManager) SetPermission(ctx context.Context, req *storage.Set
 }
 
 // BatchSetPermissions sets permissions for multiple users
-func (pm *PermissionManager) BatchSetPermissions(ctx context.Context, req *storage.BatchSetPermissionsRequest, granterID uint) error {
+func (pm *PermissionManager) BatchSetPermissions(ctx context.Context, req *storage.BatchSetPermissionsRequest, granterID string) error {
 	for _, userPerm := range req.Permissions {
 		permReq := &storage.SetStoragePermissionRequest{
 			GroupID:    req.GroupID,
@@ -64,7 +64,7 @@ func (pm *PermissionManager) BatchSetPermissions(ctx context.Context, req *stora
 }
 
 // GetUserPermission retrieves a user's permission for a specific PVC
-func (pm *PermissionManager) GetUserPermission(ctx context.Context, userID, groupID uint, pvcID string) (*storage.GroupStoragePermission, error) {
+func (pm *PermissionManager) GetUserPermission(ctx context.Context, userID, groupID string, pvcID string) (*storage.GroupStoragePermission, error) {
 	perm, err := pm.repos.StoragePermission.GetPermission(ctx, groupID, userID, pvcID)
 	if err != nil {
 		return &storage.GroupStoragePermission{
@@ -78,7 +78,7 @@ func (pm *PermissionManager) GetUserPermission(ctx context.Context, userID, grou
 }
 
 // SetAccessPolicy sets the default access policy for a group PVC
-func (pm *PermissionManager) SetAccessPolicy(ctx context.Context, req *storage.SetStorageAccessPolicyRequest, adminID uint) error {
+func (pm *PermissionManager) SetAccessPolicy(ctx context.Context, req *storage.SetStorageAccessPolicyRequest, adminID string) error {
 	policy := &storage.GroupStorageAccessPolicy{
 		GroupID:           req.GroupID,
 		PVCID:             req.PVCID,
@@ -109,7 +109,7 @@ func (pm *PermissionManager) SyncPermissionsOnGroupChange(ctx context.Context, u
 }
 
 // RevokePermission revokes a user's permission
-func (pm *PermissionManager) RevokePermission(ctx context.Context, userID, groupID uint, pvcID string) error {
+func (pm *PermissionManager) RevokePermission(ctx context.Context, userID, groupID, pvcID string) error {
 	perm, err := pm.repos.StoragePermission.GetPermission(ctx, groupID, userID, pvcID)
 	if err != nil {
 		return fmt.Errorf("permission not found: %w", err)
@@ -128,11 +128,11 @@ func (pm *PermissionManager) RevokePermission(ctx context.Context, userID, group
 }
 
 // ListGroupPermissions lists all permissions for a group
-func (pm *PermissionManager) ListGroupPermissions(ctx context.Context, groupID uint) ([]storage.GroupStoragePermission, error) {
+func (pm *PermissionManager) ListGroupPermissions(ctx context.Context, groupID string) ([]storage.GroupStoragePermission, error) {
 	return pm.repos.StoragePermission.ListPermissions(ctx, groupID)
 }
 
 // ListUserPermissions lists all permissions for a user
-func (pm *PermissionManager) ListUserPermissions(ctx context.Context, userID uint) ([]storage.GroupStoragePermission, error) {
+func (pm *PermissionManager) ListUserPermissions(ctx context.Context, userID string) ([]storage.GroupStoragePermission, error) {
 	return pm.repos.StoragePermission.ListUserPermissions(ctx, userID)
 }
