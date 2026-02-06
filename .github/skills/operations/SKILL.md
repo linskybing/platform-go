@@ -1,10 +1,10 @@
 ---
 name: operations
-description: CI/CD automation, Kubernetes integration, caching strategies, and production monitoring for platform-go
+description: CI/CD automation, Kubernetes integration, caching strategies, production monitoring, and workflow scheduling for platform-go
 license: Proprietary
 metadata:
   author: platform-go
-  version: "1.0"
+  version: "1.1"
   consolidated_from:
     - cicd-pipeline-optimization
     - kubernetes-integration
@@ -14,7 +14,7 @@ metadata:
 
 # Operations Excellence
 
-Comprehensive guidelines for CI/CD automation, Kubernetes deployment, Redis caching, and production monitoring.
+Comprehensive guidelines for CI/CD automation, Kubernetes deployment, Redis caching, production monitoring, and workflow orchestration with Argo Workflow and Volcano Scheduler.
 
 ## CI/CD Pipeline
 
@@ -328,21 +328,55 @@ func Ready(c *gin.Context) {
 - **Memory**: > 85% usage
 - **Disk**: > 90% full
 
+## Workflow & Job Scheduler
+
+For complete guide on implementing Argo Workflow, Volcano Scheduler, and K8s native schedulers, including:
+- System architecture and scheduler comparison
+- Backend service design and API specifications
+- Frontend integration patterns
+- Deployment and configuration
+
+**See:** [WORKFLOW_SCHEDULER.md](./WORKFLOW_SCHEDULER.md)
+
+### Frontend Integration
+
+Complete guide for frontend developers to integrate with workflow APIs including:
+- TypeScript/JavaScript client library
+- React components for workflow submission and monitoring
+- Real-time progress tracking via WebSocket
+- Queue management dashboard
+- Complete code examples
+
+**See:** [FRONTEND_INTEGRATION.md](./FRONTEND_INTEGRATION.md)
+
+### Quick Overview
+- **Volcano Scheduler**: Best for batch ML/HPC jobs with gang scheduling
+- **K8s Native**: Standard pod priority and job queuing
+- **Argo Workflows**: Complex multi-step workflow orchestration
+
 ## Tools & Scripts
 
 ### Deployment Scripts
 ```bash
 # Deploy new version
-bash .github/skills-consolidated/operations/scripts/deploy.sh
+bash .github/skills/operations/scripts/deploy.sh
 
 # Check cluster health
-bash .github/skills-consolidated/operations/scripts/health-check.sh
+bash .github/skills/operations/scripts/health-check.sh
 
 # Cache monitoring
-bash .github/skills-consolidated/operations/scripts/monitor-cache.sh
+bash .github/skills/operations/scripts/monitor-cache.sh
 
 # Kubernetes pod status
-bash .github/skills-consolidated/operations/scripts/k8s-status.sh
+bash .github/skills/operations/scripts/k8s-status.sh
+
+# Run integration tests
+bash .github/skills/operations/scripts/run-integration-tests.sh
+
+# K8s integration testing with Kind
+bash .github/skills/operations/scripts/kind-setup.sh
+bash .github/skills/operations/scripts/k8s-integration-test.sh
+bash .github/skills/operations/scripts/kind-cleanup.sh
 ```
 
 ## References
@@ -350,3 +384,5 @@ bash .github/skills-consolidated/operations/scripts/k8s-status.sh
 - Kubernetes API: https://kubernetes.io/docs/reference/
 - Redis Documentation: https://redis.io/documentation
 - Prometheus Metrics: https://prometheus.io/docs/
+- Argo Workflows: https://argoproj.github.io/argo-workflows/
+- Volcano Scheduler: https://volcano.sh/

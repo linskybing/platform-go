@@ -60,24 +60,30 @@ System design patterns, API design, database optimization, and scalability.
 ---
 
 ### 3. **Operations** - `operations/`
-CI/CD automation, Kubernetes integration, caching, and monitoring.
+CI/CD automation, Kubernetes integration, caching, monitoring, and workflow orchestration.
 
 **Focus:**
 - GitHub Actions CI/CD pipelines
 - Kubernetes deployment and management
 - Redis caching strategies
 - Production monitoring and observability
-- Health checks and metrics
+- Argo Workflow integration with Volcano and K8s schedulers
+- Job queue management and real-time progress tracking
 
 **When to Use:**
 - Setting up CI/CD pipelines
 - Kubernetes deployment
 - Caching implementation
 - Monitoring setup
-- Production operations
+- Workflow submission and orchestration
+- Job scheduling and queue management
+- Frontend integration for workflow APIs
 
 **Key Files:**
-- `SKILL.md` - Complete reference
+- `SKILL.md` - Complete operations reference
+- `WORKFLOW_SCHEDULER.md` - Argo Workflow, Volcano, K8s scheduler implementation
+- `FRONTEND_INTEGRATION.md` - Frontend integration guide (React/TypeScript examples)
+
 - `scripts/deploy.sh` - Kubernetes deployment
 - `scripts/health-check.sh` - Cluster health verification
 - `scripts/monitor-cache.sh` - Redis monitoring

@@ -1,10 +1,10 @@
 ---
 name: architecture
-description: System architecture, API design, database patterns, and scalability for platform-go
+description: System architecture, API design, database patterns, scalability, and workflow APIs for platform-go
 license: Proprietary
 metadata:
   author: platform-go
-  version: "1.0"
+  version: "1.1"
   consolidated_from:
     - api-design-patterns
     - file-structure-guidelines
@@ -14,7 +14,7 @@ metadata:
 
 # Architecture Excellence
 
-Comprehensive guidelines for RESTful API design, database optimization, scalable system architecture, and production readiness.
+Comprehensive guidelines for RESTful API design, database optimization, scalable system architecture, production readiness, and workflow orchestration APIs.
 
 ## System Architecture
 
@@ -220,18 +220,45 @@ return tx.Commit().Error
 - SQL injection prevention (parameterized queries)
 - CORS properly configured
 
+## Workflow & Scheduler API Design
+
+For complete API specifications for workflow management and job scheduling including:
+- Workflow submission and lifecycle management
+- Queue management and resource allocation
+- Real-time progress monitoring via WebSocket
+- Integration with Argo Workflow, Volcano Scheduler, and K8s native schedulers
+- Frontend integration patterns and code examples
+
+**See:** [Workflow & Job Scheduler Guide](../operations/WORKFLOW_SCHEDULER.md)
+
+### API Structure Overview
+```
+POST   /api/v1/workflows              # Submit workflow
+GET    /api/v1/workflows              # List workflows (with filters)
+GET    /api/v1/workflows/{id}         # Get workflow details
+DELETE /api/v1/workflows/{id}         # Terminate workflow
+GET    /api/v1/workflows/{id}/nodes   # Get workflow steps
+GET    /api/v1/workflows/{id}/nodes/{nid}/output  # Get step output
+WS     /api/v1/workflows/{id}/watch   # Real-time progress
+
+POST   /api/v1/queues                 # Create queue
+GET    /api/v1/queues                 # List queues
+GET    /api/v1/queues/{id}/status     # Get queue status
+PUT    /api/v1/queues/{id}            # Update queue
+```
+
 ## Tools & Validation
 
 ### Pre-Commit Checks
 ```bash
 # Comprehensive architecture validation
-bash .github/skills-consolidated/architecture/scripts/validate-architecture.sh
+bash .github/skills/architecture/scripts/validate-architecture.sh
 
 # Database migration validation
-bash .github/skills-consolidated/architecture/scripts/validate-migrations.sh
+bash .github/skills/architecture/scripts/validate-migrations.sh
 
 # API contract verification
-bash .github/skills-consolidated/architecture/scripts/validate-api.sh
+bash .github/skills/architecture/scripts/validate-api.sh
 ```
 
 ## References
@@ -239,3 +266,5 @@ bash .github/skills-consolidated/architecture/scripts/validate-api.sh
 - GORM Documentation: https://gorm.io/
 - Gin Web Framework: https://github.com/gin-gonic/gin
 - Domain-Driven Design: https://www.domainlanguage.com/ddd/
+- Argo Workflows API: https://github.com/argoproj/argo-workflows/blob/master/docs/rest-api.md
+- Volcano Scheduler: https://volcano.sh/
