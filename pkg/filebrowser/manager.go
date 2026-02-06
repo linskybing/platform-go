@@ -254,7 +254,7 @@ func buildServiceSpec(cfg *Config) *corev1.Service {
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	
+
 	// Service selector must match pod labels
 	selector := map[string]string{
 		"app": "filebrowser",
