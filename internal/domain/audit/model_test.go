@@ -288,7 +288,7 @@ func TestAuditLogJSONMarshaling(t *testing.T) {
 				CreatedAt:    time.Now(),
 			}
 			if log.OldData == nil && tt.valid {
-				// nil is acceptable
+				t.Log("OldData is nil as expected")
 			}
 		})
 	}

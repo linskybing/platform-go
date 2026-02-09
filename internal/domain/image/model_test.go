@@ -431,6 +431,4 @@ func TestClusterImageStatusStructure(t *testing.T) {
 }
 
 // Helper functions
-func ptrUint(u uint) *uint {
-	return &u
-}
+// (removed unused helpers)

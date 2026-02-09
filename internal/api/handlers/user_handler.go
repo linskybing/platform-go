@@ -140,8 +140,9 @@ func (h *UserHandler) Login(c *gin.Context) {
 		true,
 	)
 
+	// Use cookie-only session for browser clients. Do not return the raw token in JSON.
 	c.JSON(http.StatusOK, response.TokenResponse{
-		Token:    token,
+		Token:    "",
 		UID:      user.UID,
 		Username: user.Username,
 		IsAdmin:  isAdmin,

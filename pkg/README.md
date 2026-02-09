@@ -8,10 +8,9 @@ Public library code that can be imported by external projects.
 2. [Structure](#structure)
 3. [Packages](#packages)
    - [K8s Package](#k8s-package)
-   - [MPS Package](#mps-package)
    - [Logger Package](#logger-package)
    - [Cache Package](#cache-package)
-4. [MPS GPU Sharing](#mps-gpu-sharing)
+4. [GPU Quota / Notes](#gpu-quota--notes)
 
 ---
 
@@ -26,7 +25,7 @@ pkg/
 ├─ cache/      - Redis caching utilities
 ├─ k8s/        - Kubernetes client utilities
 ├─ logger/     - Logging utilities
-├─ mps/        - MPS GPU sharing management
+├─ mps/        - (deprecated) MPS GPU sharing helpers (see notes)
 ├─ middleware/ - HTTP middleware
 ├─ response/   - Response formatting
 ├─ storage/    - Storage client utilities
@@ -48,14 +47,13 @@ Kubernetes client utilities and helpers.
 - Volume management
 - WebSocket support for pod logs
 
-### MPS Package
+### GPU / MPS Notes
 
-MPS (Multi-Process Service) GPU sharing management.
+Historically this repo included an `mps` package for managing NVIDIA MPS (Multi-Process Service) GPU sharing. The codebase has been refactored to remove operational MPS control logic while preserving GPU quota concepts and helpers used by higher-level services.
 
-- GPU resource calculation
-- MPS quota management
-- Configuration validation
-- Error handling for GPU operations
+- GPU quota and conversion helpers remain (see `pkg/gpu` or related helpers).
+- Operational MPS control (starting/stopping MPS on nodes) has been deprecated/removed from the core codebase.
+- The `pkg/mps` folder may contain legacy helpers and documentation; treat it as deprecated.
 
 ### Logger Package
 
@@ -77,10 +75,10 @@ Redis-based distributed caching.
 
 ---
 
-## MPS GPU Sharing
+## GPU Quota / Notes
 
-MPS (Multi-Process Service) enables efficient GPU sharing:
-- 1 dedicated GPU = 10 MPS units
-- Project-level MPS limits
-- Validation against quotas
-- Dynamic allocation tracking
+This project models GPU allocation at the project level. Where MPS concepts were used historically, the system now prefers a simpler GPU quota approach:
+
+- GPU quotas are represented as numeric GPU counts on projects.
+- Optional helper functions map quota values to equivalent MPS-like units for display or compatibility.
+- If you need to reintroduce operational MPS control, consider implementing it as an external operator or separate service rather than embedding node-level MPS control here.

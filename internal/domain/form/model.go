@@ -23,8 +23,8 @@ type Form struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt   `gorm:"index"`
-	UserID      string           `json:"user_id" gorm:"size:21;index;foreignKey:UserID;references:UID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	ProjectID   *string          `json:"project_id" gorm:"size:21;index;foreignKey:ProjectID;references:PID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"` // Optional
+	UserID      string           `json:"user_id" gorm:"size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	ProjectID   *string          `json:"project_id" gorm:"size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"` // Optional
 	Title       string           `json:"title"`
 	Description string           `json:"description"`
 	Tag         string           `json:"tag"` // Single-select tag configured by backend
@@ -44,8 +44,8 @@ func (m *Form) BeforeCreate(tx *gorm.DB) (err error) {
 // FormMessage represents a comment on a form. Both admin and requester can post.
 type FormMessage struct {
 	ID        string     `json:"id" gorm:"primaryKey;size:21"`
-	FormID    string     `json:"form_id" gorm:"index;size:21;foreignKey:FormID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	UserID    string     `json:"user_id" gorm:"size:21;index;foreignKey:UserID;references:UID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	FormID    string     `json:"form_id" gorm:"index;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	UserID    string     `json:"user_id" gorm:"size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	Content   string     `json:"content" gorm:"type:text"`
 	CreatedAt time.Time  `gorm:"autoCreateTime"`
 	Form      *Form      `json:"-" gorm:"foreignKey:FormID;references:ID"`

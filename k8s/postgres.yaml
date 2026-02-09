@@ -24,11 +24,9 @@ spec:
       labels:
         app: postgres
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: gpu1
       containers:
         - name: postgres
-          image: 192.168.110.1:30003/library/postgres-with-pg_cron:latest
+          image: linskybing/postgres-with-pg_cron:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5432
@@ -50,9 +48,8 @@ spec:
               name: pgdata
       volumes:
         - name: pgdata
-          hostPath:
-            path: /home/user/tmp
-            type: Directory
+          persistentVolumeClaim:
+            claimName: pg-pvc
 ---
 apiVersion: v1
 kind: Service
@@ -63,6 +60,5 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
-      nodePort: 30054
   selector:
     app: postgres

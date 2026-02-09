@@ -33,7 +33,7 @@ type ContainerTag struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
-	RepositoryID string         `gorm:"index;not null;size:21;foreignKey:RepositoryID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	RepositoryID string         `gorm:"index;not null;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	Name         string         `gorm:"size:128;index"`
 	Digest       string         `gorm:"size:255"`
 	Size         int64
@@ -53,11 +53,11 @@ type ImageAllowList struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt       `gorm:"index"`
-	ProjectID    *string              `gorm:"index;size:21;foreignKey:ProjectID;references:PID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	TagID        *string              `gorm:"index;size:21;foreignKey:TagID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	RepositoryID string               `gorm:"index;not null;size:21;foreignKey:RepositoryID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	RequestID    *string              `gorm:"size:21;foreignKey:RequestID;references:ID;constraint:OnDelete:SET NULL,OnUpdate:CASCADE"`
-	CreatedBy    string               `gorm:"size:21;index;foreignKey:CreatedBy;references:UID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	ProjectID    *string              `gorm:"index;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	TagID        *string              `gorm:"index;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	RepositoryID string               `gorm:"index;not null;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	RequestID    *string              `gorm:"size:21;constraint:OnDelete:SET NULL,OnUpdate:CASCADE"`
+	CreatedBy    string               `gorm:"size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	IsEnabled    bool                 `gorm:"default:true"`
 	Repository   *ContainerRepository `json:"-" gorm:"foreignKey:RepositoryID;references:ID"`
 	Tag          *ContainerTag        `json:"-" gorm:"foreignKey:TagID;references:ID"`
@@ -78,13 +78,13 @@ type ImageRequest struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
-	UserID         string         `gorm:"index;size:21;foreignKey:UserID;references:UID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	ProjectID      *string        `gorm:"index;size:21;foreignKey:ProjectID;references:PID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	UserID         string         `gorm:"index;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	ProjectID      *string        `gorm:"index;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	InputRegistry  string
 	InputImageName string
 	InputTag       string
 	Status         string  `gorm:"size:32;default:'pending';index"`
-	ReviewerID     *string `gorm:"size:21;index;foreignKey:ReviewerID;references:UID;constraint:OnDelete:SET NULL,OnUpdate:CASCADE"`
+	ReviewerID     *string `gorm:"size:21;index;constraint:OnDelete:SET NULL,OnUpdate:CASCADE"`
 	ReviewedAt     *time.Time
 	ReviewerNote   string           `gorm:"type:text"`
 	User           *user.User       `json:"-" gorm:"foreignKey:UserID;references:UID"`
@@ -104,7 +104,7 @@ type ClusterImageStatus struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
-	TagID     string         `gorm:"uniqueIndex;size:21;foreignKey:TagID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	TagID     string         `gorm:"uniqueIndex;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	IsPulled  bool           `gorm:"default:false"`
 	Tag       *ContainerTag  `json:"-" gorm:"foreignKey:TagID;references:ID"`
 }

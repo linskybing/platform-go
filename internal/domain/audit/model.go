@@ -9,7 +9,7 @@ import (
 
 type AuditLog struct {
 	ID           uint           `gorm:"primaryKey;autoIncrement"`
-	UserID       string         `gorm:"not null;index;size:21;foreignKey:UserID;references:UID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"user_id"`
+	UserID       string         `gorm:"not null;index;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"user_id"`
 	Action       string         `gorm:"type:varchar(20);not null;index" json:"action"`
 	ResourceType string         `gorm:"type:varchar(50);not null;index" json:"resource_type"`
 	ResourceID   string         `gorm:"not null;index" json:"resource_id"`

@@ -101,7 +101,7 @@ func TestClaimsStructure(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == "200" && c.RegisteredClaims.ExpiresAt != nil
+				return c.UserID == "200" && c.ExpiresAt != nil
 			},
 			scenario: "Expired claims",
 		},
@@ -229,7 +229,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.RegisteredClaims.IssuedAt != nil
+				return c.IssuedAt != nil
 			},
 			scenario: "Claims with issued at time",
 		},
@@ -246,7 +246,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.RegisteredClaims.ExpiresAt != nil
+				return c.ExpiresAt != nil
 			},
 			scenario: "Claims with expiry time",
 		},
@@ -263,7 +263,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.RegisteredClaims.Subject == "user_123"
+				return c.Subject == "user_123"
 			},
 			scenario: "Claims with subject",
 		},
@@ -280,7 +280,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.RegisteredClaims.Issuer == "auth-service"
+				return c.Issuer == "auth-service"
 			},
 			scenario: "Claims with issuer",
 		},
@@ -297,7 +297,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return len(c.RegisteredClaims.Audience) > 0
+				return len(c.Audience) > 0
 			},
 			scenario: "Claims with audience",
 		},
@@ -314,7 +314,7 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.RegisteredClaims.NotBefore != nil
+				return c.NotBefore != nil
 			},
 			scenario: "Claims with not before",
 		},
@@ -337,8 +337,8 @@ func TestClaimsRegisteredClaimsValidation(t *testing.T) {
 				}
 			},
 			verify: func(c Claims) bool {
-				return c.UserID == "7" && c.IsAdmin && c.RegisteredClaims.IssuedAt != nil &&
-					c.RegisteredClaims.ExpiresAt != nil && len(c.RegisteredClaims.Audience) > 0
+				return c.UserID == "7" && c.IsAdmin && c.IssuedAt != nil &&
+					c.ExpiresAt != nil && len(c.Audience) > 0
 			},
 			scenario: "Claims with all registered fields",
 		},

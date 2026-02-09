@@ -58,9 +58,6 @@ spec:
       labels:
         app: redis
     spec:
-      # Dev mode: stick to gpu1; adjust if needed
-      nodeSelector:
-        kubernetes.io/hostname: gpu1
       serviceAccountName: admin-sa
       containers:
         - name: redis
@@ -114,12 +111,11 @@ kind: Service
 metadata:
   name: redis
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: redis
   ports:
     - name: redis
       port: 6379
       targetPort: 6379
-      nodePort: 30379
   sessionAffinity: None

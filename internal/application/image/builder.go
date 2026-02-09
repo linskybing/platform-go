@@ -2,101 +2,98 @@ package image
 
 import (
 	"fmt"
-	"log/slog"
 	"strings"
-	"time"
 
-	cfg "github.com/linskybing/platform-go/internal/config"
-	"github.com/linskybing/platform-go/internal/domain/image"
+	"github.com/linskybing/platform-go/internal/config"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (s *ImageService) ApproveRequest(id string, note string, isGlobal bool, approverID string) error {
-	req, err := s.repo.FindRequestByID(id)
-	if err != nil {
-		return err
-	}
+// BuildPullJob constructs a Kubernetes Job that pulls a source image and
+// pushes it to the internal Harbor registry. It returns the Job object and
+// the full source and harbor image references used in the job spec.
+func BuildPullJob(name, tag string) (*batchv1.Job, string, string) {
+	// Normalize name similar to previous implementation
+	normalizedName := name
+	parts := strings.Split(name, "/")
 
-	// If approver marked this as global, clear ProjectID so the created
-	// allow-list rule will be global (ProjectID == nil)
-	if isGlobal {
-		req.ProjectID = nil
-	}
+	hasDomain := strings.Contains(parts[0], ".") ||
+		strings.Contains(parts[0], ":") ||
+		parts[0] == "localhost"
 
-	req.Status = "approved"
-	req.ReviewerNote = note
-	req.ReviewerID = &approverID
-	req.ReviewedAt = ptrTime(time.Now())
-
-	if err := s.repo.UpdateRequest(req); err != nil {
-		return err
-	}
-
-	return s.createCoreAndPolicyFromRequest(req, approverID)
-}
-
-func (s *ImageService) createCoreAndPolicyFromRequest(req *image.ImageRequest, adminID string) error {
-	fullName := req.InputImageName
-	if req.InputRegistry != "" && req.InputRegistry != "docker.io" {
-		fullName = fmt.Sprintf("%s/%s", req.InputRegistry, req.InputImageName)
-	}
-
-	parts := strings.Split(req.InputImageName, "/")
-	var namespace, name string
-	if len(parts) >= 2 {
-		namespace = parts[0]
-		name = strings.Join(parts[1:], "/")
-	} else {
-		namespace = "library"
-		name = req.InputImageName
-	}
-
-	repoEntity := &image.ContainerRepository{
-		Registry:  req.InputRegistry,
-		Namespace: namespace,
-		Name:      name,
-		FullName:  fullName,
-	}
-	if err := s.repo.FindOrCreateRepository(repoEntity); err != nil {
-		return err
-	}
-
-	tagEntity := &image.ContainerTag{
-		RepositoryID: repoEntity.ID,
-		Name:         req.InputTag,
-	}
-	if err := s.repo.FindOrCreateTag(tagEntity); err != nil {
-		return err
-	}
-
-	rule := &image.ImageAllowList{
-		ProjectID:    req.ProjectID,
-		RepositoryID: repoEntity.ID,
-		TagID:        &tagEntity.ID,
-		RequestID:    &req.ID,
-		CreatedBy:    adminID,
-		IsEnabled:    true,
-	}
-
-	if err := s.repo.CreateAllowListRule(rule); err != nil {
-		return err
-	}
-
-	// If the image is already present in our Harbor private registry, mark it as pulled
-	// so that injection logic (injectHarborPrefix) and UI reflect the image as available.
-	fullNameLower := strings.ToLower(fullName)
-	harborPrefixLower := strings.ToLower(cfg.HarborPrivatePrefix)
-	if strings.HasPrefix(fullNameLower, harborPrefixLower) {
-		status := &image.ClusterImageStatus{
-			TagID:    tagEntity.ID,
-			IsPulled: true,
-		}
-		if err := s.repo.UpdateClusterStatus(status); err != nil {
-			slog.Error("failed to mark image as pulled",
-				"image", fullName,
-				"tag", req.InputTag,
-				"error", err)
+	if !hasDomain {
+		if len(parts) == 1 {
+			normalizedName = "docker.io/library/" + name
+		} else {
+			normalizedName = "docker.io/" + name
 		}
 	}
 
-	return nil
+	fullImage := fmt.Sprintf("%s:%s", normalizedName, tag)
+	harborImage := fmt.Sprintf("%s%s:%s", config.HarborPrivatePrefix, name, tag)
+
+	ttl := int32(300)
+
+	k8sJob := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "image-puller-",
+			Namespace:    "default",
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: &ttl,
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
+					ServiceAccountName: "default",
+					InitContainers: []corev1.Container{
+						{
+							Name:            "pull-source",
+							Image:           fullImage,
+							ImagePullPolicy: corev1.PullAlways,
+							Command:         []string{"/bin/sh", "-c", "echo 'Image pulled successfully'"},
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:            "push-to-harbor",
+							Image:           "gcr.io/go-containerregistry/crane:latest",
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command:         CraneCopyArgs(fullImage, harborImage),
+							Env: []corev1.EnvVar{
+								{
+									Name:  "DOCKER_CONFIG",
+									Value: "/kaniko/.docker",
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "docker-config",
+									MountPath: "/kaniko/.docker",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "docker-config",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "harbor-regcred",
+									Items: []corev1.KeyToPath{
+										{
+											Key:  ".dockerconfigjson",
+											Path: "config.json",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return k8sJob, fullImage, harborImage
 }

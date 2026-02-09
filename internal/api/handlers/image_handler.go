@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/application"
+	dimage "github.com/linskybing/platform-go/internal/domain/image"
 	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/response"
 )
@@ -39,30 +40,20 @@ func NewImageHandlerWithCache(service *application.ImageService, cacheSvc *cache
 	}
 }
 
-type pullImageRequest struct {
-	Names []string `json:"names"`
-	Name  string   `json:"name"`
-	Tag   string   `json:"tag"`
-}
-
-type pullRequest struct {
-	Name string
-	Tag  string
-}
+// request/response DTOs live in internal/domain/image
 
 // PullImage triggers async image pull jobs to sync to Harbor.
 func (h *ImageHandler) PullImage(c *gin.Context) {
-	var payload pullImageRequest
+	var payload dimage.PullImageRequestDTO
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
 		return
 	}
-
-	requests := make([]pullRequest, 0)
+	requests := make([]dimage.PullRequestDTO, 0)
 	if len(payload.Names) > 0 {
 		for _, fullImage := range payload.Names {
 			name, tag := splitImageName(fullImage)
-			requests = append(requests, pullRequest{Name: name, Tag: tag})
+			requests = append(requests, dimage.PullRequestDTO{Name: name, Tag: tag})
 		}
 	} else if payload.Name != "" {
 		name := payload.Name
@@ -70,7 +61,7 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 		if tag == "" {
 			name, tag = splitImageName(payload.Name)
 		}
-		requests = append(requests, pullRequest{Name: name, Tag: tag})
+		requests = append(requests, dimage.PullRequestDTO{Name: name, Tag: tag})
 	}
 
 	if len(requests) == 0 {

@@ -12,22 +12,18 @@ spec:
       labels:
         app: go-api
     spec:
-      # Dev mode: stick to gpu1; adjust if needed
-      nodeSelector:
-        kubernetes.io/hostname: gpu1
       serviceAccountName: admin-sa
       dnsPolicy: ClusterFirst
       containers:
         - name: go-api
-          image: 192.168.110.1:30003/library/platform-go-api:latest
+          image: linskybing/platform-go-api:latest
           imagePullPolicy: Always
-          # Dev mode: keep container running for live code mount
           command: ["sleep", "infinity"]
           volumeMounts:
             - mountPath: /go/web-go
               name: local-data
           ports:
-            - containerPort: 8081
+            - containerPort: 8080
           env:
             - name: DB_HOST
               value: postgres
@@ -75,7 +71,7 @@ spec:
       volumes:
         - name: local-data
           hostPath:
-            path: /home/user/k8s-gpu-platform/backend
+            path: /home/sky/platform/backend
             type: Directory
 ---
 apiVersion: v1
@@ -87,7 +83,7 @@ spec:
     app: go-api
   ports:
     - protocol: TCP
-      port: 8081
-      targetPort: 8081
+      port: 8080
+      targetPort: 8080
       nodePort: 30080
   type: NodePort

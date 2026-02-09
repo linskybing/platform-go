@@ -66,12 +66,25 @@ func main() {
 		_ = cacheSvc.Close()
 	}()
 
-	// Auto migrate database schemas
+	// Auto migrate database schemas in phases to diagnose FK ordering
+	log.Println("AutoMigrating core models: user + project")
 	if err := db.DB.AutoMigrate(
 		&user.User{},
+		&project.Project{},
+	); err != nil {
+		log.Fatalf("Failed to migrate core database models: %v", err)
+	}
+
+	log.Println("AutoMigrating group models")
+	if err := db.DB.AutoMigrate(
 		&group.Group{},
 		&group.UserGroup{},
-		&project.Project{},
+	); err != nil {
+		log.Fatalf("Failed to migrate group database models: %v", err)
+	}
+
+	log.Println("AutoMigrating remaining models")
+	if err := db.DB.AutoMigrate(
 		&configfile.ConfigFile{},
 		&resource.Resource{},
 		&form.Form{},
@@ -83,7 +96,7 @@ func main() {
 		&image.ImageRequest{},
 		&image.ClusterImageStatus{},
 	); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+		log.Fatalf("Failed to migrate remaining database models: %v", err)
 	}
 
 	// Initialize Docker cleanup CronJob

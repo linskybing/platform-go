@@ -20,10 +20,10 @@ func registerConfigFileRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *m
 	configFile := auth.Group("/configfiles")
 	{
 		// List all config files - authenticated users see their accessible files
-		configFile.GET("", h.ConfigFile.ListConfigFilesHandler)
+		configFile.GET("", am.Admin(), h.ConfigFile.ListConfigFilesHandler)
 
 		// View specific config file - group member access
-		configFile.GET("/:id", h.ConfigFile.GetConfigFileHandler)
+		configFile.GET("/:id", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.GetConfigFileHandler)
 
 		// Create config file - group manager access (via project_id in body)
 		configFile.POST("", am.GroupManager(middleware.FromProjectIDInPayload()), h.ConfigFile.CreateConfigFileHandler)
@@ -43,18 +43,6 @@ func registerConfigFileRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *m
 		// Delete instance - group member access
 		configFile.DELETE("/:id/instance", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.DestructInstanceHandler)
 	}
-
-	// Legacy routes for backward compatibility
-	legacy := auth.Group("/config-files")
-	{
-		legacy.GET("", h.ConfigFile.ListConfigFilesHandler)
-		legacy.GET("/:id", h.ConfigFile.GetConfigFileHandler)
-		legacy.POST("", am.GroupManager(middleware.FromProjectIDInPayload()), h.ConfigFile.CreateConfigFileHandler)
-		legacy.PUT("/:id", am.GroupManager(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.UpdateConfigFileHandler)
-		legacy.DELETE("/:id", am.GroupManager(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.DeleteConfigFileHandler)
-	}
-
-	auth.GET("/projects/:id/config-files", h.ConfigFile.ListConfigFilesByProjectIDHandler)
 	auth.POST("/instance/:id", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.CreateInstanceHandler)
 	auth.DELETE("/instance/:id", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.DestructInstanceHandler)
 }

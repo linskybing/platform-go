@@ -12,7 +12,7 @@ func registerAuthRoutes(r *gin.Engine, h *handlers.Handlers) {
 	// Public authentication endpoints
 	r.POST("/login", h.User.Login)
 	r.POST("/register", h.User.Register)
-
+	r.POST("/logout", h.User.Logout)
 	// Auth status (requires auth, but placed here for logical grouping, check middleware usage)
 	// r.GET("/auth/status", middleware.JWTAuthMiddleware(), handlers.AuthStatusHandler) // This was using standalone handler
 

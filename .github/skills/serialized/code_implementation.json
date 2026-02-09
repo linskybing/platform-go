@@ -1,0 +1,13 @@
+{
+  "name": "code-implementation",
+  "description": "Consolidated skills for platform-go: architecture, code-quality, documentation, operations, security-compliance",
+  "license": "Proprietary",
+  "metadata": {
+    "author": "platform-go",
+    "version": "1.0",
+    "consolidated_from": ["architecture","code-quality","documentation","operations","security-compliance"]
+  },
+  "source": "./.github/skills/code_implementation/SKILL.md",
+  "summary": "A single reference that maps architecture, code-quality, documentation, operations, and security to repository locations and flows.",
+  "references": [".github/skills/code_implementation/references/FLOWS.md",".github/skills/code_implementation/references/"]
+}

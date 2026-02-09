@@ -266,7 +266,7 @@ func TestAllowedImageDTOStructure(t *testing.T) {
 				ImageName: "library/postgres",
 				Tag:       "15-alpine",
 				Digest:    "sha256:444555666",
-				ProjectID: ptrStringImg("50"),
+				ProjectID: ptrString("50"),
 				IsGlobal:  false,
 				IsPulled:  true,
 			},
@@ -287,10 +287,4 @@ func TestAllowedImageDTOStructure(t *testing.T) {
 }
 
 // Helper function
-func ptrUintImg(u uint) *uint {
-	return &u
-}
-
-func ptrStringImg(s string) *string {
-	return &s
-}
+// Helper functions removed (unused in tests)

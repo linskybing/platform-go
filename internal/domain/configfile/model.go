@@ -12,7 +12,7 @@ type ConfigFile struct {
 	CFID      string           `gorm:"primaryKey;column:cf_id;size:21"`
 	Filename  string           `gorm:"size:200;not null"`
 	Content   string           `gorm:"size:10000"`
-	ProjectID string           `gorm:"not null;size:21;index;foreignKey:ProjectID;references:PID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	ProjectID string           `gorm:"not null;size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	CreatedAt time.Time        `gorm:"column:create_at"`
 	UpdatedAt time.Time        `gorm:"column:update_at;autoUpdateTime"`
 	Project   *project.Project `json:"-" gorm:"foreignKey:ProjectID;references:PID"`

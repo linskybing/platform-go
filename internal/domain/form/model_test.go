@@ -341,6 +341,4 @@ func TestFormDTOStructure(t *testing.T) {
 }
 
 // Helper function for pointer conversion
-func ptrUint(u uint) *uint {
-	return &u
-}
+// (removed - was unused)

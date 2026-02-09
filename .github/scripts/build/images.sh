@@ -8,8 +8,8 @@ set -e
 
 # --- Configuration ---
 # Registry details from your previous setup
-HARBOR_HOST="192.168.110.1:30003"
-PROJECT_NAME="library"   # Ensure this project exists in Harbor UI
+HARBOR_HOST="docker.io"
+PROJECT_NAME="linskybing"   # Ensure this project exists in Harbor UI
 TAG="latest"
 
 # Image Names

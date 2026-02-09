@@ -569,7 +569,8 @@ Test coverage:
 - `internal/application` - 50+ tests 
 - `internal/scheduler` - 10+ tests 
 - `internal/priority` - 3 tests 
-- `pkg/mps` - 4 tests 
+ - `internal/priority` - 3 tests 
+ - `pkg/mps` - (deprecated/legacy) tests may remain
 - `pkg/utils` - 8 tests 
 
 See [Testing Report](docs/TESTING_REPORT.md) for details.

@@ -225,7 +225,7 @@ func (s *ConfigFileService) buildTemplateValues(cf *configfile.ConfigFile, names
 		"originalUsername": claims.Username,
 		"safeUsername":     k8s.ToSafeK8sName(claims.Username),
 		"namespace":        namespace,
-		"projectId":        fmt.Sprintf("%s", cf.ProjectID),
+		"projectId":        cf.ProjectID,
 		"userVolume":       userPvc,
 		"groupVolume":      groupPvc,
 	}

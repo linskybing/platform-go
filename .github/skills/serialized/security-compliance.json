@@ -1,0 +1,13 @@
+{
+  "name": "security-compliance",
+  "description": "Security best practices, access control, authentication, API key management, and compliance for platform-go",
+  "license": "Proprietary",
+  "metadata": {
+    "author": "platform-go",
+    "version": "1.0",
+    "consolidated_from": ["security-best-practices","access-control-best-practices","unified-authentication-strategy"]
+  },
+  "source": "./.github/skills/security-compliance/SKILL.md",
+  "summary": "Auth (JWT/API Key) middleware patterns, RBAC, API key lifecycle, secure coding, password hashing, secrets management, and validation checklist.",
+  "references": ["internal/api/middleware/","internal/repository/user.go","pkg/utils/"]
+}

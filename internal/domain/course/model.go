@@ -26,8 +26,8 @@ const (
 // CourseWorkload represents a high-priority course pod
 type CourseWorkload struct {
 	ID          string               `gorm:"primaryKey;column:id;size:21"`
-	UserID      string               `gorm:"not null;column:user_id;size:21;index;foreignKey:UserID;references:UID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	ProjectID   string               `gorm:"not null;column:project_id;size:21;index;foreignKey:ProjectID;references:PID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	UserID      string               `gorm:"not null;column:user_id;size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	ProjectID   string               `gorm:"not null;column:project_id;size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	Name        string               `gorm:"size:100;not null"`
 	Namespace   string               `gorm:"size:100;not null"`
 	Image       string               `gorm:"size:255;not null"`

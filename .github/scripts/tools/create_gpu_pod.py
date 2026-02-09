@@ -3,7 +3,13 @@ import sys
 
 def create_gpu_pod(pod_name, namespace, vram_limit, thread_percentage):
     """
-    Creates a Pod with specific NVIDIA MPS annotations to control GPU resources.
+    Example helper to create a Pod that demonstrates GPU-related annotations.
+
+    NOTE: NVIDIA MPS operational control is considered deprecated in this
+    repository. This script is provided as an example for clusters that still
+    rely on MPS annotations or custom admission controllers. Do NOT rely on
+    this for production MPS management; prefer external operators or node-level
+    tooling.
     """
     # Load kube config (works for both in-cluster and local kubeconfig)
     try:
@@ -81,9 +87,10 @@ def create_gpu_pod(pod_name, namespace, vram_limit, thread_percentage):
             namespace=namespace,
             body=pod_manifest
         )
-        print(f"Pod '{pod_name}' created successfully.")
+        print(f"Pod '{pod_name}' created successfully. (example manifest)")
         print(f"  - VRAM Limit: {vram_limit}")
         print(f"  - Thread Limit: {thread_percentage}%")
+        print("Note: MPS annotations in this manifest are illustrative only.")
     except client.exceptions.ApiException as e:
         print(f"Exception when calling CoreV1Api->create_namespaced_pod: {e}")
 

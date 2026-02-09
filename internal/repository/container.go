@@ -51,7 +51,7 @@ func (r *Repos) WithTx(tx *gorm.DB) *Repos {
 		User:              r.User.WithTx(tx),
 		Audit:             r.Audit.WithTx(tx),
 		Form:              r.Form.WithTx(tx),
-		Image:             r.Image.WithTx(tx),
+		Image:             NewImageRepo(tx),
 		StoragePermission: r.StoragePermission.WithTx(tx),
 		ProjectPVCBinding: r.ProjectPVCBinding.WithTx(tx),
 		db:                tx,

@@ -73,7 +73,7 @@ func LoadConfig() {
 	}
 
 	JwtSecret = getEnv("JWT_SECRET", "defaultsecret")
-	DbHost = getEnv("DB_HOST", "localhost")
+	DbHost = getEnv("DB_HOST", "postgres")
 	DbPort = getEnv("DB_PORT", "5432")
 	DbUser = getEnv("DB_USER", "postgres")
 	DbPassword = getEnv("DB_PASSWORD", "password")
@@ -87,7 +87,7 @@ func LoadConfig() {
 	MinioBucket = getEnv("MINIO_BUCKET", "platform-bucket")
 	MinioUseSSL, _ = strconv.ParseBool(getEnv("MINIO_USE_SSL", "true"))
 
-	RedisAddr = getEnv("REDIS_ADDR", "")
+	RedisAddr = getEnv("REDIS_ADDR", "redis:6379")
 	RedisUsername = getEnv("REDIS_USERNAME", "")
 	RedisPassword = getEnv("REDIS_PASSWORD", "")
 	RedisDB, _ = strconv.Atoi(getEnv("REDIS_DB", "0"))

@@ -1,0 +1,13 @@
+{
+  "name": "operations",
+  "description": "CI/CD automation, Kubernetes integration, caching strategies, production monitoring, and workflow scheduling for platform-go",
+  "license": "Proprietary",
+  "metadata": {
+    "author": "platform-go",
+    "version": "1.1",
+    "consolidated_from": ["cicd-pipeline-optimization","kubernetes-integration","redis-caching","monitoring-observability"]
+  },
+  "source": "./.github/skills/operations/SKILL.md",
+  "summary": "CI/CD examples, Kubernetes deployment patterns, Redis cache patterns, monitoring & alerting, health checks, and workflow scheduler ops.",
+  "references": [".github/workflows/","k8s/",".github/skills/operations/scripts/"]
+}
