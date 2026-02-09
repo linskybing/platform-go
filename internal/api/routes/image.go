@@ -9,8 +9,9 @@ import (
 func registerImageRoutes(r *gin.RouterGroup, h *handlers.Handlers, auth *middleware.AuthMiddleware) {
 	images := r.Group("/images")
 	{
-		images.GET("/pull-active", auth.Admin(), h.Image.GetActivePullJobs)
-		images.GET("/pull-failed", auth.Admin(), h.Image.GetFailedPullJobs)
-		images.POST("/pull", auth.Admin(), h.Image.PullImage)
+		// Temporarily disable job-related image endpoints until scheduler is externalized
+		// images.GET("/pull-active", auth.Admin(), h.Image.GetActivePullJobs)
+		// images.GET("/pull-failed", auth.Admin(), h.Image.GetFailedPullJobs)
+		// images.POST("/pull", auth.Admin(), h.Image.PullImage)
 	}
 }
