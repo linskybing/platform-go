@@ -14,4 +14,7 @@ func registerImageRoutes(r *gin.RouterGroup, h *handlers.Handlers, auth *middlew
 		// images.GET("/pull-failed", auth.Admin(), h.Image.GetFailedPullJobs)
 		// images.POST("/pull", auth.Admin(), h.Image.PullImage)
 	}
+
+	// Avoid unused variable when endpoints are disabled
+	_ = images // images group intentionally unused while job endpoints are disabled
 }
