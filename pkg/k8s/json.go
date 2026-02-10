@@ -1,7 +1,5 @@
 package k8s
 
-import ()
-
 import (
 	"context"
 	applyJson "encoding/json"

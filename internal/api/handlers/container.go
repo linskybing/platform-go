@@ -13,19 +13,20 @@ import (
 // These handlers are currently in the same package and need to be reorganized
 
 type Handlers struct {
-	Audit       *AuditHandler
-	ConfigFile  *ConfigFileHandler
-	Group       *GroupHandler
-	Form        *FormHandler
-	Image       *ImageHandler
-	PVCBinding  *PVCBindingHandler
-	FileBrowser *FileBrowserHandler
-	StoragePerm *StoragePermissionHandler
-	Project     *ProjectHandler
-	User        *UserHandler
-	UserGroup   *UserGroupHandler
-	K8s         *K8sHandler
-	Router      *gin.Engine
+	Audit        *AuditHandler
+	ConfigFile   *ConfigFileHandler
+	Group        *GroupHandler
+	Form         *FormHandler
+	Image        *ImageHandler
+	PVCBinding   *PVCBindingHandler
+	FileBrowser  *FileBrowserHandler
+	StoragePerm  *StoragePermissionHandler
+	GroupStorage *GroupStorageHandler
+	Project      *ProjectHandler
+	User         *UserHandler
+	UserGroup    *UserGroupHandler
+	K8s          *K8sHandler
+	Router       *gin.Engine
 }
 
 // New creates a new Handlers instance without cache support.
@@ -40,19 +41,20 @@ func NewWithCache(svc *application.Services, repos *repository.Repos, router *gi
 	}
 
 	h := &Handlers{
-		Audit:       NewAuditHandler(svc.Audit),
-		ConfigFile:  NewConfigFileHandler(svc.ConfigFile),
-		Group:       NewGroupHandler(svc.Group),
-		Form:        NewFormHandler(svc.Form),
-		Image:       NewImageHandlerWithCache(svc.Image, cacheSvc, logger),
-		PVCBinding:  NewPVCBindingHandler(svc.K8s.PVCBindingManager),
-		FileBrowser: NewFileBrowserHandler(svc.K8s.FileBrowserManager),
-		StoragePerm: NewStoragePermissionHandler(svc.K8s.PermissionManager),
-		Project:     NewProjectHandler(svc.Project),
-		User:        NewUserHandler(svc.User),
-		UserGroup:   NewUserGroupHandler(svc.UserGroup),
-		K8s:         NewK8sHandler(svc.K8s, svc.User, svc.Project),
-		Router:      router,
+		Audit:        NewAuditHandler(svc.Audit),
+		ConfigFile:   NewConfigFileHandler(svc.ConfigFile),
+		Group:        NewGroupHandler(svc.Group),
+		Form:         NewFormHandler(svc.Form),
+		Image:        NewImageHandlerWithCache(svc.Image, cacheSvc, logger),
+		PVCBinding:   NewPVCBindingHandler(svc.K8s.PVCBindingManager),
+		FileBrowser:  NewFileBrowserHandler(svc.K8s.FileBrowserManager),
+		StoragePerm:  NewStoragePermissionHandler(svc.K8s.PermissionManager),
+		GroupStorage: NewGroupStorageHandler(svc.K8s.StorageManager, svc.K8s.FileBrowserManager, svc.K8s.PermissionManager),
+		Project:      NewProjectHandler(svc.Project),
+		User:         NewUserHandler(svc.User),
+		UserGroup:    NewUserGroupHandler(svc.UserGroup),
+		K8s:          NewK8sHandler(svc.K8s, svc.User, svc.Project),
+		Router:       router,
 	}
 	return h
 }

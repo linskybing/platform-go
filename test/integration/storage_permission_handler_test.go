@@ -14,6 +14,7 @@ import (
 
 func TestStoragePermissionHandler_Integration(t *testing.T) {
 	ctx := GetTestContext()
+	pvcID := fmt.Sprintf("group-%s-testpvc", ctx.TestGroup.GID)
 	generator := NewTestDataGenerator()
 	cleaner := NewDatabaseCleaner()
 	t.Cleanup(func() {
@@ -31,13 +32,14 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 	t.Run("SetPermission - Success as Admin", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		formData := map[string]string{
+		body := map[string]string{
 			"user_id":    testUser.UID,
-			"project_id": testProject.PID,
-			"permission": "rw",
+			"group_id":   ctx.TestGroup.GID,
+			"pvc_id":     pvcID,
+			"permission": "write",
 		}
 
-		resp, err := client.POSTForm("/storage/permissions", formData)
+		resp, err := client.POST("/storage/permissions", body)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -45,20 +47,21 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 	t.Run("SetPermission - Invalid Permission Type", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		formData := map[string]string{
+		body := map[string]string{
 			"user_id":    testUser.UID,
-			"project_id": testProject.PID,
+			"group_id":   ctx.TestGroup.GID,
+			"pvc_id":     pvcID,
 			"permission": "invalid",
 		}
 
-		resp, err := client.POSTForm("/storage/permissions", formData)
+		resp, err := client.POST("/storage/permissions", body)
 		require.NoError(t, err)
 		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("GetUserPermission - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
-		path := fmt.Sprintf("/storage/permissions/%s/%s", testUser.UID, testProject.PID)
+		path := fmt.Sprintf("/storage/permissions/group/%s/pvc/%s", ctx.TestGroup.GID, pvcID)
 
 		resp, err := client.GET(path)
 		require.NoError(t, err)
@@ -72,39 +75,48 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 		require.NoError(t, generator.CreateTestUser(testUser2))
 		cleaner.RegisterUser(testUser2.UID)
 
-		formData := map[string]string{
-			"user_ids":   fmt.Sprintf("%s,%s", testUser.UID, testUser2.UID),
-			"project_id": testProject.PID,
-			"permission": "r",
+		body := map[string]interface{}{
+			"group_id": ctx.TestGroup.GID,
+			"pvc_id":   pvcID,
+			"permissions": []map[string]string{
+				{"user_id": testUser.UID, "permission": "read"},
+				{"user_id": testUser2.UID, "permission": "read"},
+			},
 		}
 
-		resp, err := client.POSTForm("/storage/permissions/batch", formData)
+		resp, err := client.POST("/storage/permissions/batch", body)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("SetAccessPolicy - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/storage/projects/%s/policy", testProject.PID)
+		path := "/storage/policies"
 
-		formData := map[string]string{
-			"policy": "private",
+		body := map[string]interface{}{
+			"group_id":           ctx.TestGroup.GID,
+			"pvc_id":             pvcID,
+			"default_permission": "read",
+			"admin_only":         false,
 		}
 
-		resp, err := client.POSTForm(path, formData)
+		resp, err := client.POST(path, body)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("SetAccessPolicy - Invalid Policy", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/storage/projects/%s/policy", testProject.PID)
+		path := "/storage/policies"
 
-		formData := map[string]string{
-			"policy": "invalid_policy",
+		body := map[string]interface{}{
+			"group_id":           ctx.TestGroup.GID,
+			"pvc_id":             pvcID,
+			"default_permission": "invalid_policy",
+			"admin_only":         false,
 		}
 
-		resp, err := client.POSTForm(path, formData)
+		resp, err := client.POST(path, body)
 		require.NoError(t, err)
 		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
 	})
