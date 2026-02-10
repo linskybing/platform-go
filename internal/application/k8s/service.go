@@ -32,11 +32,14 @@ func NewK8sService(repos *repository.Repos, imageValidator ImageValidator, cache
 		return nil, fmt.Errorf("failed to initialize K8sService: %w", ErrNilRequest)
 	}
 
+	// Initialize permission manager first so it can be passed into FileBrowserManager
+	permMgr := NewPermissionManager(repos)
+
 	service := &K8sService{
 		repos:              repos,
-		FileBrowserManager: NewFileBrowserManager(),
+		PermissionManager:  permMgr,
+		FileBrowserManager: NewFileBrowserManager(permMgr),
 		PVCBindingManager:  NewPVCBindingManager(repos, cacheSvc),
-		PermissionManager:  NewPermissionManager(repos),
 		userStorageManager: NewUserStorageManager(),
 		StorageManager:     NewStorageManager(repos, cacheSvc),
 	}

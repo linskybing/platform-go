@@ -17,13 +17,20 @@ import (
 type FileBrowserManager struct {
 	fbMgr      filebrowser.Manager
 	sessionMgr filebrowser.SessionManager
+	perm       permissionProvider
+}
+
+// permissionProvider defines the minimal interface required for permission checks.
+type permissionProvider interface {
+	GetUserPermission(ctx context.Context, userID, groupID, pvcID string) (*storage.GroupStoragePermission, error)
 }
 
 // NewFileBrowserManager creates a new FileBrowserManager instance
-func NewFileBrowserManager() *FileBrowserManager {
+func NewFileBrowserManager(pm permissionProvider) *FileBrowserManager {
 	return &FileBrowserManager{
 		fbMgr:      filebrowser.NewManager(),
 		sessionMgr: filebrowser.NewSessionManager(),
+		perm:       pm,
 	}
 }
 
@@ -33,15 +40,25 @@ func NewFileBrowserManager() *FileBrowserManager {
 // - No permission -> return unauthorized error
 func (fbm *FileBrowserManager) GetFileBrowserAccess(ctx context.Context, req *storage.FileBrowserAccessRequest) (*storage.FileBrowserAccessResponse, error) {
 	startTime := time.Now()
-
-	// TODO: Implement permission checking once PermissionManager is available
-	// For now, assume read access is allowed
-
-	// Temporary: log access attempt
+	// Determine permission for this user on the requested PVC
 	logger.Info("filebrowser access request",
 		"user_id", req.UserID,
 		"group_id", req.GroupID,
 		"pvc_id", req.PVCID)
+
+	if fbm.perm == nil {
+		return nil, fmt.Errorf("permission manager not configured")
+	}
+	perm, err := fbm.perm.GetUserPermission(ctx, req.UserID, req.GroupID, req.PVCID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get permission: %w", err)
+	}
+	if perm == nil || perm.Permission == storage.PermissionNone {
+		return &storage.FileBrowserAccessResponse{
+			Allowed: false,
+			Message: "permission denied: you don't have access to this storage",
+		}, nil
+	}
 
 	// Get group PVC info to find namespace and PVC name
 	groupNamespace := fmt.Sprintf("group-%s-storage", req.GroupID)
@@ -53,9 +70,8 @@ func (fbm *FileBrowserManager) GetFileBrowserAccess(ctx context.Context, req *st
 	}
 	pvcName := pvcs[0].Name
 
-	// TODO: Determine pod type based on permission from PermissionManager
-	// Temporary: default to read-only
-	readOnly := true
+	// Determine pod type based on permission
+	readOnly := perm.Permission != storage.PermissionReadWrite
 
 	// Construct FileBrowser configuration
 	accessType := "ro"
@@ -99,6 +115,45 @@ func (fbm *FileBrowserManager) GetFileBrowserAccess(ctx context.Context, req *st
 		ReadOnly: readOnly,
 		Message:  "Access granted",
 	}, nil
+}
+
+// StopFileBrowser stops an existing FileBrowser session for the given group PVC.
+// It attempts to stop both read-write and read-only sessions if necessary.
+func (fbm *FileBrowserManager) StopFileBrowser(ctx context.Context, groupID, pvcID, userID string) error {
+	groupNamespace := fmt.Sprintf("group-%s-storage", groupID)
+
+	// Ensure PVC exists and obtain PVC name
+	pvcs, err := fbm.listPVCsByID(ctx, groupNamespace, pvcID)
+	if err != nil || len(pvcs) == 0 {
+		return fmt.Errorf("PVC not found: %s", pvcID)
+	}
+	pvcName := pvcs[0].Name
+
+	// Determine user's permission for this PVC
+	if fbm.perm == nil {
+		return fmt.Errorf("permission manager not configured")
+	}
+	perm, err := fbm.perm.GetUserPermission(ctx, userID, groupID, pvcID)
+	if err != nil {
+		return fmt.Errorf("failed to get permission: %w", err)
+	}
+
+	if perm == nil || perm.Permission == storage.PermissionNone {
+		return fmt.Errorf("permission denied: user has no access to this storage")
+	}
+
+	accessType := "ro"
+	if perm.Permission == storage.PermissionReadWrite {
+		accessType = "rw"
+	}
+
+	podName := fmt.Sprintf("fb-%s-%s", accessType, pvcName)
+	svcName := fmt.Sprintf("fb-svc-%s-%s", accessType, pvcName)
+
+	if err := fbm.sessionMgr.Stop(ctx, groupNamespace, podName, svcName); err != nil {
+		return fmt.Errorf("failed to stop filebrowser session: %w", err)
+	}
+	return nil
 }
 
 // listPVCsByID finds PVCs with matching ID label

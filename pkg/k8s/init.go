@@ -1,7 +1,5 @@
 package k8s
 
-import ()
-
 import (
 	"log"
 	"os"
