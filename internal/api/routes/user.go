@@ -1,8 +1,10 @@
 package routes
 
-import (
-	"github.com/gin-gonic/gin"
-	"github.com/linskybing/platform-go/internal/api/handlers"
+		// Admin User Management (usually) - access control checked inside handler or middleware
+		// Register CRUD and listing endpoints.
+		users.GET("/", h.User.GetUsers)
+		users.GET("/paging", h.User.ListUsersPaging)
+		users.GET(":id", h.User.GetUserByID)
 	"github.com/linskybing/platform-go/internal/api/middleware"
 )
 
