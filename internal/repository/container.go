@@ -16,6 +16,7 @@ type Repos struct {
 	Image             ImageRepo
 	StoragePermission StoragePermissionRepo
 	ProjectPVCBinding ProjectPVCBindingRepo
+	Job               JobRepo
 
 	db *gorm.DB
 }
@@ -33,6 +34,7 @@ func NewRepositories(db *gorm.DB) *Repos {
 		Image:             NewImageRepo(db),
 		StoragePermission: NewStoragePermissionRepo(db),
 		ProjectPVCBinding: NewProjectPVCBindingRepo(db),
+		Job:               NewJobRepo(db),
 		db:                db,
 	}
 }
@@ -54,6 +56,7 @@ func (r *Repos) WithTx(tx *gorm.DB) *Repos {
 		Image:             NewImageRepo(tx),
 		StoragePermission: r.StoragePermission.WithTx(tx),
 		ProjectPVCBinding: r.ProjectPVCBinding.WithTx(tx),
+		Job:               r.Job.WithTx(tx),
 		db:                tx,
 	}
 }

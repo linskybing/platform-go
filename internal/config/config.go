@@ -64,6 +64,8 @@ var (
 	GroupStorageServiceName    string
 	GroupStorageBrowserSVCName string
 	HarborPrivatePrefix        string
+	// Executor mode ("local" or "scheduler")
+	ExecutorMode string
 )
 
 func LoadConfig() {
@@ -113,6 +115,9 @@ func LoadConfig() {
 	GroupStorageServiceName = getEnv("GROUP_STORAGE_SERVICE_NAME", "storage-svc")
 	GroupStorageBrowserSVCName = getEnv("GROUP_STORAGE_BROWSER_SVC_NAME", "filebrowser-group-svc")
 	HarborPrivatePrefix = getEnv("HARBOR_PRIVATE_PREFIX", "192.168.110.1:30003/library/")
+
+	// Executor mode
+	ExecutorMode = getEnv("EXECUTOR_MODE", "local")
 }
 
 func getEnv(key, fallback string) string {

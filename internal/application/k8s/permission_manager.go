@@ -24,24 +24,45 @@ func NewPermissionManager(repos *repository.Repos) *PermissionManager {
 
 // SetPermission sets or updates a user's permission for a group PVC
 func (pm *PermissionManager) SetPermission(ctx context.Context, req *storage.SetStoragePermissionRequest, granterID string) error {
-	perm := &storage.GroupStoragePermission{
-		GroupID:    req.GroupID,
-		PVCID:      req.PVCID,
-		UserID:     req.UserID,
-		Permission: req.Permission,
-		GrantedBy:  granterID,
-		GrantedAt:  time.Now(),
-	}
+	// Try to get existing permission
+	existingPerm, err := pm.repos.StoragePermission.GetPermission(ctx, req.GroupID, req.UserID, req.PVCID)
 
-	if err := pm.repos.StoragePermission.CreatePermission(ctx, perm); err != nil {
-		return fmt.Errorf("failed to set permission: %w", err)
-	}
+	if err == nil {
+		// Permission exists, update it
+		existingPerm.Permission = req.Permission
+		existingPerm.GrantedBy = granterID
+		existingPerm.RevokedAt = nil // Un-revoke if it was revoked
 
-	logger.Info("set storage permission",
-		"group_id", req.GroupID,
-		"pvc_id", req.PVCID,
-		"user_id", req.UserID,
-		"permission", req.Permission)
+		if err := pm.repos.StoragePermission.UpdatePermission(ctx, existingPerm); err != nil {
+			return fmt.Errorf("failed to update permission: %w", err)
+		}
+
+		logger.Info("updated storage permission",
+			"group_id", req.GroupID,
+			"pvc_id", req.PVCID,
+			"user_id", req.UserID,
+			"permission", req.Permission)
+	} else {
+		// Permission doesn't exist, create it
+		perm := &storage.GroupStoragePermission{
+			GroupID:    req.GroupID,
+			PVCID:      req.PVCID,
+			UserID:     req.UserID,
+			Permission: req.Permission,
+			GrantedBy:  granterID,
+			GrantedAt:  time.Now(),
+		}
+
+		if err := pm.repos.StoragePermission.CreatePermission(ctx, perm); err != nil {
+			return fmt.Errorf("failed to create permission: %w", err)
+		}
+
+		logger.Info("created storage permission",
+			"group_id", req.GroupID,
+			"pvc_id", req.PVCID,
+			"user_id", req.UserID,
+			"permission", req.Permission)
+	}
 
 	return nil
 }
@@ -130,6 +151,11 @@ func (pm *PermissionManager) RevokePermission(ctx context.Context, userID, group
 // ListGroupPermissions lists all permissions for a group
 func (pm *PermissionManager) ListGroupPermissions(ctx context.Context, groupID string) ([]storage.GroupStoragePermission, error) {
 	return pm.repos.StoragePermission.ListPermissions(ctx, groupID)
+}
+
+// ListPVCPermissions lists all active permissions for a specific PVC
+func (pm *PermissionManager) ListPVCPermissions(ctx context.Context, groupID, pvcID string) ([]storage.GroupStoragePermission, error) {
+	return pm.repos.StoragePermission.ListPermissionsByPVC(ctx, groupID, pvcID)
 }
 
 // ListUserPermissions lists all permissions for a user

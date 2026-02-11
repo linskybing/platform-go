@@ -54,7 +54,7 @@ func (pbm *PVCBindingManager) CreateProjectPVCBinding(ctx context.Context, req *
 			"user_id", userID,
 			"group_id", groupID,
 			"pvc_id", req.GroupPVCID)
-		return nil, fmt.Errorf("permission denied: you don't have access to this storage")
+		return nil, ErrPermissionDenied
 	}
 
 	// Get source group PVC to find the PV name
@@ -233,6 +233,40 @@ func (pbm *PVCBindingManager) ensureProjectNamespace(ctx context.Context, namesp
 	}
 
 	logger.Info("ensured project namespace", "namespace", namespace, "project_id", projectID)
+	return nil
+}
+
+// ListProjectPVCBindings lists all PVC bindings for a project
+func (pbm *PVCBindingManager) ListProjectPVCBindings(ctx context.Context, projectID string) ([]storage.ProjectPVCBinding, error) {
+	return pbm.repos.ProjectPVCBinding.ListBindings(ctx, projectID)
+}
+
+// DeleteProjectPVCBindingByID deletes a project PVC binding by binding ID
+func (pbm *PVCBindingManager) DeleteProjectPVCBindingByID(ctx context.Context, bindingID string) error {
+	// Get binding info from database
+	binding, err := pbm.repos.ProjectPVCBinding.GetBinding(ctx, bindingID)
+	if err != nil {
+		return fmt.Errorf("binding not found: %w", err)
+	}
+
+	// Delete K8s PVC
+	if k8sclient.Clientset != nil {
+		err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(binding.ProjectNamespace).Delete(ctx, binding.ProjectPVCName, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			logger.Error("failed to delete K8s PVC", "namespace", binding.ProjectNamespace, "pvc", binding.ProjectPVCName, "error", err)
+		}
+	}
+
+	// Delete binding record from database
+	if err := pbm.repos.ProjectPVCBinding.DeleteBinding(ctx, bindingID); err != nil {
+		return fmt.Errorf("failed to delete binding record: %w", err)
+	}
+
+	logger.Info("deleted project PVC binding by ID",
+		"binding_id", bindingID,
+		"project_id", binding.ProjectID,
+		"pvc_name", binding.ProjectPVCName)
+
 	return nil
 }
 

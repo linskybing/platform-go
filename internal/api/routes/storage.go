@@ -21,6 +21,12 @@ func registerStorageRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *midd
 			// Create PVC binding - group manager access (via project_id in payload)
 			pvcBinding.POST("", am.GroupManager(middleware.FromProjectIDInPayload()), h.PVCBinding.CreateBinding)
 
+			// List PVC bindings for a project - group member access
+			pvcBinding.GET("/project/:project_id", am.GroupMember(middleware.FromProjectIDParamName("project_id")), h.PVCBinding.ListBindings)
+
+			// Delete PVC binding by ID
+			pvcBinding.DELETE("/:binding_id", h.PVCBinding.DeleteBindingByID)
+
 			// Delete PVC binding - group manager access (via project_id in path)
 			pvcBinding.DELETE("/:project_id/:pvc_name", am.GroupManager(middleware.FromProjectIDParamName("project_id")), h.PVCBinding.DeleteBinding)
 		}
@@ -43,6 +49,7 @@ func registerStorageRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *midd
 			permissions.POST("", am.GroupAdmin(middleware.FromGroupIDInPayload()), h.StoragePerm.SetPermission)
 			permissions.POST("/batch", am.GroupAdmin(middleware.FromGroupIDInPayload()), h.StoragePerm.BatchSetPermissions)
 			permissions.GET("/group/:group_id/pvc/:pvc_id", am.GroupMember(middleware.FromGroupIDParamName("group_id")), h.StoragePerm.GetUserPermission)
+			permissions.GET("/group/:group_id/pvc/:pvc_id/list", am.GroupMember(middleware.FromGroupIDParamName("group_id")), h.StoragePerm.ListPVCPermissions)
 		}
 
 		// Access policy routes

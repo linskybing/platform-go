@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +51,7 @@ func (h *PVCBindingHandler) CreateBinding(c *gin.Context) {
 
 	binding, err := h.bindingManager.CreateProjectPVCBinding(c.Request.Context(), &req, userID)
 	if err != nil {
-		if err.Error() == "permission denied: you don't have access to this storage" {
+		if errors.Is(err, k8s.ErrPermissionDenied) {
 			response.Error(c, http.StatusForbidden, err.Error())
 			return
 		}
@@ -59,6 +60,59 @@ func (h *PVCBindingHandler) CreateBinding(c *gin.Context) {
 	}
 
 	response.Success(c, binding, "PVC binding created successfully")
+}
+
+// ListBindings godoc
+// @Summary List all PVC bindings for a project
+// @Description Get all PVC bindings for a specific project
+// @Tags Project PVC Bindings
+// @Security BearerAuth
+// @Produce json
+// @Param project_id path string true "Project ID"
+// @Success 200 {object} response.Response{data=[]storage.ProjectPVCBinding}
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /k8s/pvc-binding/project/{project_id} [get]
+func (h *PVCBindingHandler) ListBindings(c *gin.Context) {
+	projectID := c.Param("project_id")
+	if projectID == "" {
+		response.Error(c, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
+	bindings, err := h.bindingManager.ListProjectPVCBindings(c.Request.Context(), projectID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to list bindings: "+err.Error())
+		return
+	}
+
+	response.Success(c, bindings, "PVC bindings retrieved successfully")
+}
+
+// DeleteBindingByID godoc
+// @Summary Delete PVC binding by binding ID
+// @Description Remove a PVC binding by its ID
+// @Tags Project PVC Bindings
+// @Security BearerAuth
+// @Produce json
+// @Param binding_id path string true "Binding ID"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /k8s/pvc-binding/{binding_id} [delete]
+func (h *PVCBindingHandler) DeleteBindingByID(c *gin.Context) {
+	bindingID := c.Param("binding_id")
+	if bindingID == "" {
+		response.Error(c, http.StatusBadRequest, "Binding ID is required")
+		return
+	}
+
+	if err := h.bindingManager.DeleteProjectPVCBindingByID(c.Request.Context(), bindingID); err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to delete binding: "+err.Error())
+		return
+	}
+
+	response.Success(c, nil, "PVC binding deleted successfully")
 }
 
 // DeleteBinding godoc

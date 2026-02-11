@@ -15,8 +15,10 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/form"
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"github.com/linskybing/platform-go/internal/domain/image"
+	"github.com/linskybing/platform-go/internal/domain/job"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/domain/resource"
+	"github.com/linskybing/platform-go/internal/domain/storage"
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/k8s"
@@ -97,6 +99,19 @@ func main() {
 		&image.ClusterImageStatus{},
 	); err != nil {
 		log.Fatalf("Failed to migrate remaining database models: %v", err)
+	}
+
+	log.Println("AutoMigrating storage and job models")
+	if err := db.DB.AutoMigrate(
+		&storage.GroupPVC{},
+		&storage.StorageHub{},
+		&storage.PersistentVolumeClaim{},
+		&storage.GroupStoragePermission{},
+		&storage.GroupStorageAccessPolicy{},
+		&storage.ProjectPVCBinding{},
+		&job.Job{},
+	); err != nil {
+		log.Fatalf("Failed to migrate storage and job database models: %v", err)
 	}
 
 	// Initialize Docker cleanup CronJob

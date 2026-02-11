@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +51,7 @@ func (h *StoragePermissionHandler) SetPermission(c *gin.Context) {
 	}
 
 	if err := h.permManager.SetPermission(c.Request.Context(), &req, adminID); err != nil {
-		if err.Error() == "only group admins can set permissions" {
+		if errors.Is(err, k8s.ErrOnlyAdminsCanSet) {
 			response.Error(c, http.StatusForbidden, err.Error())
 			return
 		}
@@ -135,6 +136,40 @@ func (h *StoragePermissionHandler) GetUserPermission(c *gin.Context) {
 	response.Success(c, perm, "Permission retrieved successfully")
 }
 
+// ListPVCPermissions godoc
+// @Summary List all permissions for a specific PVC
+// @Description Retrieve all active permissions for a group PVC
+// @Tags Group Storage Permissions
+// @Security BearerAuth
+// @Produce json
+// @Param group_id path string true "Group ID"
+// @Param pvc_id path string true "PVC ID"
+// @Success 200 {object} response.Response{data=[]storage.GroupStoragePermission}
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /storage/permissions/group/{group_id}/pvc/{pvc_id}/list [get]
+func (h *StoragePermissionHandler) ListPVCPermissions(c *gin.Context) {
+	groupID := c.Param("group_id")
+	if groupID == "" {
+		response.Error(c, http.StatusBadRequest, "Invalid group ID")
+		return
+	}
+
+	pvcID := c.Param("pvc_id")
+	if pvcID == "" {
+		response.Error(c, http.StatusBadRequest, "PVC ID is required")
+		return
+	}
+
+	perms, err := h.permManager.ListPVCPermissions(c.Request.Context(), groupID, pvcID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to list permissions: "+err.Error())
+		return
+	}
+
+	response.Success(c, perms, "Permissions retrieved successfully")
+}
+
 // SetAccessPolicy godoc
 // @Summary Set default access policy for a group PVC
 // @Description Group admin sets default permission policy for new members
@@ -162,7 +197,7 @@ func (h *StoragePermissionHandler) SetAccessPolicy(c *gin.Context) {
 	}
 
 	if err := h.permManager.SetAccessPolicy(c.Request.Context(), &req, adminID); err != nil {
-		if err.Error() == "only group admins can set access policies" {
+		if errors.Is(err, k8s.ErrOnlyAdminsPolicy) {
 			response.Error(c, http.StatusForbidden, err.Error())
 			return
 		}

@@ -14,6 +14,7 @@ type StoragePermissionRepo interface {
 	CreatePermission(ctx context.Context, perm *storage.GroupStoragePermission) error
 	GetPermission(ctx context.Context, groupID, userID string, pvcID string) (*storage.GroupStoragePermission, error)
 	ListPermissions(ctx context.Context, groupID string) ([]storage.GroupStoragePermission, error)
+	ListPermissionsByPVC(ctx context.Context, groupID, pvcID string) ([]storage.GroupStoragePermission, error)
 	ListUserPermissions(ctx context.Context, userID string) ([]storage.GroupStoragePermission, error)
 	UpdatePermission(ctx context.Context, perm *storage.GroupStoragePermission) error
 	RevokePermission(ctx context.Context, id string) error
@@ -64,6 +65,15 @@ func (r *StoragePermissionRepoImpl) ListPermissions(ctx context.Context, groupID
 	var perms []storage.GroupStoragePermission
 	err := r.db.WithContext(ctx).
 		Where("group_id = ?", groupID).
+		Find(&perms).Error
+	return perms, err
+}
+
+// ListPermissionsByPVC retrieves all active permissions for a specific PVC
+func (r *StoragePermissionRepoImpl) ListPermissionsByPVC(ctx context.Context, groupID, pvcID string) ([]storage.GroupStoragePermission, error) {
+	var perms []storage.GroupStoragePermission
+	err := r.db.WithContext(ctx).
+		Where("group_id = ? AND pvc_id = ? AND revoked_at IS NULL", groupID, pvcID).
 		Find(&perms).Error
 	return perms, err
 }
