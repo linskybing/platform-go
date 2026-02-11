@@ -8,6 +8,7 @@ import (
 	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"github.com/linskybing/platform-go/pkg/response"
+	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
 )
 
@@ -30,10 +31,10 @@ func NewConfigFileHandler(svc *application.ConfigFileService) *ConfigFileHandler
 func (h *ConfigFileHandler) ListConfigFilesHandler(c *gin.Context) {
 	configFiles, err := h.svc.ListConfigFiles()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, configFiles)
+	response.Success(c, configFiles, "Config files retrieved successfully")
 }
 
 // GetConfigFile godoc
@@ -49,16 +50,16 @@ func (h *ConfigFileHandler) ListConfigFilesHandler(c *gin.Context) {
 func (h *ConfigFileHandler) GetConfigFileHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid config file ID"})
+		response.Error(c, http.StatusBadRequest, "invalid config file ID")
 		return
 	}
 
 	configFile, err := h.svc.GetConfigFile(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "config file not found"})
+		response.Error(c, http.StatusNotFound, "config file not found")
 		return
 	}
-	c.JSON(http.StatusOK, configFile)
+	response.Success(c, configFile, "Config file retrieved successfully")
 }
 
 // CreateConfigFile godoc
@@ -77,18 +78,19 @@ func (h *ConfigFileHandler) GetConfigFileHandler(c *gin.Context) {
 func (h *ConfigFileHandler) CreateConfigFileHandler(c *gin.Context) {
 	var input configfile.CreateConfigFileInput
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: fmt.Sprintf("Invalid input: %v", err)})
+		response.Error(c, http.StatusBadRequest, fmt.Sprintf("Invalid input: %v", err))
 		return
 	}
 
 	if input.Filename == "" || input.RawYaml == "" || input.ProjectID == "" {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "filename, raw_yaml, and project_id are required"})
+		response.Error(c, http.StatusBadRequest, "filename, raw_yaml, and project_id are required")
 		return
 	}
 
-	configFile, err := h.svc.CreateConfigFile(c, input)
+	claims, _ := c.MustGet("claims").(*types.Claims)
+	configFile, err := h.svc.CreateConfigFile(c.Request.Context(), input, claims)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -112,27 +114,28 @@ func (h *ConfigFileHandler) CreateConfigFileHandler(c *gin.Context) {
 func (h *ConfigFileHandler) UpdateConfigFileHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid config file ID"})
+		response.Error(c, http.StatusBadRequest, "invalid config file ID")
 		return
 	}
 
 	var input configfile.ConfigFileUpdateDTO
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	updatedConfigFile, err := h.svc.UpdateConfigFile(c, id, input)
+	claims, _ := c.MustGet("claims").(*types.Claims)
+	updatedConfigFile, err := h.svc.UpdateConfigFile(c.Request.Context(), id, input, claims)
 	if err != nil {
 		if err == application.ErrConfigFileNotFound {
-			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "config file not found"})
+			response.Error(c, http.StatusNotFound, "config file not found")
 		} else {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, updatedConfigFile)
+	response.Success(c, updatedConfigFile, "Config file updated successfully")
 }
 
 // DeleteConfigFile godoc
@@ -148,16 +151,17 @@ func (h *ConfigFileHandler) UpdateConfigFileHandler(c *gin.Context) {
 func (h *ConfigFileHandler) DeleteConfigFileHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid config file ID"})
+		response.Error(c, http.StatusBadRequest, "invalid config file ID")
 		return
 	}
 
-	err = h.svc.DeleteConfigFile(c, id)
+	claims, _ := c.MustGet("claims").(*types.Claims)
+	err = h.svc.DeleteConfigFile(c.Request.Context(), id, claims)
 	if err != nil {
 		if err == application.ErrConfigFileNotFound {
-			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "config file not found"})
+			response.Error(c, http.StatusNotFound, "config file not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
@@ -178,17 +182,17 @@ func (h *ConfigFileHandler) DeleteConfigFileHandler(c *gin.Context) {
 func (h *ConfigFileHandler) ListConfigFilesByProjectIDHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid project_id"})
+		response.Error(c, http.StatusBadRequest, "invalid project_id")
 		return
 	}
 
 	configFiles, err := h.svc.ListConfigFilesByProjectID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, configFiles)
+	response.Success(c, configFiles, "Config files retrieved successfully")
 }
 
 // CreateInstanceHandler godoc
@@ -205,15 +209,16 @@ func (h *ConfigFileHandler) ListConfigFilesByProjectIDHandler(c *gin.Context) {
 func (h *ConfigFileHandler) CreateInstanceHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid config id"})
+		response.Error(c, http.StatusBadRequest, "invalid config id")
 		return
 	}
-	err = h.svc.CreateInstance(c, id)
+	claims, _ := c.MustGet("claims").(*types.Claims)
+	err = h.svc.CreateInstance(c.Request.Context(), id, claims)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "create successfully"})
+	response.Success(c, nil, "create successfully")
 }
 
 // Destruce ConfigFile Instance godoc
@@ -229,12 +234,13 @@ func (h *ConfigFileHandler) CreateInstanceHandler(c *gin.Context) {
 func (h *ConfigFileHandler) DestructInstanceHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid config id"})
+		response.Error(c, http.StatusBadRequest, "invalid config id")
 		return
 	}
-	err = h.svc.DeleteInstance(c, id)
+	claims, _ := c.MustGet("claims").(*types.Claims)
+	err = h.svc.DeleteInstance(c.Request.Context(), id, claims)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)

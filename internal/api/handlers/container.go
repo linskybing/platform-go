@@ -18,6 +18,7 @@ type Handlers struct {
 	Group        *GroupHandler
 	Form         *FormHandler
 	Image        *ImageHandler
+	Job          *JobHandler
 	PVCBinding   *PVCBindingHandler
 	FileBrowser  *FileBrowserHandler
 	StoragePerm  *StoragePermissionHandler
@@ -46,6 +47,7 @@ func NewWithCache(svc *application.Services, repos *repository.Repos, router *gi
 		Group:        NewGroupHandler(svc.Group),
 		Form:         NewFormHandler(svc.Form),
 		Image:        NewImageHandlerWithCache(svc.Image, cacheSvc, logger),
+		Job:          NewJobHandler(repos, svc.ConfigFile.GetExecutor()),
 		PVCBinding:   NewPVCBindingHandler(svc.K8s.PVCBindingManager),
 		FileBrowser:  NewFileBrowserHandler(svc.K8s.FileBrowserManager),
 		StoragePerm:  NewStoragePermissionHandler(svc.K8s.PermissionManager),

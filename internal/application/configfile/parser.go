@@ -1,15 +1,16 @@
 package configfile
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/pkg/k8s"
+	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
 	"gorm.io/datatypes"
 	k8sRes "k8s.io/apimachinery/pkg/api/resource"
@@ -121,7 +122,7 @@ func (s *ConfigFileService) parseAndValidateResources(rawYaml string) ([]*resour
 // }
 
 // syncConfigFileResources manages the diff (create/update/delete) for config file updates.
-func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfile.ConfigFile, rawYaml string, newResources []*resource.Resource) error {
+func (s *ConfigFileService) syncConfigFileResources(ctx context.Context, cf *configfile.ConfigFile, rawYaml string, newResources []*resource.Resource, claims *types.Claims) error {
 	// 1. Fetch existing resources
 	existingResources, err := s.Repos.Resource.ListResourcesByConfigFileID(cf.CFID)
 	if err != nil {
@@ -154,7 +155,8 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 			if err := s.Repos.Resource.UpdateResource(&val); err != nil {
 				return fmt.Errorf("failed to update resource %s: %w", name, err)
 			}
-			utils.LogAuditWithConsole(c, "update", "resource", fmt.Sprintf("r_id=%s", val.RID), oldTarget, val, "", s.Repos.Audit)
+			utils.LogAudit(claims.UserID, "", "", "update", "resource",
+				fmt.Sprintf("r_id=%s", val.RID), oldTarget, val, "", s.Repos.Audit)
 		} else {
 			// Create
 			newRes.CFID = cf.CFID
@@ -164,7 +166,8 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 			if err := s.Repos.Resource.CreateResource(newRes); err != nil {
 				return fmt.Errorf("failed to create resource %s: %w", name, err)
 			}
-			utils.LogAuditWithConsole(c, "create", "resource", fmt.Sprintf("r_id=%s", newRes.RID), nil, *newRes, "", s.Repos.Audit)
+			utils.LogAudit(claims.UserID, "", "", "create", "resource",
+				fmt.Sprintf("r_id=%s", newRes.RID), nil, *newRes, "", s.Repos.Audit)
 		}
 	}
 
@@ -177,7 +180,8 @@ func (s *ConfigFileService) syncConfigFileResources(c *gin.Context, cf *configfi
 			if err := s.Repos.Resource.DeleteResource(res.RID); err != nil {
 				return fmt.Errorf("failed to delete unused resource %s: %w", name, err)
 			}
-			utils.LogAuditWithConsole(c, "delete", "resource", fmt.Sprintf("r_id=%s", res.RID), res, nil, "", s.Repos.Audit)
+			utils.LogAudit(claims.UserID, "", "", "delete", "resource",
+				fmt.Sprintf("r_id=%s", res.RID), res, nil, "", s.Repos.Audit)
 		}
 	}
 	return nil
