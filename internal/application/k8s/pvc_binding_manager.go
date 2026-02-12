@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/linskybing/platform-go/internal/domain/storage"
@@ -63,7 +64,7 @@ func (pbm *PVCBindingManager) CreateProjectPVCBinding(ctx context.Context, req *
 		return nil, fmt.Errorf("failed to list group PVCs: %w", err)
 	}
 
-	var sourcePVC *storage.GroupPVC
+	var sourcePVC *storage.GroupPVCSpec
 	for _, pvc := range groupPVCs {
 		if pvc.ID == req.GroupPVCID {
 			sourcePVC = &pvc
@@ -80,8 +81,10 @@ func (pbm *PVCBindingManager) CreateProjectPVCBinding(ctx context.Context, req *
 		return nil, fmt.Errorf("failed to get PV name: %w", err)
 	}
 
-	// Determine project namespace
-	projectNamespace := fmt.Sprintf("project-%s", req.ProjectID)
+	projectNamespace, err := pbm.resolveProjectNamespace(req.ProjectID, userID)
+	if err != nil {
+		return nil, err
+	}
 
 	// Ensure project namespace exists
 	if err := pbm.ensureProjectNamespace(ctx, projectNamespace, req.ProjectID); err != nil {
@@ -94,37 +97,22 @@ func (pbm *PVCBindingManager) CreateProjectPVCBinding(ctx context.Context, req *
 		accessMode = corev1.ReadWriteMany
 	}
 
+	// Compute size from capacity
+	pvcSize := fmt.Sprintf("%dGi", sourcePVC.Capacity)
+
+	labels := map[string]string{
+		"app.kubernetes.io/managed-by": "platform",
+		"binding-type":                 "project-group-binding",
+		"group-id":                     groupID,
+		"group-pvc-id":                 req.GroupPVCID,
+		"project-id":                   req.ProjectID,
+		"user-id":                      userID,
+	}
+
 	// Create PVC in project namespace that binds to the same PV
-	binding, err := pbm.createBindingPVC(ctx, projectNamespace, req.PVCName, pvName, sourcePVC.Size, accessMode)
+	binding, err := pbm.createBindingPVC(ctx, projectNamespace, req.PVCName, pvName, pvcSize, accessMode, labels)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create binding PVC: %w", err)
-	}
-
-	// Store binding in database
-	projectBinding := &storage.ProjectPVCBinding{
-		ProjectID:        req.ProjectID,
-		UserID:           userID,
-		GroupPVCID:       req.GroupPVCID,
-		ProjectPVCName:   req.PVCName,
-		ProjectNamespace: projectNamespace,
-		SourcePVName:     pvName,
-		AccessMode:       string(accessMode),
-		Status:           "Bound",
-		CreatedAt:        time.Now(),
-	}
-
-	// Persist PVC binding to database
-	if err := pbm.repos.ProjectPVCBinding.CreateBinding(ctx, projectBinding); err != nil {
-		// Rollback K8s PVC creation
-		if delErr := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(projectNamespace).Delete(ctx, req.PVCName, metav1.DeleteOptions{}); delErr != nil {
-			logger.Error("failed to rollback PVC creation after binding store failure",
-				"project_id", req.ProjectID,
-				"pvc_name", req.PVCName,
-				"namespace", projectNamespace,
-				"binding_error", err,
-				"rollback_error", delErr)
-		}
-		return nil, fmt.Errorf("failed to store binding: %w", err)
 	}
 
 	logger.Info("created project PVC binding",
@@ -136,19 +124,19 @@ func (pbm *PVCBindingManager) CreateProjectPVCBinding(ctx context.Context, req *
 		"duration_ms", time.Since(startTime).Milliseconds())
 
 	return &storage.ProjectPVCBindingInfo{
-		ID:               projectBinding.ID,
+		ID:               fmt.Sprintf("%s/%s", projectNamespace, req.PVCName),
 		ProjectID:        req.ProjectID,
 		GroupPVCID:       req.GroupPVCID,
 		ProjectPVCName:   req.PVCName,
 		ProjectNamespace: projectNamespace,
 		AccessMode:       string(accessMode),
-		Status:           string(binding.Status.Phase),
+		Status:           bindingStatus(binding),
 		CreatedAt:        time.Now(),
 	}, nil
 }
 
 // createBindingPVC creates a PVC that binds to an existing PV
-func (pbm *PVCBindingManager) createBindingPVC(ctx context.Context, namespace, pvcName, pvName, size string, accessMode corev1.PersistentVolumeAccessMode) (*corev1.PersistentVolumeClaim, error) {
+func (pbm *PVCBindingManager) createBindingPVC(ctx context.Context, namespace, pvcName, pvName, size string, accessMode corev1.PersistentVolumeAccessMode, labels map[string]string) (*corev1.PersistentVolumeClaim, error) {
 	if k8sclient.Clientset == nil {
 		return &corev1.PersistentVolumeClaim{Status: corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimBound}}, nil
 	}
@@ -166,10 +154,7 @@ func (pbm *PVCBindingManager) createBindingPVC(ctx context.Context, namespace, p
 				"pv.kubernetes.io/bind-completed":      "yes",
 				"pv.kubernetes.io/bound-by-controller": "yes",
 			},
-			Labels: map[string]string{
-				"app.kubernetes.io/managed-by": "platform",
-				"binding-type":                 "project-group-binding",
-			},
+			Labels: labels,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			VolumeName:  pvName,
@@ -237,69 +222,108 @@ func (pbm *PVCBindingManager) ensureProjectNamespace(ctx context.Context, namesp
 }
 
 // ListProjectPVCBindings lists all PVC bindings for a project
-func (pbm *PVCBindingManager) ListProjectPVCBindings(ctx context.Context, projectID string) ([]storage.ProjectPVCBinding, error) {
-	return pbm.repos.ProjectPVCBinding.ListBindings(ctx, projectID)
+func (pbm *PVCBindingManager) ListProjectPVCBindings(ctx context.Context, projectID, userID string) ([]storage.ProjectPVCBindingInfo, error) {
+	projectNamespace, err := pbm.resolveProjectNamespace(projectID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if k8sclient.Clientset == nil {
+		return []storage.ProjectPVCBindingInfo{}, nil
+	}
+
+	list, err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(projectNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "binding-type=project-group-binding",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]storage.ProjectPVCBindingInfo, 0, len(list.Items))
+	for _, pvc := range list.Items {
+		groupPVCID := pvc.Labels["group-pvc-id"]
+		accessMode := ""
+		if len(pvc.Spec.AccessModes) > 0 {
+			accessMode = string(pvc.Spec.AccessModes[0])
+		}
+		result = append(result, storage.ProjectPVCBindingInfo{
+			ID:               fmt.Sprintf("%s/%s", projectNamespace, pvc.Name),
+			ProjectID:        projectID,
+			GroupPVCID:       groupPVCID,
+			ProjectPVCName:   pvc.Name,
+			ProjectNamespace: projectNamespace,
+			AccessMode:       accessMode,
+			Status:           string(pvc.Status.Phase),
+			CreatedAt:        pvc.CreationTimestamp.Time,
+		})
+	}
+	return result, nil
 }
 
 // DeleteProjectPVCBindingByID deletes a project PVC binding by binding ID
 func (pbm *PVCBindingManager) DeleteProjectPVCBindingByID(ctx context.Context, bindingID string) error {
-	// Get binding info from database
-	binding, err := pbm.repos.ProjectPVCBinding.GetBinding(ctx, bindingID)
+	if k8sclient.Clientset == nil {
+		return nil
+	}
+	namespace, pvcName, err := parseBindingID(bindingID)
 	if err != nil {
-		return fmt.Errorf("binding not found: %w", err)
+		return err
 	}
-
-	// Delete K8s PVC
-	if k8sclient.Clientset != nil {
-		err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(binding.ProjectNamespace).Delete(ctx, binding.ProjectPVCName, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			logger.Error("failed to delete K8s PVC", "namespace", binding.ProjectNamespace, "pvc", binding.ProjectPVCName, "error", err)
-		}
+	if err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete K8s PVC: %w", err)
 	}
-
-	// Delete binding record from database
-	if err := pbm.repos.ProjectPVCBinding.DeleteBinding(ctx, bindingID); err != nil {
-		return fmt.Errorf("failed to delete binding record: %w", err)
-	}
-
 	logger.Info("deleted project PVC binding by ID",
 		"binding_id", bindingID,
-		"project_id", binding.ProjectID,
-		"pvc_name", binding.ProjectPVCName)
-
+		"namespace", namespace,
+		"pvc_name", pvcName)
 	return nil
 }
 
 // DeleteProjectPVCBinding deletes a project PVC binding
-func (pbm *PVCBindingManager) DeleteProjectPVCBinding(ctx context.Context, projectID string, pvcName string) error {
-	projectNamespace := fmt.Sprintf("project-%s", projectID)
-
-	// Get binding info from database
-	binding, err := pbm.repos.ProjectPVCBinding.GetBindingByProjectPVC(ctx, projectNamespace, pvcName)
+func (pbm *PVCBindingManager) DeleteProjectPVCBinding(ctx context.Context, projectID, userID string, pvcName string) error {
+	projectNamespace, err := pbm.resolveProjectNamespace(projectID, userID)
 	if err != nil {
-		logger.Warn("binding not found in database", "namespace", projectNamespace, "pvc_name", pvcName)
+		return err
 	}
-
-	// Delete K8s PVC
 	if k8sclient.Clientset != nil {
 		err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(projectNamespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			logger.Error("failed to delete K8s PVC", "namespace", projectNamespace, "pvc", pvcName, "error", err)
+			return err
 		}
 	}
-
-	// Delete binding record from database
-	if binding != nil {
-		if err := pbm.repos.ProjectPVCBinding.DeleteBinding(ctx, binding.ID); err != nil {
-			logger.Error("failed to delete binding record", "binding_id", binding.ID, "error", err)
-		}
-	}
-
 	logger.Info("deleted project PVC binding",
 		"project_id", projectID,
-		"pvc_name", pvcName)
-
+		"pvc_name", pvcName,
+		"namespace", projectNamespace)
 	return nil
+}
+
+func (pbm *PVCBindingManager) resolveProjectNamespace(projectID, userID string) (string, error) {
+	if pbm.repos == nil || pbm.repos.User == nil {
+		safeUser := k8sclient.ToSafeK8sName(userID)
+		return k8sclient.FormatNamespaceName(projectID, safeUser), nil
+	}
+	user, err := pbm.repos.User.GetUserRawByID(userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve user for namespace: %w", err)
+	}
+	safeUsername := k8sclient.ToSafeK8sName(user.Username)
+	return k8sclient.FormatNamespaceName(projectID, safeUsername), nil
+}
+
+func parseBindingID(bindingID string) (string, string, error) {
+	parts := strings.SplitN(bindingID, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", fmt.Errorf("invalid binding id format: %s", bindingID)
+	}
+	return parts[0], parts[1], nil
+}
+
+func bindingStatus(binding *corev1.PersistentVolumeClaim) string {
+	if binding == nil {
+		return "Unknown"
+	}
+	return string(binding.Status.Phase)
 }
 
 // extractGroupIDFromPVCID extracts group ID from PVC ID (format: group-{gid}-{suffix})

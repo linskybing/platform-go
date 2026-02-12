@@ -12,6 +12,10 @@ type UpdateImageRequestDTO struct {
 	Note   string `json:"note"`
 }
 
+type ApplyReviewDTO struct {
+	Note string `json:"note"`
+}
+
 type AllowedImageDTO struct {
 	ID        string  `json:"id"`
 	Registry  string  `json:"registry"`

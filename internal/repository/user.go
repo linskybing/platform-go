@@ -7,14 +7,7 @@ import (
 )
 
 type UserRepo interface {
-	GetAllUsers() ([]user.UserWithSuperAdmin, error)
-	ListUsersPaging(page, limit int) ([]user.UserWithSuperAdmin, error)
-	GetUserByID(id string) (user.UserWithSuperAdmin, error)
-	GetUsernameByID(id string) (string, error)
-	GetUserByUsername(username string) (user.User, error)
-	GetUserRawByID(id string) (user.User, error)
-	SaveUser(user *user.User) error
-	DeleteUser(id string) error
+	user.Repository
 	ListUsersByProjectID(projectID string) ([]view.ProjectUserView, error)
 	WithTx(tx *gorm.DB) UserRepo
 }

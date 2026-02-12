@@ -40,7 +40,7 @@ func NewK8sService(repos *repository.Repos, imageValidator ImageValidator, cache
 		PermissionManager:  permMgr,
 		FileBrowserManager: NewFileBrowserManager(permMgr),
 		PVCBindingManager:  NewPVCBindingManager(repos, cacheSvc),
-		userStorageManager: NewUserStorageManager(),
+		userStorageManager: NewUserStorageManager(repos.Storage, repos.User),
 		StorageManager:     NewStorageManager(repos, cacheSvc),
 	}
 

@@ -14,6 +14,7 @@ import (
 	dimage "github.com/linskybing/platform-go/internal/domain/image"
 	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/response"
+	"github.com/linskybing/platform-go/pkg/utils"
 )
 
 type ImageHandler struct {
@@ -201,6 +202,81 @@ func (h *ImageHandler) GetFailedPullJobs(c *gin.Context) {
 		Message: "success",
 		Data:    jobs,
 	})
+}
+
+// ListAllImageRequests lists all global image requests (admin only).
+// Query params: status (optional) - filter by "pending", "approved", or "rejected"
+func (h *ImageHandler) ListAllImageRequests(c *gin.Context) {
+	status := c.Query("status")
+
+	requests, err := h.service.ListRequests(nil, status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.SuccessResponse{
+		Code:    http.StatusOK,
+		Message: "success",
+		Data:    requests,
+	})
+}
+
+// ApproveImageRequest approves a global image request (admin only).
+func (h *ImageHandler) ApproveImageRequest(c *gin.Context) {
+	requestID, err := utils.ParseIDParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid request id"})
+		return
+	}
+
+	approverID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	var payload dimage.ApplyReviewDTO
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	if err := h.service.ApproveRequest(requestID, payload.Note, true, approverID); err != nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.MessageResponse{Message: "image request approved"})
+}
+
+// RejectImageRequest rejects a global image request (admin only).
+func (h *ImageHandler) RejectImageRequest(c *gin.Context) {
+	requestID, err := utils.ParseIDParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid request id"})
+		return
+	}
+
+	approverID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	var payload dimage.ApplyReviewDTO
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	_, err = h.service.RejectRequest(requestID, payload.Note, approverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.MessageResponse{Message: "image request rejected"})
 }
 
 func splitImageName(fullImage string) (string, string) {

@@ -23,6 +23,7 @@ type Handlers struct {
 	FileBrowser  *FileBrowserHandler
 	StoragePerm  *StoragePermissionHandler
 	GroupStorage *GroupStorageHandler
+	UserStorage  *UserStorageHandler
 	Project      *ProjectHandler
 	User         *UserHandler
 	UserGroup    *UserGroupHandler
@@ -51,7 +52,8 @@ func NewWithCache(svc *application.Services, repos *repository.Repos, router *gi
 		PVCBinding:   NewPVCBindingHandler(svc.K8s.PVCBindingManager),
 		FileBrowser:  NewFileBrowserHandler(svc.K8s.FileBrowserManager),
 		StoragePerm:  NewStoragePermissionHandler(svc.K8s.PermissionManager),
-		GroupStorage: NewGroupStorageHandler(svc.K8s.StorageManager, svc.K8s.FileBrowserManager, svc.K8s.PermissionManager),
+		GroupStorage: NewGroupStorageHandler(svc.K8s.StorageManager, svc.K8s.FileBrowserManager, svc.K8s.PermissionManager, repos.Audit),
+		UserStorage:  NewUserStorageHandler(svc.K8s, repos.Audit),
 		Project:      NewProjectHandler(svc.Project),
 		User:         NewUserHandler(svc.User),
 		UserGroup:    NewUserGroupHandler(svc.UserGroup),

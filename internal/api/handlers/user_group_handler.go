@@ -361,15 +361,27 @@ func (h *UserGroupHandler) GetGroupMembers(c *gin.Context) {
 		return
 	}
 
-	members, err := h.svc.GetUserGroupsByGID(groupIDStr)
+	// Retrieve raw user-group relations from the service
+	raw, err := h.svc.GetUserGroupsByGID(groupIDStr)
 	if err != nil {
 		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: err.Error()})
 		return
 	}
 
+	// Format into a member list JSON (adds usernames and groups users by GID)
+	formatted := h.svc.FormatByGID(raw)
+
+	// Extract users array for the requested group id (or empty list)
+	users := []map[string]interface{}{}
+	if entry, ok := formatted[groupIDStr]; ok {
+		if u, ok2 := entry["Users"].([]map[string]interface{}); ok2 {
+			users = u
+		}
+	}
+
 	c.JSON(http.StatusOK, response.SuccessResponse{
 		Code:    0,
 		Message: "success",
-		Data:    members,
+		Data:    users,
 	})
 }

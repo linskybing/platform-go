@@ -468,8 +468,7 @@ DELIMITER ;
 
 -- Insert default super group
 INSERT INTO group_list (g_id, group_name, description)
-VALUES ('super_group', 'Super Administrator Group', 'System administrators with full access')
-ON DUPLICATE KEY UPDATE group_name = 'Super Administrator Group';
+VALUES ('super_group', 'super', 'System administrators with full access');
 
 -- Insert default admin user
 INSERT INTO users (u_id, username, password, type, status, full_name, email)
@@ -481,13 +480,11 @@ VALUES (
   'offline',
   'Administrator',
   'admin@platform.local'
-)
-ON DUPLICATE KEY UPDATE username = 'admin';
+);
 
 -- Add admin to super group
 INSERT INTO user_group (u_id, g_id, role)
-VALUES ('admin_001', 'super_group', 'admin')
-ON DUPLICATE KEY UPDATE role = 'admin';
+VALUES ('admin_001', 'super_group', 'admin');
 
 -- ============================================================================
 -- CONSTRAINTS VERIFICATION

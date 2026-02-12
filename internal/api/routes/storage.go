@@ -27,8 +27,9 @@ func registerStorageRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *midd
 			// Delete PVC binding by ID
 			pvcBinding.DELETE("/:binding_id", h.PVCBinding.DeleteBindingByID)
 
-			// Delete PVC binding - group manager access (via project_id in path)
-			pvcBinding.DELETE("/:project_id/:pvc_name", am.GroupManager(middleware.FromProjectIDParamName("project_id")), h.PVCBinding.DeleteBinding)
+			// Delete PVC binding by project and pvc name - group manager access
+			// use explicit 'project' segment to avoid conflict with '/:binding_id'
+			pvcBinding.DELETE("/project/:project_id/:pvc_name", am.GroupManager(middleware.FromProjectIDParamName("project_id")), h.PVCBinding.DeleteBinding)
 		}
 
 		// FileBrowser access routes
@@ -43,6 +44,23 @@ func registerStorageRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *midd
 	// Storage permission routes
 	storage := auth.Group("/storage")
 	{
+		// Group storage routes
+		// List storages for a group - group members can view
+		storage.GET("/group/:id", am.GroupMember(middleware.FromGroupIDParam()), h.GroupStorage.ListGroupStorages)
+
+		// List current user's accessible storages
+		storage.GET("/my-storages", h.GroupStorage.GetMyGroupStorages)
+
+		// Create group storage - group admin
+		storage.POST("/:id/storage", am.GroupAdmin(middleware.FromGroupIDParam()), h.GroupStorage.CreateGroupStorage)
+
+		// Delete group storage - group admin
+		storage.DELETE("/:id/storage/:pvcId", am.GroupAdmin(middleware.FromGroupIDParam()), h.GroupStorage.DeleteGroupStorage)
+
+		// Start/stop FileBrowser for a group PVC
+		storage.POST("/:id/storage/:pvcId/start", am.GroupMember(middleware.FromGroupIDParam()), h.GroupStorage.StartFileBrowser)
+		storage.DELETE("/:id/storage/:pvcId/stop", am.GroupMember(middleware.FromGroupIDParam()), h.GroupStorage.StopFileBrowser)
+
 		permissions := storage.Group("/permissions")
 		{
 			// Set permission - group admin only (via group_id in payload)

@@ -15,6 +15,7 @@ func registerK8sRoutes(r *gin.RouterGroup, h *handlers.Handlers, authMw *middlew
 		// User Storage (OpenMyDrive)
 		userStorage := k8sGroup.Group("/user-storage")
 		{
+			userStorage.GET("/status", h.K8s.CheckMyStorageStatus)
 			userStorage.POST("/browse", h.K8s.OpenMyDrive)
 			userStorage.DELETE("/browse", h.K8s.StopMyDrive)
 			// Proxy routes

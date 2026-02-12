@@ -14,6 +14,6 @@ import (
 func registerAuditRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *middleware.AuthMiddleware) {
 	audit := auth.Group("/audit")
 	{
-		audit.GET("", am.Admin(), h.Audit.GetAuditLogs)
+		audit.GET("/logs", am.Admin(), h.Audit.GetAuditLogs)
 	}
 }

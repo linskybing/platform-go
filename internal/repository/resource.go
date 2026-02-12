@@ -10,16 +10,9 @@ import (
 )
 
 type ResourceRepo interface {
-	CreateResource(resource *resource.Resource) error
-	GetResourceByID(rid string) (*resource.Resource, error)
-	UpdateResource(resource *resource.Resource) error
-	DeleteResource(rid string) error
-	ListResourcesByProjectID(pid string) ([]resource.Resource, error)
-	ListResourcesByConfigFileID(cfID string) ([]resource.Resource, error)
-	GetResourceByConfigFileIDAndName(cfID string, name string) (*resource.Resource, error)
+	resource.Repository
 	GetProjectResourcesByGroupID(groupID string) ([]view.ProjectResourceView, error)
 	GetGroupResourcesByGroupID(groupID string) ([]view.GroupResourceView, error)
-	GetGroupIDByResourceID(rID string) (string, error)
 	WithTx(tx *gorm.DB) ResourceRepo
 }
 

@@ -7,13 +7,7 @@ import (
 )
 
 type ProjectRepo interface {
-	GetProjectByID(id string) (project.Project, error)
-	GetGroupIDByProjectID(pID string) (string, error)
-	CreateProject(p *project.Project) error
-	UpdateProject(p *project.Project) error
-	DeleteProject(id string) error
-	ListProjects() ([]project.Project, error)
-	ListProjectsByGroup(id string) ([]project.Project, error)
+	project.Repository
 	ListProjectsByUserID(userID string) ([]view.ProjectUserView, error)
 	GetAllProjectGroupViews() ([]view.ProjectGroupView, error)
 	WithTx(tx *gorm.DB) ProjectRepo

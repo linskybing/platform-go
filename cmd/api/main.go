@@ -103,12 +103,10 @@ func main() {
 
 	log.Println("AutoMigrating storage and job models")
 	if err := db.DB.AutoMigrate(
-		&storage.GroupPVC{},
-		&storage.StorageHub{},
-		&storage.PersistentVolumeClaim{},
+		&storage.UserStorage{},
+		&storage.GroupStorage{},
 		&storage.GroupStoragePermission{},
 		&storage.GroupStorageAccessPolicy{},
-		&storage.ProjectPVCBinding{},
 		&job.Job{},
 	); err != nil {
 		log.Fatalf("Failed to migrate storage and job database models: %v", err)

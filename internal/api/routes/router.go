@@ -46,6 +46,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
 		registerImageRoutes(auth, handlers, authMiddleware)
 		registerJobRoutes(auth, handlers, authMiddleware)
 		registerStorageRoutes(auth, handlers, authMiddleware)
+		registerAdminStorageRoutes(auth, handlers, authMiddleware)
 		registerProjectRoutes(auth, handlers, authMiddleware)
 		registerUserRoutes(auth, handlers, authMiddleware)
 		registerK8sRoutes(auth, handlers, authMiddleware)

@@ -227,10 +227,10 @@ func (s *UserGroupService) FormatByGID(records []group.UserGroup) map[string]map
 	result := make(map[string]map[string]interface{})
 
 	for _, r := range records {
-		// Get username for this user
-		username, err := s.Repos.User.GetUsernameByID(r.UID)
-		if err != nil {
-			username = "" // If we can't get the username, use empty string
+		// Use preloaded username from User relationship
+		username := r.User.Username
+		if username == "" {
+			username = "" // If not loaded, use empty string
 		}
 
 		userInfo := map[string]interface{}{

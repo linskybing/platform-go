@@ -69,7 +69,7 @@ func (h *PVCBindingHandler) CreateBinding(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param project_id path string true "Project ID"
-// @Success 200 {object} response.Response{data=[]storage.ProjectPVCBinding}
+// @Success 200 {object} response.Response{data=[]storage.ProjectPVCBindingInfo}
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
 // @Router /k8s/pvc-binding/project/{project_id} [get]
@@ -80,7 +80,13 @@ func (h *PVCBindingHandler) ListBindings(c *gin.Context) {
 		return
 	}
 
-	bindings, err := h.bindingManager.ListProjectPVCBindings(c.Request.Context(), projectID)
+	userID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	bindings, err := h.bindingManager.ListProjectPVCBindings(c.Request.Context(), projectID, userID)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "Failed to list bindings: "+err.Error())
 		return
@@ -140,7 +146,13 @@ func (h *PVCBindingHandler) DeleteBinding(c *gin.Context) {
 		return
 	}
 
-	if err := h.bindingManager.DeleteProjectPVCBinding(c.Request.Context(), projectID, pvcName); err != nil {
+	userID, err := utils.GetUserIDFromContext(c)
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	if err := h.bindingManager.DeleteProjectPVCBinding(c.Request.Context(), projectID, userID, pvcName); err != nil {
 		response.Error(c, http.StatusInternalServerError, "Failed to delete binding: "+err.Error())
 		return
 	}

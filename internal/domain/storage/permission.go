@@ -86,31 +86,3 @@ func (m *GroupStorageAccessPolicy) BeforeCreate(tx *gorm.DB) (err error) {
 func (GroupStorageAccessPolicy) TableName() string {
 	return "group_storage_access_policies"
 }
-
-// ProjectPVCBinding represents a PVC in user's project namespace that binds to group PV
-// This allows users to mount group storage in their own project namespaces
-type ProjectPVCBinding struct {
-	ID               string    `gorm:"primaryKey;column:id;size:21"`
-	ProjectID        string    `gorm:"not null;index;size:21"`         // Project ID
-	UserID           string    `gorm:"not null;index;size:21"`         // User ID
-	GroupPVCID       string    `gorm:"size:100;not null;index"`        // Source group PVC ID
-	ProjectPVCName   string    `gorm:"size:100;not null;uniqueIndex"`  // PVC name in project namespace
-	ProjectNamespace string    `gorm:"size:100;not null;index"`        // Project namespace
-	SourcePVName     string    `gorm:"size:200;not null"`              // Original PV name to bind
-	AccessMode       string    `gorm:"size:50;default:'ReadOnlyMany'"` // ReadOnlyMany or ReadWriteMany
-	Status           string    `gorm:"size:50;default:'Pending'"`      // Bound, Pending, Failed
-	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt        time.Time `gorm:"column:updated_at;autoUpdateTime"`
-}
-
-func (m *ProjectPVCBinding) BeforeCreate(tx *gorm.DB) (err error) {
-	if m.ID == "" {
-		m.ID, err = gonanoid.New()
-	}
-	return
-}
-
-// TableName specifies the database table name
-func (ProjectPVCBinding) TableName() string {
-	return "project_pvc_bindings"
-}

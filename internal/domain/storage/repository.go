@@ -1,23 +1,31 @@
 package storage
 
-// Repository defines data access interface for storage resources
-type Repository interface {
-	// PVC operations
-	CreatePVC(pvc *PersistentVolumeClaim) error
-	GetPVC(id uint) (*PersistentVolumeClaim, error)
-	GetPVCByName(namespace, name string) (*PersistentVolumeClaim, error)
-	ListPVCs(namespace string) ([]PersistentVolumeClaim, error)
-	ListGroupPVCs(groupID uint) ([]PersistentVolumeClaim, error)
-	UpdatePVC(pvc *PersistentVolumeClaim) error
-	DeletePVC(id uint) error
-	DeletePVCByName(namespace, name string) error
+import (
+	"context"
 
-	// StorageHub operations
-	CreateHub(hub *StorageHub) error
-	GetHub(id uint) (*StorageHub, error)
-	GetHubByName(namespace, name string) (*StorageHub, error)
-	ListHubs(namespace string) ([]StorageHub, error)
-	UpdateHub(hub *StorageHub) error
-	DeleteHub(id uint) error
-	DeleteHubByName(namespace, name string) error
+	"gorm.io/gorm"
+)
+
+// Repository defines data access interface for storage resources
+type StorageRepo interface {
+	// Storage
+	CreateUserStorage(ctx context.Context, pvc *UserStorage) error
+	CreateGroupStorage(ctx context.Context, pvc *GroupStorage) error
+
+	GetUserStorage(ctx context.Context, id string) (*UserStorage, error)
+	GetGroupStorage(ctx context.Context, id string) (*GroupStorage, error)
+	GetUserStorageByUserID(ctx context.Context, userID string) (*UserStorage, error)
+
+	ListUserStorage(ctx context.Context) ([]UserStorage, error)
+	ListGroupStorage(ctx context.Context) ([]GroupStorage, error)
+	ListGroupStorageByGID(ctx context.Context, gid string) ([]GroupStorage, error)
+
+	UpdateUserStorage(ctx context.Context, pvc *UserStorage) error
+	UpdateGroupStorage(ctx context.Context, pvc *GroupStorage) error
+
+	DeleteUserStorage(ctx context.Context, id string) error
+	DeleteUserStorageByUserID(ctx context.Context, userID string) error
+	DeleteGroupStorage(ctx context.Context, id string) error
+
+	WithTx(tx *gorm.DB) StorageRepo
 }

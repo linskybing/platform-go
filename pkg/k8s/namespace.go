@@ -75,7 +75,7 @@ func EnsureNamespaceExists(nsName string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nsName,
 			Labels: map[string]string{
-				"managed-by": "gpu-platform",
+				"managed-by": "platform",
 				"created-at": time.Now().Format("20060102-150405"),
 			},
 		},

@@ -1,8 +1,6 @@
 package repository
 
-import (
-	"gorm.io/gorm"
-)
+import "gorm.io/gorm"
 
 type Repos struct {
 	ConfigFile        ConfigFileRepo
@@ -15,8 +13,8 @@ type Repos struct {
 	Form              FormRepo
 	Image             ImageRepo
 	StoragePermission StoragePermissionRepo
-	ProjectPVCBinding ProjectPVCBindingRepo
 	Job               JobRepo
+	Storage           *DBStorageRepo
 
 	db *gorm.DB
 }
@@ -33,7 +31,7 @@ func NewRepositories(db *gorm.DB) *Repos {
 		Form:              NewFormRepo(db),
 		Image:             NewImageRepo(db),
 		StoragePermission: NewStoragePermissionRepo(db),
-		ProjectPVCBinding: NewProjectPVCBindingRepo(db),
+		Storage:           NewStorageRepo(db),
 		Job:               NewJobRepo(db),
 		db:                db,
 	}
@@ -44,21 +42,9 @@ func (r *Repos) Begin() *gorm.DB {
 }
 
 func (r *Repos) WithTx(tx *gorm.DB) *Repos {
-	return &Repos{
-		ConfigFile:        r.ConfigFile.WithTx(tx),
-		Group:             r.Group.WithTx(tx),
-		Project:           r.Project.WithTx(tx),
-		Resource:          r.Resource.WithTx(tx),
-		UserGroup:         r.UserGroup.WithTx(tx),
-		User:              r.User.WithTx(tx),
-		Audit:             r.Audit.WithTx(tx),
-		Form:              r.Form.WithTx(tx),
-		Image:             NewImageRepo(tx),
-		StoragePermission: r.StoragePermission.WithTx(tx),
-		ProjectPVCBinding: r.ProjectPVCBinding.WithTx(tx),
-		Job:               r.Job.WithTx(tx),
-		db:                tx,
-	}
+	txRepos := NewRepositories(tx)
+	txRepos.db = tx
+	return txRepos
 }
 
 func (r *Repos) ExecTx(fn func(*Repos) error) error {

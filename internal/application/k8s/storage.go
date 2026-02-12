@@ -8,7 +8,7 @@ import (
 )
 
 // CreateGroupPVC creates a new persistent volume claim for a group.
-func (s *K8sService) CreateGroupPVC(ctx context.Context, groupID string, req *storage.CreateGroupStorageRequest, createdByID string) (*storage.GroupPVC, error) {
+func (s *K8sService) CreateGroupPVC(ctx context.Context, groupID string, req *storage.CreateGroupStorageRequest, createdByID string) (*storage.GroupPVCSpec, error) {
 	if groupID == "" {
 		return nil, fmt.Errorf("invalid group ID: %w", ErrInvalidID)
 	}
@@ -27,7 +27,7 @@ func (s *K8sService) CreateGroupPVC(ctx context.Context, groupID string, req *st
 }
 
 // ListGroupPVCs returns all persistent volume claims for a group.
-func (s *K8sService) ListGroupPVCs(ctx context.Context, groupID string) ([]storage.GroupPVC, error) {
+func (s *K8sService) ListGroupPVCs(ctx context.Context, groupID string) ([]storage.GroupPVCSpec, error) {
 	if groupID == "" {
 		return nil, fmt.Errorf("invalid group ID: %w", ErrInvalidID)
 	}

@@ -19,23 +19,12 @@ import (
 const pvcCacheTTL = 5 * time.Minute
 
 // CreateGroupPVC creates a new PVC for a group with performance logging.
-func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, req *storage.CreateGroupStorageRequest, createdByID string) (*storage.GroupPVC, error) {
+func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, req *storage.CreateGroupStorageRequest, createdByID string) (*storage.GroupPVCSpec, error) {
 	startTime := time.Now()
 
 	pvcID, err := sm.generateGroupPVCID(groupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate PVC ID: %w", err)
-	}
-
-	if k8sclient.Clientset == nil {
-		slog.Warn("k8s client not initialized, using mock PVC",
-			"group_id", groupID,
-			"pvc_name", req.Name)
-		return &storage.GroupPVC{
-			ID:      pvcID,
-			GroupID: groupID,
-			Name:    req.Name,
-		}, nil
 	}
 
 	ns := sm.getGroupNamespace(groupID)
@@ -89,6 +78,42 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, re
 		},
 	}
 
+	if k8sclient.Clientset == nil {
+		slog.Warn("k8s client not initialized, using mock PVC",
+			"group_id", groupID,
+			"pvc_name", pvcName)
+		if sm.storageRepo != nil {
+			dbPVC := &storage.GroupStorage{
+				ID:           pvcID,
+				Name:         req.Name,
+				GroupID:      groupID,
+				PVCName:      pvcName,
+				Capacity:     req.Capacity,
+				StorageClass: scName,
+				CreatedBy:    createdByID,
+			}
+			if err := sm.storageRepo.CreateGroupStorage(ctx, dbPVC); err != nil {
+				slog.Error("failed to persist group storage to database",
+					"group_id", groupID,
+					"pvc_id", pvcID,
+					"error", err)
+			}
+		}
+		return &storage.GroupPVCSpec{
+			ID:           pvcID,
+			GroupID:      groupID,
+			Name:         req.Name,
+			Namespace:    ns,
+			PVCName:      pvcName,
+			Capacity:     req.Capacity,
+			StorageClass: scName,
+			AccessMode:   string(corev1.ReadWriteMany),
+			Status:       "Unknown",
+			CreatedBy:    createdByID,
+			CreatedAt:    time.Now(),
+		}, nil
+	}
+
 	result, err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(ns).Create(ctx, pvc, metav1.CreateOptions{})
 	if err != nil {
 		slog.Error("failed to create k8s PVC",
@@ -99,18 +124,36 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, re
 		return nil, fmt.Errorf("failed to create K8s PVC: %w", err)
 	}
 
-	groupPVC := &storage.GroupPVC{
+	if sm.storageRepo != nil {
+		dbPVC := &storage.GroupStorage{
+			ID:           pvcID,
+			Name:         req.Name,
+			GroupID:      groupID,
+			PVCName:      result.Name,
+			Capacity:     req.Capacity,
+			StorageClass: scName,
+			CreatedBy:    createdByID,
+		}
+		if err := sm.storageRepo.CreateGroupStorage(ctx, dbPVC); err != nil {
+			slog.Error("failed to persist group storage to database",
+				"group_id", groupID,
+				"pvc_id", pvcID,
+				"error", err)
+		}
+	}
+
+	groupPVC := &storage.GroupPVCSpec{
 		ID:           pvcID,
 		Name:         req.Name,
 		GroupID:      groupID,
 		Namespace:    ns,
 		PVCName:      result.Name,
-		Size:         fmt.Sprintf("%dGi", req.Capacity),
 		Capacity:     req.Capacity,
 		StorageClass: scName,
 		AccessMode:   string(corev1.ReadWriteMany),
 		Status:       string(result.Status.Phase),
 		CreatedBy:    createdByID,
+		CreatedAt:    time.Now(),
 	}
 
 	sm.invalidatePVCsCache(ctx, groupID)
@@ -128,118 +171,107 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, re
 }
 
 // ListGroupPVCs retrieves all PVCs for a group with caching and performance metrics.
-func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID string) ([]storage.GroupPVC, error) {
-	// Try cache first
+func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID string) ([]storage.GroupPVCSpec, error) {
+	var records []storage.GroupStorage
 	if cached, ok := sm.getCachedPVCs(groupID); ok {
-		return cached, nil
-	}
-
-	cacheKey := sm.pvcCacheKey(groupID)
-	if sm.cache != nil && sm.cache.Enabled() {
-		var cached []storage.GroupPVC
-		if err := sm.cache.GetJSON(ctx, cacheKey, &cached); err == nil {
-			sm.setCachedPVCs(groupID, cached, pvcCacheTTL)
-			return cached, nil
+		records = cached
+	} else if sm.storageRepo != nil {
+		list, err := sm.storageRepo.ListGroupStorageByGID(ctx, groupID)
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	if k8sclient.Clientset == nil {
-		return []storage.GroupPVC{}, nil
+		records = list
+		sm.setCachedPVCs(groupID, list, pvcCacheTTL)
 	}
 
 	ns := sm.getGroupNamespace(groupID)
-	pvcList, err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(ns).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("group-id=%s", groupID),
-	})
+	result := make([]storage.GroupPVCSpec, 0, len(records))
 
-	if err != nil {
-		// Namespace might not exist, return empty
-		return []storage.GroupPVC{}, nil
-	}
+	for _, rec := range records {
+		status := "Unknown"
+		accessMode := string(corev1.ReadWriteMany)
+		storageClass := rec.StorageClass
+		capacity := rec.Capacity
 
-	var pvcs []storage.GroupPVC
-	for _, p := range pvcList.Items {
-		pvcID := p.Labels["pvc-uuid"]
-		if pvcID == "" {
-			pvcID = p.Name
+		if k8sclient.Clientset != nil {
+			pvc, err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(ns).Get(ctx, rec.PVCName, metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					status = "Missing"
+				} else {
+					return nil, err
+				}
+			} else {
+				status = string(pvc.Status.Phase)
+				if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName != "" {
+					storageClass = *pvc.Spec.StorageClassName
+				}
+				if len(pvc.Spec.AccessModes) > 0 {
+					accessMode = string(pvc.Spec.AccessModes[0])
+				}
+				if q, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
+					capacity = int(q.Value() / (1024 * 1024 * 1024))
+				}
+			}
 		}
 
-		capacity := 0
-		if q, ok := p.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
-			capacity = int(q.Value() / (1024 * 1024 * 1024))
-		}
-
-		sc := ""
-		if p.Spec.StorageClassName != nil {
-			sc = *p.Spec.StorageClassName
-		}
-
-		am := ""
-		if len(p.Spec.AccessModes) > 0 {
-			am = string(p.Spec.AccessModes[0])
-		}
-
-		pvcs = append(pvcs, storage.GroupPVC{
-			ID:           pvcID,
-			Name:         p.Name, // Using K8s name as display name fallback
-			GroupID:      groupID,
-			Namespace:    p.Namespace,
-			PVCName:      p.Name,
-			Size:         fmt.Sprintf("%dGi", capacity),
+		result = append(result, storage.GroupPVCSpec{
+			ID:           rec.ID,
+			GroupID:      rec.GroupID,
+			Name:         rec.Name,
+			Namespace:    ns,
+			PVCName:      rec.PVCName,
 			Capacity:     capacity,
-			StorageClass: sc,
-			AccessMode:   am,
-			Status:       string(p.Status.Phase),
+			StorageClass: storageClass,
+			AccessMode:   accessMode,
+			Status:       status,
+			CreatedAt:    rec.CreatedAt,
+			CreatedBy:    rec.CreatedBy,
 		})
 	}
 
-	sm.setCachedPVCs(groupID, pvcs, pvcCacheTTL)
-	return pvcs, nil
+	return result, nil
 }
 
 // DeleteGroupPVC deletes a persistent volume claim from a group.
 func (sm *StorageManager) DeleteGroupPVC(ctx context.Context, pvcID string) error {
-	// Extract group ID from PVC ID: group-{gid}-{suffix}
-	parts := strings.Split(pvcID, "-")
-	if len(parts) < 3 || parts[0] != "group" {
-		return fmt.Errorf("invalid PVC ID format: %s", pvcID)
-	}
-	// Since gid is NanoID (maybe containing - ?) No, NanoID alphabet I used is lowercase+numbers.
-	// But standard NanoID has - and _. I used custom alphabet without - inside `generateGroupPVCID` (storage_manager).
-	// So splitting by - is safe for `gid` IF `gid` itself doesn't contain `-`.
-	// WARNING: GroupID (from Group model) uses standard NanoID `gonanoid.New()` probably.
-	// `internal/domain/group/model.go` uses `nanoid.New()`. `nanoid` contains `_` and `-`.
-	// So `parts := strings.Split(id, "-")` is DANGEROUS if GroupID has hyphen.
+	var groupID string
+	var pvcName string
 
-	// If GroupID has hyphen, `group-{gid}-{suffix}` parsing fails using Split.
-	// ID structure is `group` `gid` `suffix`.
-	// Suffix is fixed length (10).
-	// So we can parse from right?
-	// `suffix` = last 10 chars.
-	// `gid` = substring from index 6 to len-11.
-
-	if len(pvcID) < 6+10+2 { // group- + - + suffix
-		return fmt.Errorf("invalid PVC ID format (too short): %s", pvcID)
+	if sm.storageRepo != nil {
+		rec, err := sm.storageRepo.GetGroupStorage(ctx, pvcID)
+		if err == nil && rec != nil {
+			groupID = rec.GroupID
+			pvcName = rec.PVCName
+		}
 	}
 
-	// check hyphen before suffix at position len-11
-	if pvcID[len(pvcID)-11] != '-' {
-		return fmt.Errorf("invalid PVC ID format (separator): %s", pvcID)
+	if groupID == "" {
+		parsedGroupID, err := extractGroupIDFromPVCID(pvcID)
+		if err != nil {
+			return err
+		}
+		groupID = parsedGroupID
 	}
 
-	// groupID is between 'group-' and '-suffix'
-	groupID := pvcID[6 : len(pvcID)-11]
+	if pvcName == "" {
+		pvcName = strings.Replace(pvcID, "group", "pvc", 1)
+	}
 
 	ns := sm.getGroupNamespace(groupID)
-
-	// pvcName is pvc-{suffix} ? No, earlier I did: strings.Replace(pvcID, "group", "pvc", 1)
-	// so pvcName = pvc-{gid}-{suffix}.
-	pvcName := strings.Replace(pvcID, "group", "pvc", 1)
 
 	if k8sclient.Clientset != nil {
 		err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(ns).Delete(ctx, pvcName, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete K8s PVC: %w", err)
+		}
+	}
+
+	if sm.storageRepo != nil {
+		if err := sm.storageRepo.DeleteGroupStorage(ctx, pvcID); err != nil {
+			slog.Error("failed to delete group storage from database",
+				"pvc_id", pvcID,
+				"error", err)
 		}
 	}
 

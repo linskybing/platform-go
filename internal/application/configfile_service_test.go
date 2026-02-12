@@ -92,7 +92,7 @@ func TestCreateConfigFile_Success(t *testing.T) {
 		ProjectID: "1",
 	}
 
-	cf, err := svc.CreateConfigFile(c, input)
+	cf, err := svc.CreateConfigFile(c.Request.Context(), input, c.MustGet("claims").(*types.Claims))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestCreateConfigFile_NoYAMLDocuments(t *testing.T) {
 		ProjectID: "1",
 	}
 
-	_, err := svc.CreateConfigFile(c, input)
+	_, err := svc.CreateConfigFile(c.Request.Context(), input, c.MustGet("claims").(*types.Claims))
 	if !errors.Is(err, application.ErrNoValidYAMLDocument) {
 		t.Fatalf("expected ErrNoValidYAMLDocument, got %v", err)
 	}
@@ -158,7 +158,7 @@ func TestUpdateConfigFile_Success(t *testing.T) {
 		RawYaml:  &rawYaml,
 	}
 
-	cf, err := svc.UpdateConfigFile(c, "1", input)
+	cf, err := svc.UpdateConfigFile(c.Request.Context(), "1", input, c.MustGet("claims").(*types.Claims))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestDeleteConfigFile_Success(t *testing.T) {
 
 	// k8s.DeleteByJson is a function that uses mock behavior when k8s clients are nil, so no override needed
 
-	err := svc.DeleteConfigFile(c, "1")
+	err := svc.DeleteConfigFile(c.Request.Context(), "1", c.MustGet("claims").(*types.Claims))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestCreateInstance_Success(t *testing.T) {
 	mockProject.EXPECT().GetProjectByID("1").Return(project.Project{PID: "1", GID: "10"}, nil).AnyTimes()
 	mockUserGroup.EXPECT().GetUserGroup("1", "10").Return(group.UserGroup{UID: "1", GID: "10", Role: "admin"}, nil).AnyTimes()
 
-	err := svc.CreateInstance(c, "1")
+	err := svc.CreateInstance(c.Request.Context(), "1", c.MustGet("claims").(*types.Claims))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -214,7 +214,7 @@ func TestDeleteInstance_Success(t *testing.T) {
 	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{{RID: "1", ParsedYAML: datatypes.JSON([]byte("{}"))}}, nil)
 	mockCF.EXPECT().GetConfigFileByID("1").Return(&configfile.ConfigFile{CFID: "1", ProjectID: "1"}, nil)
 
-	err := svc.DeleteInstance(c, "1")
+	err := svc.DeleteInstance(c.Request.Context(), "1", c.MustGet("claims").(*types.Claims))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

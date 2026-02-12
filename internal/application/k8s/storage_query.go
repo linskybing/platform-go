@@ -7,7 +7,7 @@ import (
 )
 
 // GetGroupPVCsByUserGroups retrieves PVCs for all groups a user belongs to.
-func (sm *StorageManager) GetGroupPVCsByUserGroups(ctx context.Context, userID uint) (map[uint][]storage.GroupPVC, error) {
-	result := make(map[uint][]storage.GroupPVC)
+func (sm *StorageManager) GetGroupPVCsByUserGroups(ctx context.Context, userID string) (map[string][]storage.GroupStorage, error) {
+	result := make(map[string][]storage.GroupStorage)
 	return result, nil
 }

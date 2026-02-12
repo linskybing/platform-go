@@ -68,6 +68,9 @@ spec:
               value: "256"
             - name: REDIS_ASYNC_WORKERS
               value: "2"
+            # CORS Configuration
+            - name: ALLOWED_ORIGINS
+              value: "http://10.121.124.21:5174"
       volumes:
         - name: local-data
           hostPath:

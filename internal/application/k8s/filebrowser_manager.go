@@ -162,11 +162,8 @@ func (fbm *FileBrowserManager) listPVCsByID(ctx context.Context, namespace, pvcI
 		return []corev1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Name: "mock-pvc"}}}, nil
 	}
 
-	// Extract UUID from PVC ID (format: group-{gid}-{uuid})
-	uuid := pvcID[len("group-XX-"):] // Simplified extraction
-
 	listOpts := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("pvc-uuid=%s", uuid),
+		LabelSelector: fmt.Sprintf("pvc-uuid=%s", pvcID),
 	}
 
 	pvcList, err := k8sclient.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(ctx, listOpts)

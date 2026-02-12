@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/application/k8s"
 	"github.com/linskybing/platform-go/internal/domain/storage"
+	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/response"
 	"github.com/linskybing/platform-go/pkg/utils"
 )
@@ -15,10 +16,11 @@ type GroupStorageHandler struct {
 	storageMgr  *k8s.StorageManager
 	fbManager   *k8s.FileBrowserManager
 	permManager *k8s.PermissionManager
+	auditRepo   repository.AuditRepo
 }
 
-func NewGroupStorageHandler(sm *k8s.StorageManager, fb *k8s.FileBrowserManager, pm *k8s.PermissionManager) *GroupStorageHandler {
-	return &GroupStorageHandler{storageMgr: sm, fbManager: fb, permManager: pm}
+func NewGroupStorageHandler(sm *k8s.StorageManager, fb *k8s.FileBrowserManager, pm *k8s.PermissionManager, auditRepo repository.AuditRepo) *GroupStorageHandler {
+	return &GroupStorageHandler{storageMgr: sm, fbManager: fb, permManager: pm, auditRepo: auditRepo}
 }
 
 // ListGroupStorages godoc
@@ -27,10 +29,10 @@ func NewGroupStorageHandler(sm *k8s.StorageManager, fb *k8s.FileBrowserManager, 
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Group ID"
-// @Success 200 {array} storage.GroupPVC
+// @Success 200 {array} storage.GroupPVCSpec
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /groups/{id}/storage [get]
+// @Router /storage/group/{id} [get]
 func (h *GroupStorageHandler) ListGroupStorages(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -54,7 +56,7 @@ func (h *GroupStorageHandler) ListGroupStorages(c *gin.Context) {
 // @Produce json
 // @Success 200 {array} storage.GroupPVCWithPermissions
 // @Failure 500 {object} response.Response
-// @Router /groups/my-storages [get]
+// @Router /storage/my-storages [get]
 func (h *GroupStorageHandler) GetMyGroupStorages(c *gin.Context) {
 	userID, err := utils.GetUserIDFromContext(c)
 	if err != nil {
@@ -128,10 +130,10 @@ func (h *GroupStorageHandler) GetMyGroupStorages(c *gin.Context) {
 // @Produce json
 // @Param id path int true "Group ID"
 // @Param request body storage.CreateGroupStorageRequest true "Create request"
-// @Success 200 {object} storage.GroupPVC
+// @Success 200 {object} storage.GroupPVCSpec
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /groups/{id}/storage [post]
+// @Router /storage/{id}/storage [post]
 func (h *GroupStorageHandler) CreateGroupStorage(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -149,6 +151,10 @@ func (h *GroupStorageHandler) CreateGroupStorage(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "Failed to create group storage: "+err.Error())
 		return
 	}
+
+	// Audit log
+	utils.LogAuditWithConsole(c, "create", "group_storage", pvc.ID, nil, pvc, "Created group storage", h.auditRepo)
+
 	response.Success(c, pvc, "Group storage created")
 }
 
@@ -162,7 +168,7 @@ func (h *GroupStorageHandler) CreateGroupStorage(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /groups/{id}/storage/{pvcId} [delete]
+// @Router /storage/{id}/storage/{pvcId} [delete]
 func (h *GroupStorageHandler) DeleteGroupStorage(c *gin.Context) {
 	id := c.Param("id")
 	pvcId := c.Param("pvcId")
@@ -174,6 +180,10 @@ func (h *GroupStorageHandler) DeleteGroupStorage(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "Failed to delete pvc: "+err.Error())
 		return
 	}
+
+	// Audit log
+	utils.LogAuditWithConsole(c, "delete", "group_storage", pvcId, gin.H{"group_id": id, "pvc_id": pvcId}, nil, "Deleted group storage", h.auditRepo)
+
 	response.Success(c, nil, "Deleted")
 }
 
@@ -187,7 +197,7 @@ func (h *GroupStorageHandler) DeleteGroupStorage(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /groups/{id}/storage/{pvcId}/start [post]
+// @Router /storage/{id}/storage/{pvcId}/start [post]
 func (h *GroupStorageHandler) StartFileBrowser(c *gin.Context) {
 	id := c.Param("id")
 	pvcId := c.Param("pvcId")
@@ -222,7 +232,7 @@ func (h *GroupStorageHandler) StartFileBrowser(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /groups/{id}/storage/{pvcId}/stop [delete]
+// @Router /storage/{id}/storage/{pvcId}/stop [delete]
 func (h *GroupStorageHandler) StopFileBrowser(c *gin.Context) {
 	id := c.Param("id")
 	pvcId := c.Param("pvcId")

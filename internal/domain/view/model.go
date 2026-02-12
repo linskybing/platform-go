@@ -23,11 +23,11 @@ type ProjectResourceView struct {
 }
 
 type GroupResourceView struct {
-	GID              uint   `gorm:"column:g_id" json:"GID"`
+	GID              string `gorm:"column:g_id" json:"GID"`
 	GroupName        string `gorm:"column:group_name" json:"GroupName"`
-	PID              uint   `gorm:"column:p_id" json:"PID"`
+	PID              string `gorm:"column:p_id" json:"PID"`
 	ProjectName      string `gorm:"column:project_name" json:"ProjectName"`
-	RID              uint   `gorm:"column:r_id" json:"RID"`
+	RID              string `gorm:"column:r_id" json:"RID"`
 	ResourceType     string `gorm:"column:resource_type" json:"ResourceType"`
 	ResourceName     string `gorm:"column:resource_name" json:"ResourceName"`
 	Filename         string `gorm:"column:filename" json:"Filename"`

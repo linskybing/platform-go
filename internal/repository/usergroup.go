@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"gorm.io/gorm"
@@ -53,6 +54,7 @@ func (r *DBUserGroupRepo) GetUserGroupsByGID(gid string) ([]group.UserGroup, err
 	var userGroups []group.UserGroup
 	err := r.db.
 		Where("g_id = ?", gid).
+		Preload("User").
 		Find(&userGroups).Error
 	return userGroups, err
 }
@@ -67,9 +69,9 @@ func (r *DBUserGroupRepo) IsSuperAdmin(uid string) (bool, error) {
 	var count int64
 	err := r.db.Table("user_group").
 		Joins("JOIN group_list g ON g.g_id = user_group.g_id").
-		Where("user_group.u_id = ? AND g.group_name = ? AND user_group.role = ?", uid, "super", "admin").
+		Where("user_group.u_id = ? AND g.g_id = ? AND user_group.role = ?", uid, "super_group", "admin").
 		Count(&count).Error
-
+	fmt.Printf("%d\n", count)
 	if err != nil {
 		return false, err
 	}

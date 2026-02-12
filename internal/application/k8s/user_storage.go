@@ -19,12 +19,12 @@ func (s *K8sService) CheckUserStorageExists(ctx context.Context, username string
 }
 
 // InitializeUserStorageHub initializes a new storage hub for a user.
-func (s *K8sService) InitializeUserStorageHub(username string) error {
+func (s *K8sService) InitializeUserStorageHub(username, adminID string) error {
 	if username == "" {
 		return fmt.Errorf("username is required: %w", ErrMissingField)
 	}
 
-	if err := s.userStorageManager.Initialize(username); err != nil {
+	if err := s.userStorageManager.Initialize(username, adminID); err != nil {
 		return fmt.Errorf("failed to initialize storage hub for user %s: %w", username, err)
 	}
 	return nil

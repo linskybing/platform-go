@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,6 +31,7 @@ var (
 	MinioSecretKey   string
 	MinioUseSSL      bool
 	MinioBucket      string
+	AllowedOrigins   []string
 	// Redis
 	RedisAddr               string
 	RedisUsername           string
@@ -109,6 +111,12 @@ func LoadConfig() {
 	// Environment
 	env := getEnv("GO_ENV", "development")
 	IsProduction = env == "production" || env == "release"
+
+	// CORS Allowed Origins
+	allowedOriginsStr := getEnv("ALLOWED_ORIGINS", "")
+	if allowedOriginsStr != "" {
+		AllowedOrigins = strings.Split(allowedOriginsStr, ",")
+	}
 
 	// K8s Service Names
 	PersonalStorageServiceName = getEnv("PERSONAL_STORAGE_SERVICE_NAME", "storage-svc")

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/linskybing/platform-go/internal/application/executor"
 	"github.com/linskybing/platform-go/pkg/k8s"
 	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"gorm.io/datatypes"
 )
 
@@ -41,7 +41,10 @@ func (s *ConfigFileService) CreateInstance(ctx context.Context, id string, claim
 	var groupPVCName string
 
 	// Standard Deployment: Bind Volumes & Check Permissions
-	userPvc, grpPvc := s.bindProjectAndUserVolumes(ns, proj, claims)
+	userPvc, grpPvc, err := s.bindProjectAndUserVolumes(ctx, ns, proj, claims, resources)
+	if err != nil {
+		return err
+	}
 	shouldEnforceRO, err = s.determineReadOnlyEnforcement(claims, proj)
 	if err != nil {
 		return err

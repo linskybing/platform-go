@@ -9,6 +9,7 @@ type GroupPVCSpec struct {
 	ID           string    `json:"id"`            // Unique identifier: group-{gid}-{uuid}
 	GroupID      string    `json:"group_id"`      // Group ID
 	Name         string    `json:"name"`          // User-friendly PVC name
+	Namespace    string    `json:"namespace"`     // K8s namespace
 	PVCName      string    `json:"pvc_name"`      // K8s PVC name (for direct deletion)
 	Capacity     int       `json:"capacity"`      // Size in Gi
 	StorageClass string    `json:"storage_class"` // Storage class name

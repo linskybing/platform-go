@@ -107,20 +107,24 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 // CORSMiddleware enables CORS for the API
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 1. Get the origin from the incoming request
 		origin := c.Request.Header.Get("Origin")
+		// Check if the origin is in the allowed list
+		isOriginAllowed := false
+		if len(config.AllowedOrigins) > 0 {
+			for _, allowedOrigin := range config.AllowedOrigins {
+				if origin == allowedOrigin {
+					isOriginAllowed = true
+					break
+				}
+			}
+		}
 
-		// 2. Set the 'Allow-Origin' to the request's origin (instead of "*")
-		// If origin is empty (e.g. server-to-server), you might want to default to "*" or handle it differently
-		if origin != "" {
+		if isOriginAllowed {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		} else {
-			// Optional: Fallback for non-browser requests
-			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		}
 
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-API-Key")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 
 		if c.Request.Method == "OPTIONS" {

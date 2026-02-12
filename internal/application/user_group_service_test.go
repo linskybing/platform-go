@@ -9,6 +9,7 @@ import (
 	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"github.com/linskybing/platform-go/internal/domain/project"
+	"github.com/linskybing/platform-go/internal/domain/user"
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/internal/repository/mock"
 	"github.com/linskybing/platform-go/pkg/utils"
@@ -233,10 +234,8 @@ func TestFormatByUID(t *testing.T) {
 }
 
 func TestFormatByGID(t *testing.T) {
-	svc, _, mockUserRepo, _, mockGroupRepo, _, _ := setupUserGroupMocks(t)
-	// Add mock expectations for GetUsernameByID calls
-	mockUserRepo.EXPECT().GetUsernameByID("1").Return("user1", nil)
-	mockUserRepo.EXPECT().GetUsernameByID("2").Return("user2", nil)
+	svc, _, _, _, mockGroupRepo, _, _ := setupUserGroupMocks(t)
+	// No need for GetUsernameByID mocks since we use preloaded User data
 
 	// Add mock expectation for GetGroupByID call
 	mockGroupRepo.EXPECT().GetGroupByID("10").Return(group.Group{
@@ -245,8 +244,8 @@ func TestFormatByGID(t *testing.T) {
 	}, nil)
 
 	records := []group.UserGroup{
-		{UID: "1", GID: "10", Role: "user"},
-		{UID: "2", GID: "10", Role: "admin"},
+		{UID: "1", GID: "10", Role: "user", User: user.User{Username: "user1"}},
+		{UID: "2", GID: "10", Role: "admin", User: user.User{Username: "user2"}},
 	}
 
 	res := svc.FormatByGID(records)
