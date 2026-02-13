@@ -222,17 +222,17 @@ func (c *DatabaseCleaner) Cleanup() error {
 
 	// Delete projects
 	for _, pid := range c.projectIDs {
-		_ = db.DB.Delete(&project.Project{}, pid).Error
+		_ = db.DB.Delete(&project.Project{PID: pid}).Error
 	}
 
 	// Delete users
 	for _, uid := range c.userIDs {
-		_ = db.DB.Delete(&user.User{}, uid).Error
+		_ = db.DB.Delete(&user.User{UID: uid}).Error
 	}
 
 	// Delete groups
 	for _, gid := range c.groupIDs {
-		_ = db.DB.Delete(&group.Group{}, gid).Error
+		_ = db.DB.Delete(&group.Group{GID: gid}).Error
 	}
 
 	return nil

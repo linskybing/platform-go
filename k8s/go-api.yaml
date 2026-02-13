@@ -68,13 +68,17 @@ spec:
               value: "256"
             - name: REDIS_ASYNC_WORKERS
               value: "2"
-            # CORS Configuration
+            # CORS Configuration - set to match your frontend URL
             - name: ALLOWED_ORIGINS
-              value: "http://10.121.124.21:5174"
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: allowed-origins
+                  optional: true
       volumes:
         - name: local-data
           hostPath:
-            path: /home/sky/platform/backend
+            path: /home/sky/platform/backend  # DEV ONLY: replace with PVC in production
             type: Directory
 ---
 apiVersion: v1

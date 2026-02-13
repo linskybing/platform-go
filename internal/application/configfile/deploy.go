@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/linskybing/platform-go/internal/application/executor"
+	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/pkg/k8s"
 	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
@@ -26,14 +29,52 @@ func (s *ConfigFileService) CreateInstance(ctx context.Context, id string, claim
 		return err
 	}
 
+	submitType := string(executor.SubmitTypeJob)
+	if ctxSubmitType, ok := submitTypeFromContext(ctx); ok {
+		submitType = ctxSubmitType
+	}
+	resources, err = filterResourcesBySubmitType(resources, submitType)
+	if err != nil {
+		return err
+	}
+
 	// 2. Prepare Context (Namespace, Project, Claims)
 	ns, proj, err := s.prepareNamespaceAndProject(ctx, cf, claims)
 	if err != nil {
 		return err
 	}
+	if allowed, err := proj.IsTimeAllowed(time.Now()); err != nil {
+		return fmt.Errorf("failed to validate project schedule: %w", err)
+	} else if !allowed {
+		return fmt.Errorf("project is outside allowed schedule")
+	}
 
 	// 3. Determine Deployment Strategy (Job-only vs Standard)
 	// isJobOnly := s.configFileIsAllJobs(resources)
+
+	var jobID string
+	var queueName string
+	var priority int32
+	if s.executor != nil {
+		if ctxJobID, ok := jobIDFromContext(ctx); ok {
+			jobID = ctxJobID
+		} else {
+			jobIDValue, err := gonanoid.New()
+			if err != nil {
+				return fmt.Errorf("failed to generate job ID: %w", err)
+			}
+			jobID = jobIDValue
+		}
+		if ctxQueueName, ok := queueNameFromContext(ctx); ok {
+			queueName = ctxQueueName
+		}
+		if ctxPriority, ok := priorityFromContext(ctx); ok {
+			priority = ctxPriority
+		}
+		if queueName == "" {
+			queueName = defaultQueueForResources(resources)
+		}
+	}
 
 	// 4. Prepare Variables & Volumes
 	var templateValues map[string]string
@@ -75,6 +116,10 @@ func (s *ConfigFileService) CreateInstance(ctx context.Context, id string, claim
 			return fmt.Errorf("failed to unmarshal resource %s: %w", res.Name, err)
 		}
 
+		if jobID != "" {
+			injectJobLabels(obj, jobID, cf.CFID)
+		}
+
 		// C. Apply Patches (In-Memory Map Manipulation)
 		//    All business logic validation and injection happens here without re-marshaling.
 		patchCtx := &PatchContext{
@@ -114,12 +159,7 @@ func (s *ConfigFileService) CreateInstance(ctx context.Context, id string, claim
 
 	// Use executor if available, otherwise use direct K8s deployment
 	if s.executor != nil {
-		// Generate job ID
-		jobID, err := gonanoid.New()
-		if err != nil {
-			return fmt.Errorf("failed to generate job ID: %w", err)
-		}
-
+		submitTypeValue := executor.SubmitType(submitType)
 		// Prepare resource payloads (no double unmarshal needed!)
 		payloads := make([]executor.ResourcePayload, len(processedResources))
 		for i, pr := range processedResources {
@@ -139,6 +179,9 @@ func (s *ConfigFileService) CreateInstance(ctx context.Context, id string, claim
 			UserID:       claims.UserID,
 			Username:     claims.Username,
 			Resources:    payloads,
+			SubmitType:   submitTypeValue,
+			QueueName:    queueName,
+			Priority:     priority,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to submit job: %w", err)
@@ -209,4 +252,61 @@ func (s *ConfigFileService) DeleteConfigFileInstance(id string) error {
 	}
 
 	return nil
+}
+
+func filterResourcesBySubmitType(resources []resource.Resource, submitType string) ([]resource.Resource, error) {
+	if submitType == "" {
+		return resources, nil
+	}
+	mode := strings.ToLower(submitType)
+	if mode != string(executor.SubmitTypeJob) && mode != string(executor.SubmitTypeWorkflow) {
+		return nil, fmt.Errorf("invalid submit_type: %s", submitType)
+	}
+
+	filtered := make([]resource.Resource, 0, len(resources))
+	workloadCount := 0
+	for _, res := range resources {
+		kind := strings.ToLower(string(res.Type))
+		if kind == "" {
+			filtered = append(filtered, res)
+			continue
+		}
+		if isJobWorkloadKind(kind) {
+			if mode == string(executor.SubmitTypeJob) {
+				filtered = append(filtered, res)
+				workloadCount++
+			}
+			continue
+		}
+		if isWorkflowWorkloadKind(kind) {
+			if mode == string(executor.SubmitTypeWorkflow) {
+				filtered = append(filtered, res)
+				workloadCount++
+			}
+			continue
+		}
+		filtered = append(filtered, res)
+	}
+	if workloadCount == 0 {
+		return nil, fmt.Errorf("no %s workload resources found in configfile", mode)
+	}
+	return filtered, nil
+}
+
+func isJobWorkloadKind(kind string) bool {
+	switch kind {
+	case "job", "cronjob", "flashjob":
+		return true
+	default:
+		return false
+	}
+}
+
+func isWorkflowWorkloadKind(kind string) bool {
+	switch kind {
+	case "workflow", "workflowtemplate", "cronworkflow":
+		return true
+	default:
+		return false
+	}
 }

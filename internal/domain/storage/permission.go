@@ -27,7 +27,6 @@ type GroupStoragePermission struct {
 	ID         string            `gorm:"primaryKey;column:id;size:21"`
 	GroupID    string            `gorm:"not null;index:idx_group_pvc_user;size:21"`        // Group ID
 	PVCID      string            `gorm:"size:100;not null;index:idx_group_pvc_user"`       // PVC ID (group-{gid}-{uuid})
-	PVCName    string            `gorm:"size:100;not null;index"`                          // K8s PVC name for quick lookup
 	UserID     string            `gorm:"not null;index:idx_group_pvc_user,unique;size:21"` // User ID
 	Permission StoragePermission `gorm:"type:varchar(20);not null;default:'none'"`         // none, read, write
 	GrantedBy  string            `gorm:"not null;size:21"`                                 // Admin who granted permission

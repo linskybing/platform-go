@@ -16,6 +16,7 @@ func registerUserRoutes(r *gin.RouterGroup, h *handlers.Handlers, authMw *middle
 		users.GET("/:id", h.User.GetUserByID)
 		users.PUT("/:id", h.User.UpdateUser)
 		users.DELETE("/:id", h.User.DeleteUser)
-		// users.GET("/", h.User.ListUsers) // If implemented
+		users.GET("/:id/settings", h.User.GetUserSettings)
+		users.PUT("/:id/settings", h.User.UpdateUserSettings)
 	}
 }

@@ -1,15 +1,5 @@
 package constants
 
-// Database view names - centralized to avoid magic strings
-const (
-	ViewProjectGroup    = "project_group_views"
-	ViewProjectResource = "project_resource_views"
-	ViewGroupResource   = "group_resource_views"
-	ViewUsersSuperadmin = "users_with_superadmin"
-	ViewUserGroup       = "user_group_views"
-	ViewProjectUser     = "project_user_views"
-)
-
 // K8s namespace and resource naming patterns
 const (
 	// User storage namespace pattern

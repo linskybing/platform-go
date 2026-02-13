@@ -15,7 +15,5 @@ func registerAuthRoutes(r *gin.Engine, h *handlers.Handlers) {
 	r.POST("/logout", h.User.Logout)
 	// Auth status (requires auth, but placed here for logical grouping, check middleware usage)
 	// r.GET("/auth/status", middleware.JWTAuthMiddleware(), handlers.AuthStatusHandler) // This was using standalone handler
-
-	// TODO: AuthStatusHandler should ideally be part of UserHandler or similar
-	r.GET("/auth/status", middleware.JWTAuthMiddleware(), handlers.AuthStatusHandler)
+	r.GET("/auth/status", middleware.JWTAuthMiddleware(), h.User.AuthStatus)
 }

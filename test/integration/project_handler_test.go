@@ -19,8 +19,8 @@ func TestProjectHandler_Integration(t *testing.T) {
 	var projectID string
 
 	// Arrange + Act + Assert
-	t.Run("CreateProject - Success as Manager", func(t *testing.T) {
-		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
+	t.Run("CreateProject - Success as Admin", func(t *testing.T) {
+		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
 		formData := map[string]string{
 			"project_name": "integration-project",

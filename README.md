@@ -2,7 +2,7 @@
 
 RESTful API server for Kubernetes-based platform management. Built with Go, Gin framework, and PostgreSQL.
 
-**Status**: Production Ready
+**Status**: Production Ready (core API); scheduler integration is active and still expanding
 
 ---
 
@@ -25,6 +25,17 @@ RESTful API server for Kubernetes-based platform management. Built with Go, Gin 
 ## Overview
 
 Platform-go provides a RESTful API for managing Kubernetes resources, user authentication, project management, and persistent storage.
+
+### Scheduler Integration (FlashJob)
+
+The backend can submit jobs as FlashJob CRDs when `EXECUTOR_MODE=scheduler` and
+`FLASH_SCHED_ENABLED=true` are set. The SchedulerExecutor creates FlashJob objects,
+tracks status via a watch-based reconciler, and updates the job table accordingly.
+
+Known gaps:
+- Workflow submission and template listing are not fully implemented.
+- Submit overrides (resources, env, mounts) require additional validation.
+- Local executor still needs parity for Job/Workflow CRDs.
 
 ### Key Features
 

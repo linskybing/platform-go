@@ -14,6 +14,13 @@ const (
 	JobStatusCancelled JobStatus = "cancelled"
 )
 
+type SubmitType string
+
+const (
+	SubmitTypeJob      SubmitType = "job"
+	SubmitTypeWorkflow SubmitType = "workflow"
+)
+
 // SubmitRequest contains all information needed to submit a job
 type SubmitRequest struct {
 	JobID        string
@@ -23,6 +30,7 @@ type SubmitRequest struct {
 	UserID       string
 	Username     string
 	Resources    []ResourcePayload
+	SubmitType   SubmitType
 	QueueName    string // for future scheduler
 	Priority     int32  // for future scheduler
 }

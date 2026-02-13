@@ -194,3 +194,18 @@ func collectPVCClaimNames(resources []resource.Resource) map[string]struct{} {
 	}
 	return claims
 }
+
+func defaultQueueForResources(resources []resource.Resource) string {
+	for _, res := range resources {
+		if res.Type == resource.ResourceJob {
+			if config.ConfigFileJobQueueName != "" {
+				return config.ConfigFileJobQueueName
+			}
+			break
+		}
+	}
+	if config.ConfigFileQueueName != "" {
+		return config.ConfigFileQueueName
+	}
+	return config.DefaultQueueName
+}

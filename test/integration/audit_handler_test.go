@@ -31,7 +31,7 @@ func TestAuditHandler_Integration(t *testing.T) {
 	t.Run("GetAuditLogs - Success as Admin", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		resp, err := client.GET("/audit-logs")
+		resp, err := client.GET("/audit/logs")
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.NotEmpty(t, resp.Body)
@@ -40,14 +40,14 @@ func TestAuditHandler_Integration(t *testing.T) {
 	t.Run("GetAuditLogs - With Pagination", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		resp, err := client.GET("/audit-logs?page=1&limit=10")
+		resp, err := client.GET("/audit/logs?page=1&limit=10")
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("GetAuditLogs - Filter by User", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/audit-logs?user_id=%s", testUser.UID)
+		path := fmt.Sprintf("/audit/logs?user_id=%s", testUser.UID)
 
 		resp, err := client.GET(path)
 		require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestAuditHandler_Integration(t *testing.T) {
 	t.Run("GetAuditLogs - Filter by Action", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		resp, err := client.GET("/audit-logs?action=CREATE")
+		resp, err := client.GET("/audit/logs?action=create")
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -65,7 +65,7 @@ func TestAuditHandler_Integration(t *testing.T) {
 	t.Run("GetAuditLogs - Forbidden for Regular User", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		resp, err := client.GET("/audit-logs")
+		resp, err := client.GET("/audit/logs")
 		require.NoError(t, err)
 		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
 	})

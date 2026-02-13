@@ -10,6 +10,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// ImageBuildTTLSeconds is the TTL (in seconds) for completed image pull jobs.
+	ImageBuildTTLSeconds = 300
+)
+
 // BuildPullJob constructs a Kubernetes Job that pulls a source image and
 // pushes it to the internal Harbor registry. It returns the Job object and
 // the full source and harbor image references used in the job spec.
@@ -33,7 +38,7 @@ func BuildPullJob(name, tag string) (*batchv1.Job, string, string) {
 	fullImage := fmt.Sprintf("%s:%s", normalizedName, tag)
 	harborImage := fmt.Sprintf("%s%s:%s", config.HarborPrivatePrefix, name, tag)
 
-	ttl := int32(300)
+	ttl := int32(ImageBuildTTLSeconds)
 
 	k8sJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

@@ -15,6 +15,9 @@ type JobRepo interface {
 	UpdateStatus(ctx context.Context, id string, status string, errorMsg *string) error
 	ListByProject(ctx context.Context, projectID string) ([]job.Job, error)
 	ListByUser(ctx context.Context, userID string) ([]job.Job, error)
+	ListByStatus(ctx context.Context, statuses []string) ([]job.Job, error)
+	ListByProjectAndStatuses(ctx context.Context, projectID string, statuses []string) ([]job.Job, error)
+	CountByUserProjectAndStatuses(ctx context.Context, userID, projectID string, statuses []string) (int64, error)
 
 	WithTx(tx *gorm.DB) JobRepo
 }
@@ -80,6 +83,48 @@ func (r *JobRepoImpl) ListByUser(ctx context.Context, userID string) ([]job.Job,
 		Order("submitted_at DESC").
 		Find(&jobs).Error
 	return jobs, err
+}
+
+// ListByStatus retrieves jobs with any of the given statuses
+func (r *JobRepoImpl) ListByStatus(ctx context.Context, statuses []string) ([]job.Job, error) {
+	var jobs []job.Job
+	if len(statuses) == 0 {
+		return jobs, nil
+	}
+	err := r.db.WithContext(ctx).
+		Where("status IN ?", statuses).
+		Order("submitted_at DESC").
+		Find(&jobs).Error
+	return jobs, err
+}
+
+// ListByProjectAndStatuses retrieves jobs in a project with any of the given statuses.
+func (r *JobRepoImpl) ListByProjectAndStatuses(ctx context.Context, projectID string, statuses []string) ([]job.Job, error) {
+	var jobs []job.Job
+	if len(statuses) == 0 {
+		return jobs, nil
+	}
+	err := r.db.WithContext(ctx).
+		Where("project_id = ?", projectID).
+		Where("status IN ?", statuses).
+		Order("submitted_at DESC").
+		Find(&jobs).Error
+	return jobs, err
+}
+
+// CountByUserProjectAndStatuses counts jobs for a user in a project with any of the given statuses.
+func (r *JobRepoImpl) CountByUserProjectAndStatuses(ctx context.Context, userID, projectID string, statuses []string) (int64, error) {
+	var count int64
+	query := r.db.WithContext(ctx).Model(&job.Job{}).
+		Where("user_id = ?", userID).
+		Where("project_id = ?", projectID)
+	if len(statuses) > 0 {
+		query = query.Where("status IN ?", statuses)
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *JobRepoImpl) WithTx(tx *gorm.DB) JobRepo {

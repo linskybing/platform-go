@@ -15,6 +15,7 @@ type Job struct {
 	Namespace    string     `gorm:"size:100;not null"`
 	UserID       string     `gorm:"not null;index;size:21"`
 	Status       string     `gorm:"type:varchar(20);not null;default:'submitted'"`
+	SubmitType   string     `gorm:"type:varchar(20);not null;default:'job'"`
 	QueueName    string     `gorm:"size:100"`
 	Priority     int32      `gorm:"default:0"`
 	ErrorMessage string     `gorm:"type:text"`

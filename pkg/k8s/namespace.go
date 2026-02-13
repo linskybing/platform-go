@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -18,7 +17,9 @@ func CreateNamespace(name string) error {
 		slog.Debug("[MOCK] create namespace", slog.String("name", name))
 		return nil
 	}
-	_, err := Clientset.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+	ctx, cancel := requestContext()
+	defer cancel()
+	_, err := Clientset.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 	if err == nil {
 		return fmt.Errorf("namespace %s already exists", name)
 	}
@@ -29,7 +30,7 @@ func CreateNamespace(name string) error {
 		},
 	}
 
-	_, err = Clientset.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
+	_, err = Clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 
 	if err != nil {
 		return fmt.Errorf("failed create namespace: %v", err)
@@ -44,7 +45,9 @@ func DeleteNamespace(name string) error {
 		slog.Debug("[MOCK] delete namespace", slog.String("name", name))
 		return nil
 	}
-	err := Clientset.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
+	ctx, cancel := requestContext()
+	defer cancel()
+	err := Clientset.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete namespace %s: %w", name, err)
 	}
@@ -62,7 +65,9 @@ func EnsureNamespaceExists(nsName string) error {
 		return nil
 	}
 
-	_, err := Clientset.CoreV1().Namespaces().Get(context.TODO(), nsName, metav1.GetOptions{})
+	ctx, cancel := requestContext()
+	defer cancel()
+	_, err := Clientset.CoreV1().Namespaces().Get(ctx, nsName, metav1.GetOptions{})
 	if err == nil {
 		return nil
 	}
@@ -81,7 +86,7 @@ func EnsureNamespaceExists(nsName string) error {
 		},
 	}
 
-	_, err = Clientset.CoreV1().Namespaces().Create(context.TODO(), newNs, metav1.CreateOptions{})
+	_, err = Clientset.CoreV1().Namespaces().Create(ctx, newNs, metav1.CreateOptions{})
 	return err
 }
 
@@ -89,7 +94,9 @@ func CheckNamespaceExists(name string) (bool, error) {
 	if Clientset == nil {
 		return false, nil // Mock
 	}
-	_, err := Clientset.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+	ctx, cancel := requestContext()
+	defer cancel()
+	_, err := Clientset.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil

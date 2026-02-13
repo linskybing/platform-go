@@ -197,7 +197,7 @@ func TestDeleteConfigFile_Success(t *testing.T) {
 func TestCreateInstance_Success(t *testing.T) {
 	svc, mockCF, mockRes, _, _, mockProject, mockUserGroup, c := setupMocks(t)
 
-	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{{RID: "1", ParsedYAML: datatypes.JSON([]byte("{}"))}}, nil)
+	mockRes.EXPECT().ListResourcesByConfigFileID("1").Return([]resource.Resource{{RID: "1", Type: resource.ResourceJob, ParsedYAML: datatypes.JSON([]byte("{}"))}}, nil)
 	mockCF.EXPECT().GetConfigFileByID("1").Return(&configfile.ConfigFile{CFID: "1", ProjectID: "1"}, nil)
 	mockProject.EXPECT().GetProjectByID("1").Return(project.Project{PID: "1", GID: "10"}, nil).AnyTimes()
 	mockUserGroup.EXPECT().GetUserGroup("1", "10").Return(group.UserGroup{UID: "1", GID: "10", Role: "admin"}, nil).AnyTimes()

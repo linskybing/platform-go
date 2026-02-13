@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -119,6 +120,25 @@ func (s *ProjectService) CreateProject(c *gin.Context, input project.CreateProje
 	if input.GPUQuota != nil {
 		p.GPUQuota = *input.GPUQuota
 	}
+	if input.MaxConcurrentJobsPerUser != nil {
+		p.MaxConcurrentJobsPerUser = *input.MaxConcurrentJobsPerUser
+	}
+	if input.MaxQueuedJobsPerUser != nil {
+		p.MaxQueuedJobsPerUser = *input.MaxQueuedJobsPerUser
+	}
+	if input.MaxJobRuntimeSeconds != nil {
+		p.MaxJobRuntimeSeconds = *input.MaxJobRuntimeSeconds
+	}
+	if input.MaxProjectUsers != nil {
+		p.MaxProjectUsers = *input.MaxProjectUsers
+	}
+	if input.ScheduleWindows != nil {
+		payload, err := json.Marshal(input.ScheduleWindows)
+		if err != nil {
+			return nil, fmt.Errorf("invalid schedule windows: %w", err)
+		}
+		p.ScheduleWindows = payload
+	}
 	err := s.Repos.Project.CreateProject(p)
 	if err != nil {
 		return nil, err
@@ -158,6 +178,25 @@ func (s *ProjectService) UpdateProject(c *gin.Context, id string, input project.
 	}
 	if input.GPUQuota != nil {
 		p.GPUQuota = *input.GPUQuota
+	}
+	if input.MaxConcurrentJobsPerUser != nil {
+		p.MaxConcurrentJobsPerUser = *input.MaxConcurrentJobsPerUser
+	}
+	if input.MaxQueuedJobsPerUser != nil {
+		p.MaxQueuedJobsPerUser = *input.MaxQueuedJobsPerUser
+	}
+	if input.MaxJobRuntimeSeconds != nil {
+		p.MaxJobRuntimeSeconds = *input.MaxJobRuntimeSeconds
+	}
+	if input.MaxProjectUsers != nil {
+		p.MaxProjectUsers = *input.MaxProjectUsers
+	}
+	if input.ScheduleWindows != nil {
+		payload, err := json.Marshal(input.ScheduleWindows)
+		if err != nil {
+			return nil, fmt.Errorf("invalid schedule windows: %w", err)
+		}
+		p.ScheduleWindows = payload
 	}
 
 	err = s.Repos.Project.UpdateProject(&p)

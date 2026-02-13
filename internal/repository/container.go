@@ -14,6 +14,7 @@ type Repos struct {
 	Image             ImageRepo
 	StoragePermission StoragePermissionRepo
 	Job               JobRepo
+	GPUUsage          GPUUsageRepo
 	Storage           *DBStorageRepo
 
 	db *gorm.DB
@@ -33,6 +34,7 @@ func NewRepositories(db *gorm.DB) *Repos {
 		StoragePermission: NewStoragePermissionRepo(db),
 		Storage:           NewStorageRepo(db),
 		Job:               NewJobRepo(db),
+		GPUUsage:          NewGPUUsageRepo(db),
 		db:                db,
 	}
 }
@@ -45,6 +47,11 @@ func (r *Repos) WithTx(tx *gorm.DB) *Repos {
 	txRepos := NewRepositories(tx)
 	txRepos.db = tx
 	return txRepos
+}
+
+// DB returns the underlying GORM database handle.
+func (r *Repos) DB() *gorm.DB {
+	return r.db
 }
 
 func (r *Repos) ExecTx(fn func(*Repos) error) error {

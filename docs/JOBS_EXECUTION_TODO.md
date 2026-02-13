@@ -2,6 +2,11 @@
 
 This document captures the backend work needed to deliver Argo-style job/workflow submission and tracking.
 
+## Known Gaps (Sync)
+
+- Workflow submission (Job/Workflow CRDs) is not implemented end-to-end.
+- Submit overrides validation (resources, env, mounts, args) is incomplete.
+
 ## API Surface
 
 - POST /api/jobs/submit
@@ -10,6 +15,7 @@ This document captures the backend work needed to deliver Argo-style job/workflo
   - Creates: job record and dispatches to executor or CRD client.
 - GET /api/jobs/templates
   - Returns config files that include Job or Workflow resources (optional filter by project_id).
+  - Implemented; expand filtering/validation as needed.
 - GET /api/jobs
   - Already exists. Ensure it returns fields used by frontend (status, namespace, submitted_at).
 - GET /api/jobs/:id

@@ -28,7 +28,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 			"raw_yaml":   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: test-pod",
 		}
 
-		resp, err := client.POSTFormRaw("/config-files", formData)
+		resp, err := client.POSTFormRaw("/configfiles", formData)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
@@ -49,7 +49,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 			"raw_yaml":   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: unauthorized-pod",
 		}
 
-		resp, err := client.POSTFormRaw("/config-files", formData)
+		resp, err := client.POSTFormRaw("/configfiles", formData)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	})
@@ -102,7 +102,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				resp, err := client.POST("/config-files", tt.input)
+				resp, err := client.POST("/configfiles", tt.input)
 				require.NoError(t, err)
 				assert.GreaterOrEqual(t, resp.StatusCode, 400)
 			})
@@ -116,7 +116,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
+		path := fmt.Sprintf("/configfiles/%s", testConfigFileID)
 		resp, err := client.GET(path)
 
 		require.NoError(t, err)
@@ -131,13 +131,13 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 	t.Run("ListConfigFiles - Admin Only", func(t *testing.T) {
 		// Admin can list all
 		adminClient := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		resp, err := adminClient.GET("/config-files")
+		resp, err := adminClient.GET("/configfiles")
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		// Regular user can list accessible config files
 		userClient := NewHTTPClient(ctx.Router, ctx.UserToken)
-		resp, err = userClient.GET("/config-files")
+		resp, err = userClient.GET("/configfiles")
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -168,7 +168,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 			"raw_yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: updated-pod",
 		}
 
-		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
+		path := fmt.Sprintf("/configfiles/%s", testConfigFileID)
 		resp, err := client.PUTForm(path, formData)
 
 		require.NoError(t, err)
@@ -195,7 +195,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 			"filename": "forbidden-update.yaml",
 		}
 
-		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
+		path := fmt.Sprintf("/configfiles/%s", testConfigFileID)
 		resp, err := client.PUTForm(path, formData)
 
 		require.NoError(t, err)
@@ -254,7 +254,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 			"raw_yaml":   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: config-to-delete\nspec:\n  containers:\n  - name: nginx\n    image: nginx:latest\n",
 		}
 
-		createResp, err := client.POSTFormRaw("/config-files", formData)
+		createResp, err := client.POSTFormRaw("/configfiles", formData)
 		require.NoError(t, err)
 
 		var created configfile.ConfigFile
@@ -262,7 +262,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Delete it
-		path := fmt.Sprintf("/config-files/%s", created.CFID)
+		path := fmt.Sprintf("/configfiles/%s", created.CFID)
 		deleteResp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -282,7 +282,7 @@ func TestConfigFileHandler_Integration(t *testing.T) {
 
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/config-files/%s", testConfigFileID)
+		path := fmt.Sprintf("/configfiles/%s", testConfigFileID)
 		resp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestConfigFileHandler_ResourceLimits(t *testing.T) {
 				"raw_yaml":   fmt.Sprintf("apiVersion: v1\nkind: Pod\nmetadata:\n  name: resource-test\nspec:\n  containers:\n  - name: test\n    image: nginx:latest\n    resources:\n      requests:\n        cpu: %s\n        memory: %s\n      limits:\n        cpu: %s\n        memory: %s", tt.cpuRequest, tt.memRequest, tt.cpuLimit, tt.memLimit),
 			}
 
-			resp, err := client.POSTFormRaw("/config-files", formData)
+			resp, err := client.POSTFormRaw("/configfiles", formData)
 			require.NoError(t, err)
 
 			if tt.expectError {

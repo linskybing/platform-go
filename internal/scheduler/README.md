@@ -28,7 +28,7 @@ internal/scheduler/
 
 ## Features
 
-- Priority-based scheduling (Course > Job)
+- Priority-based scheduling (interactive > batch)
 - Extensible job type system (Normal, MPI, GPU)
 - Resource availability checking
 - Job lifecycle management
@@ -62,7 +62,7 @@ Jobs requiring dedicated GPU resources.
 
 ## Priority Levels
 
-- Course workloads: 1000 (pods, higher priority)
+- Interactive workloads: 1000 (higher priority)
 - Batch jobs: 100 (can be preempted)
 
 ## Job Lifecycle

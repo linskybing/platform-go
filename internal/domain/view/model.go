@@ -1,7 +1,5 @@
 package view
 
-import "time"
-
 type ProjectGroupView struct {
 	GID           string `gorm:"column:g_id" json:"GID"`
 	GroupName     string `gorm:"column:group_name" json:"GroupName"`
@@ -43,19 +41,6 @@ type UserGroupView struct {
 	Role      string `gorm:"column:role" json:"Role"`
 }
 
-type UserWithSuperAdmin struct {
-	UID          string    `gorm:"column:u_id" json:"UID"`
-	Username     string    `gorm:"column:username" json:"Username"`
-	Password     string    `gorm:"column:password" json:"-"`
-	Email        string    `gorm:"column:email" json:"Email"`
-	FullName     string    `gorm:"column:full_name" json:"FullName"`
-	Type         string    `gorm:"column:type" json:"Type"`
-	Status       string    `gorm:"column:status" json:"Status"`
-	CreatedAt    time.Time `gorm:"column:create_at" json:"CreatedAt"`
-	UpdatedAt    time.Time `gorm:"column:update_at" json:"UpdatedAt"`
-	IsSuperAdmin bool      `gorm:"column:is_super_admin" json:"IsSuperAdmin"`
-}
-
 type ProjectUserView struct {
 	PID         string `gorm:"column:p_id" json:"PID"`
 	ProjectName string `gorm:"column:project_name" json:"ProjectName"`
@@ -64,11 +49,4 @@ type ProjectUserView struct {
 	Role        string `gorm:"column:role" json:"Role"`
 	UID         string `gorm:"column:u_id" json:"UID"`
 	Username    string `gorm:"column:username" json:"Username"`
-}
-
-func (ProjectUserView) TableName() string {
-	return "project_user_views"
-}
-func (UserWithSuperAdmin) TableName() string {
-	return "users_with_superadmin"
 }

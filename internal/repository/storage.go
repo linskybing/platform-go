@@ -34,7 +34,7 @@ func (r *DBStorageRepo) CreateGroupStorage(ctx context.Context, pvc *storage.Gro
 
 func (r *DBStorageRepo) GetUserStorage(ctx context.Context, id string) (*storage.UserStorage, error) {
 	var pvc storage.UserStorage
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&pvc).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", id).Preload("User").First(&pvc).Error; err != nil {
 		return nil, err
 	}
 	return &pvc, nil
@@ -42,7 +42,7 @@ func (r *DBStorageRepo) GetUserStorage(ctx context.Context, id string) (*storage
 
 func (r *DBStorageRepo) GetGroupStorage(ctx context.Context, id string) (*storage.GroupStorage, error) {
 	var pvc storage.GroupStorage
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&pvc).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", id).Preload("Group").First(&pvc).Error; err != nil {
 		return nil, err
 	}
 	return &pvc, nil
@@ -58,7 +58,7 @@ func (r *DBStorageRepo) GetUserStorageByUserID(ctx context.Context, userID strin
 
 func (r *DBStorageRepo) ListUserStorage(ctx context.Context) ([]storage.UserStorage, error) {
 	var pvcs []storage.UserStorage
-	if err := r.db.WithContext(ctx).Find(&pvcs).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("User").Find(&pvcs).Error; err != nil {
 		return nil, err
 	}
 	return pvcs, nil
@@ -66,7 +66,7 @@ func (r *DBStorageRepo) ListUserStorage(ctx context.Context) ([]storage.UserStor
 
 func (r *DBStorageRepo) ListGroupStorage(ctx context.Context) ([]storage.GroupStorage, error) {
 	var pvcs []storage.GroupStorage
-	if err := r.db.WithContext(ctx).Find(&pvcs).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Group").Find(&pvcs).Error; err != nil {
 		return nil, err
 	}
 	return pvcs, nil
@@ -74,7 +74,7 @@ func (r *DBStorageRepo) ListGroupStorage(ctx context.Context) ([]storage.GroupSt
 
 func (r *DBStorageRepo) ListGroupStorageByGID(ctx context.Context, gid string) ([]storage.GroupStorage, error) {
 	var pvcs []storage.GroupStorage
-	if err := r.db.WithContext(ctx).Where("group_id = ?", gid).Find(&pvcs).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("group_id = ?", gid).Preload("Group").Find(&pvcs).Error; err != nil {
 		return nil, err
 	}
 	return pvcs, nil

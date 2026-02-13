@@ -33,13 +33,13 @@ func TestUserGroupHandler_Integration(t *testing.T) {
 	t.Run("AddUserToGroup - Success as Admin", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		formData := map[string]string{
-			"user_id":  testUser.UID,
-			"group_id": testGroup.GID,
-			"role":     string(user.UserRoleUser),
+		payload := map[string]string{
+			"uid":  testUser.UID,
+			"gid":  testGroup.GID,
+			"role": string(user.UserRoleUser),
 		}
 
-		resp, err := client.POSTForm("/user-groups", formData)
+		resp, err := client.POST("/user-groups", payload)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -47,20 +47,20 @@ func TestUserGroupHandler_Integration(t *testing.T) {
 	t.Run("AddUserToGroup - Duplicate Entry", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		formData := map[string]string{
-			"user_id":  testUser.UID,
-			"group_id": testGroup.GID,
-			"role":     string(user.UserRoleUser),
+		payload := map[string]string{
+			"uid":  testUser.UID,
+			"gid":  testGroup.GID,
+			"role": string(user.UserRoleUser),
 		}
 
-		resp, err := client.POSTForm("/user-groups", formData)
+		resp, err := client.POST("/user-groups", payload)
 		require.NoError(t, err)
 		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("GetUserGroupsByUID - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
-		path := fmt.Sprintf("/users/%s/groups", testUser.UID)
+		path := fmt.Sprintf("/user-groups/by-user?u_id=%s", testUser.UID)
 
 		resp, err := client.GET(path)
 		require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestUserGroupHandler_Integration(t *testing.T) {
 
 	t.Run("GetUserGroupsByGID - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
-		path := fmt.Sprintf("/groups/%s/members", testGroup.GID)
+		path := fmt.Sprintf("/user-groups/by-group?g_id=%s", testGroup.GID)
 
 		resp, err := client.GET(path)
 		require.NoError(t, err)
@@ -78,33 +78,37 @@ func TestUserGroupHandler_Integration(t *testing.T) {
 
 	t.Run("UpdateUserRole - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/user-groups/%s/%s", testUser.UID, testGroup.GID)
+		path := "/user-groups"
 
-		formData := map[string]string{
+		payload := map[string]string{
+			"uid":  testUser.UID,
+			"gid":  testGroup.GID,
 			"role": string(user.UserRoleManager),
 		}
 
-		resp, err := client.PUTForm(path, formData)
+		resp, err := client.PUT(path, payload)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("UpdateUserRole - Invalid Role", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/user-groups/%s/%s", testUser.UID, testGroup.GID)
+		path := "/user-groups"
 
-		formData := map[string]string{
+		payload := map[string]string{
+			"uid":  testUser.UID,
+			"gid":  testGroup.GID,
 			"role": "invalid_role",
 		}
 
-		resp, err := client.PUTForm(path, formData)
+		resp, err := client.PUT(path, payload)
 		require.NoError(t, err)
 		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("GetGroupMembers - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
-		path := fmt.Sprintf("/groups/%s/users", testGroup.GID)
+		path := fmt.Sprintf("/user-groups/%s/members", testGroup.GID)
 
 		resp, err := client.GET(path)
 		require.NoError(t, err)
@@ -113,19 +117,20 @@ func TestUserGroupHandler_Integration(t *testing.T) {
 
 	t.Run("RemoveUserFromGroup - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/user-groups/%s/%s", testUser.UID, testGroup.GID)
+		// Use query params for DELETE as per handler implementation
+		path := fmt.Sprintf("/user-groups?u_id=%s&g_id=%s", testUser.UID, testGroup.GID)
 
 		resp, err := client.DELETE(path)
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("RemoveUserFromGroup - Already Removed", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/user-groups/%s/%s", testUser.UID, testGroup.GID)
+		path := fmt.Sprintf("/user-groups?u_id=%s&g_id=%s", testUser.UID, testGroup.GID)
 
 		resp, err := client.DELETE(path)
 		require.NoError(t, err)
-		assert.NotEqual(t, http.StatusNoContent, resp.StatusCode)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 }

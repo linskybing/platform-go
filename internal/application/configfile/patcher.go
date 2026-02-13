@@ -20,6 +20,11 @@ type PatchContext struct {
 
 // applyResourcePatches orchestrates all modifications to the K8s object map.
 func (s *ConfigFileService) applyResourcePatches(obj map[string]interface{}, ctx *PatchContext) error {
+	// 0. Apply job-specific patches before scanning for pod specs.
+	if err := s.patchJobDeadline(obj, ctx); err != nil {
+		return err
+	}
+
 	// 1. Identify Pod Specs once to avoid traversing the tree multiple times
 	podSpecs := findPodSpecs(obj)
 
@@ -46,8 +51,46 @@ func (s *ConfigFileService) applyResourcePatches(obj map[string]interface{}, ctx
 
 		// D. Inject General Security Context
 		s.patchSecurityContext(spec)
+
+		// E. Inject Scheduler Priority and Queue
+		s.patchPriority(spec)
 	}
 
+	return nil
+}
+
+func (s *ConfigFileService) patchJobDeadline(obj map[string]interface{}, ctx *PatchContext) error {
+	if obj == nil || ctx == nil {
+		return nil
+	}
+	if ctx.Project.MaxJobRuntimeSeconds <= 0 {
+		return nil
+	}
+	kind, _ := obj["kind"].(string)
+	deadline := int64(ctx.Project.MaxJobRuntimeSeconds)
+	if kind == "Job" {
+		spec, ok := obj["spec"].(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		spec["activeDeadlineSeconds"] = deadline
+		return nil
+	}
+	if kind == "CronJob" {
+		spec, ok := obj["spec"].(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		jobTemplate, ok := spec["jobTemplate"].(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		jobSpec, ok := jobTemplate["spec"].(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		jobSpec["activeDeadlineSeconds"] = deadline
+	}
 	return nil
 }
 
@@ -225,4 +268,42 @@ func (s *ConfigFileService) patchSecurityContext(podSpec map[string]interface{})
 		secContext["fsGroup"] = targetUID
 		secContext["fsGroupChangePolicy"] = "OnRootMismatch"
 	}
+}
+
+func (s *ConfigFileService) patchPriority(podSpec map[string]interface{}) {
+	if config.ConfigFilePriorityClassName != "" {
+		podSpec["priorityClassName"] = config.ConfigFilePriorityClassName
+	}
+	if !config.FlashSchedEnabled && config.ExecutorMode != "scheduler" {
+		return
+	}
+
+	if config.SchedulerName != "" {
+		podSpec["schedulerName"] = config.SchedulerName
+	}
+
+	annotations := ensurePodAnnotations(podSpec)
+	if config.FlashSchedQueueAnnotationKey != "" && config.ConfigFileQueueName != "" {
+		annotations[config.FlashSchedQueueAnnotationKey] = config.ConfigFileQueueName
+	}
+	if config.FlashSchedPreemptableAnnotationKey != "" {
+		annotations[config.FlashSchedPreemptableAnnotationKey] = strconv.FormatBool(config.ConfigFilePreemptable)
+	}
+}
+
+func ensurePodAnnotations(podSpec map[string]interface{}) map[string]interface{} {
+	if annotations, ok := podSpec["annotations"].(map[string]interface{}); ok {
+		return annotations
+	}
+	if metadata, ok := podSpec["metadata"].(map[string]interface{}); ok {
+		if annotations, ok := metadata["annotations"].(map[string]interface{}); ok {
+			return annotations
+		}
+		annotations := make(map[string]interface{})
+		metadata["annotations"] = annotations
+		return annotations
+	}
+	annotations := make(map[string]interface{})
+	podSpec["annotations"] = annotations
+	return annotations
 }

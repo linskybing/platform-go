@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func TestAuthAndMiscHandlers_Integration(t *testing.T) {
 	ctx := GetTestContext()
 
 	t.Run("AuthStatus - Success with Valid Token", func(t *testing.T) {
-		client := NewHTTPClient(ctx.Router, ctx.RegularToken)
+		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
 		resp, err := client.GET("/auth/status")
 		require.NoError(t, err)
@@ -42,13 +43,13 @@ func TestAuthAndMiscHandlers_Integration(t *testing.T) {
 
 func TestUserRegistrationAndLogin_Integration(t *testing.T) {
 	ctx := GetTestContext()
-	generator := NewTestDataGenerator()
 	cleaner := NewDatabaseCleaner()
 	t.Cleanup(func() {
 		_ = cleaner.Cleanup()
 	})
 
-	username := fmt.Sprintf("register-test-%d", generator.RandomInt(10000, 99999))
+	randNum := time.Now().UnixNano() % 10000
+	username := fmt.Sprintf("register-test-%d", randNum)
 	password := "testPass123!"
 
 	t.Run("Register - Success", func(t *testing.T) {
@@ -134,7 +135,7 @@ func TestUserRegistrationAndLogin_Integration(t *testing.T) {
 	})
 
 	t.Run("Logout - Success", func(t *testing.T) {
-		client := NewHTTPClient(ctx.Router, ctx.RegularToken)
+		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
 		resp, err := client.POST("/logout", nil)
 		require.NoError(t, err)

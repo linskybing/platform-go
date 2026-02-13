@@ -22,9 +22,13 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/form"
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"github.com/linskybing/platform-go/internal/domain/image"
+	"github.com/linskybing/platform-go/internal/domain/job"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/domain/resource"
+	"github.com/linskybing/platform-go/internal/domain/storage"
 	"github.com/linskybing/platform-go/internal/domain/user"
+	"github.com/linskybing/platform-go/internal/plugin"
+	jobplugin "github.com/linskybing/platform-go/internal/plugin/builtin/job"
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/k8s"
@@ -71,7 +75,6 @@ func setupTestContext() *TestContext {
 	}
 
 	config.LoadConfig()
-	config.InitK8sConfig()
 
 	middleware.Init()
 	initDatabase()
@@ -112,7 +115,26 @@ func setupTestContext() *TestContext {
 	router.Use(middleware.CORSMiddleware())
 	router.Use(middleware.LoggingMiddleware())
 
-	routes.RegisterRoutes(router, db.DB, cache.NewNoop())
+	cacheSvc := cache.NewNoop()
+	routes.RegisterRoutes(router, db.DB, cacheSvc)
+
+	// Plugin System Setup for Integration Tests
+	jobP := jobplugin.NewJobPlugin()
+	// Safely register (plugin registry panics on duplicate)
+	func() {
+		defer func() { _ = recover() }()
+		plugin.Register(jobP)
+	}()
+
+	mgr := plugin.NewManager(db.DB, cacheSvc)
+	if err := mgr.Init(); err != nil {
+		panic(fmt.Sprintf("failed to init plugins: %v", err))
+	}
+
+	// Register plugin routes with JWT auth
+	authGroup := router.Group("/")
+	authGroup.Use(middleware.JWTAuthMiddleware())
+	mgr.RegisterRoutes(authGroup)
 
 	return &TestContext{
 		Router:        router,
@@ -147,11 +169,15 @@ func initDatabase() {
 		&image.ImageAllowList{},
 		&image.ImageRequest{},
 		&image.ClusterImageStatus{},
+		&job.Job{},
+		&storage.UserStorage{},
+		&storage.GroupStorage{},
+		&storage.GroupStoragePermission{},
+		&storage.GroupStorageAccessPolicy{},
 	); err != nil {
 		panic(fmt.Sprintf("failed to migrate database: %v", err))
 	}
 
-	db.CreateViews()
 }
 
 func ensureDefaultTestEnv() {

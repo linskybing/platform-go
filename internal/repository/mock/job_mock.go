@@ -129,3 +129,48 @@ func (mr *MockJobRepoMockRecorder) WithTx(tx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithTx", reflect.TypeOf((*MockJobRepo)(nil).WithTx), tx)
 }
+
+// CountByUserProjectAndStatuses mocks base method.
+func (m *MockJobRepo) CountByUserProjectAndStatuses(ctx context.Context, userID, projectID string, statuses []string) (int64, error) {
+m.ctrl.T.Helper()
+ret := m.ctrl.Call(m, "CountByUserProjectAndStatuses", ctx, userID, projectID, statuses)
+ret0, _ := ret[0].(int64)
+ret1, _ := ret[1].(error)
+return ret0, ret1
+}
+
+// CountByUserProjectAndStatuses indicates an expected call of CountByUserProjectAndStatuses.
+func (mr *MockJobRepoMockRecorder) CountByUserProjectAndStatuses(ctx, userID, projectID, statuses any) *gomock.Call {
+mr.mock.ctrl.T.Helper()
+return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByUserProjectAndStatuses", reflect.TypeOf((*MockJobRepo)(nil).CountByUserProjectAndStatuses), ctx, userID, projectID, statuses)
+}
+
+// ListByProjectAndStatuses mocks base method.
+func (m *MockJobRepo) ListByProjectAndStatuses(ctx context.Context, projectID string, statuses []string) ([]job.Job, error) {
+m.ctrl.T.Helper()
+ret := m.ctrl.Call(m, "ListByProjectAndStatuses", ctx, projectID, statuses)
+ret0, _ := ret[0].([]job.Job)
+ret1, _ := ret[1].(error)
+return ret0, ret1
+}
+
+// ListByProjectAndStatuses indicates an expected call of ListByProjectAndStatuses.
+func (mr *MockJobRepoMockRecorder) ListByProjectAndStatuses(ctx, projectID, statuses any) *gomock.Call {
+mr.mock.ctrl.T.Helper()
+return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByProjectAndStatuses", reflect.TypeOf((*MockJobRepo)(nil).ListByProjectAndStatuses), ctx, projectID, statuses)
+}
+
+// ListByStatus mocks base method.
+func (m *MockJobRepo) ListByStatus(ctx context.Context, statuses []string) ([]job.Job, error) {
+m.ctrl.T.Helper()
+ret := m.ctrl.Call(m, "ListByStatus", ctx, statuses)
+ret0, _ := ret[0].([]job.Job)
+ret1, _ := ret[1].(error)
+return ret0, ret1
+}
+
+// ListByStatus indicates an expected call of ListByStatus.
+func (mr *MockJobRepoMockRecorder) ListByStatus(ctx, statuses any) *gomock.Call {
+mr.mock.ctrl.T.Helper()
+return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByStatus", reflect.TypeOf((*MockJobRepo)(nil).ListByStatus), ctx, statuses)
+}

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"gorm.io/gorm"
@@ -15,6 +14,7 @@ type UserGroupRepo interface {
 	GetUserGroupsByUID(uid string) ([]group.UserGroup, error)
 	GetUserGroupsByGID(gid string) ([]group.UserGroup, error)
 	GetUserGroup(uid, gid string) (group.UserGroup, error)
+	CountUsersByGID(gid string) (int64, error)
 	IsSuperAdmin(uid string) (bool, error)
 	GetUserRoleInGroup(uid string, gid string) (string, error)
 	WithTx(tx *gorm.DB) UserGroupRepo
@@ -46,6 +46,7 @@ func (r *DBUserGroupRepo) GetUserGroupsByUID(uid string) ([]group.UserGroup, err
 	var userGroups []group.UserGroup
 	err := r.db.
 		Where("u_id = ?", uid).
+		Preload("Group").
 		Find(&userGroups).Error
 	return userGroups, err
 }
@@ -65,13 +66,18 @@ func (r *DBUserGroupRepo) GetUserGroup(uid, gid string) (group.UserGroup, error)
 	return userGroup, err
 }
 
+func (r *DBUserGroupRepo) CountUsersByGID(gid string) (int64, error) {
+	var count int64
+	err := r.db.Model(&group.UserGroup{}).Where("g_id = ?", gid).Count(&count).Error
+	return count, err
+}
+
 func (r *DBUserGroupRepo) IsSuperAdmin(uid string) (bool, error) {
 	var count int64
 	err := r.db.Table("user_group").
 		Joins("JOIN group_list g ON g.g_id = user_group.g_id").
-		Where("user_group.u_id = ? AND g.g_id = ? AND user_group.role = ?", uid, "super_group", "admin").
+		Where("user_group.u_id = ? AND g.group_name = ? AND user_group.role = ?", uid, "super", "admin").
 		Count(&count).Error
-	fmt.Printf("%d\n", count)
 	if err != nil {
 		return false, err
 	}

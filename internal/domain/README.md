@@ -22,7 +22,6 @@ Domain-driven design layer containing core business entities and logic. Each agg
 internal/domain/
 ├─ audit/      - Audit log entities
 ├─ configfile/ - Configuration file entities
-├─ course/     - Course/pod entities
 ├─ form/       - Form entities
 ├─ group/      - User group entities
 ├─ image/      - Container image entities
@@ -31,7 +30,7 @@ internal/domain/
 ├─ resource/   - Resource quota entities
 ├─ storage/    - Storage and PVC entities
 ├─ user/       - User entities and authentication
-└─ view/       - Database view definitions
+└─ view/       - Database view models
 ```
 
 ## Aggregates

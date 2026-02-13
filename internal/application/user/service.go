@@ -279,6 +279,51 @@ func (s *UserService) invalidateUserCache(id string) {
 	_ = s.cache.InvalidatePrefix(ctx, "cache:user:list:")
 }
 
+// GetSettings returns user settings, creating defaults if none exist.
+func (s *UserService) GetSettings(ctx context.Context, userID string) (*user.UserSettings, error) {
+	var settings user.UserSettings
+	db := s.Repos.DB()
+	err := db.WithContext(ctx).Where("user_id = ?", userID).First(&settings).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			defaults := user.DefaultSettings(userID)
+			if createErr := db.WithContext(ctx).Create(defaults).Error; createErr != nil {
+				return nil, fmt.Errorf("failed to create default settings: %w", createErr)
+			}
+			return defaults, nil
+		}
+		return nil, fmt.Errorf("failed to get user settings: %w", err)
+	}
+	return &settings, nil
+}
+
+// UpdateSettings updates user settings, creating them if they don't exist.
+func (s *UserService) UpdateSettings(ctx context.Context, userID string, updates map[string]interface{}) (*user.UserSettings, error) {
+	db := s.Repos.DB()
+
+	// Ensure settings exist
+	var settings user.UserSettings
+	err := db.WithContext(ctx).Where("user_id = ?", userID).First(&settings).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		settings = *user.DefaultSettings(userID)
+		if createErr := db.WithContext(ctx).Create(&settings).Error; createErr != nil {
+			return nil, fmt.Errorf("failed to create settings: %w", createErr)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get settings: %w", err)
+	}
+
+	if err := db.WithContext(ctx).Model(&settings).Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("failed to update settings: %w", err)
+	}
+
+	// Re-fetch updated settings
+	if err := db.WithContext(ctx).Where("user_id = ?", userID).First(&settings).Error; err != nil {
+		return nil, fmt.Errorf("failed to get updated settings: %w", err)
+	}
+	return &settings, nil
+}
+
 func (s *UserService) invalidateUserListCache() {
 	if s.cache == nil || !s.cache.Enabled() {
 		return

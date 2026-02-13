@@ -16,8 +16,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+const (
+	// PodDeleteTimeout is the maximum time to wait for pod deletion.
+	PodDeleteTimeout = 5 * time.Second
+	// PodDeletePollInterval is the polling interval during pod deletion.
+	PodDeletePollInterval = 200 * time.Millisecond
+)
+
 func GetFilteredNamespaces(filter string) ([]corev1.Namespace, error) {
-	namespaces, err := Clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	ctx, cancel := requestContext()
+	defer cancel()
+	namespaces, err := Clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list namespaces: %v", err)
 	}
@@ -193,7 +202,7 @@ func CreateFileBrowserPod(ctx context.Context, ns string, pvcNames []string, rea
 
 		grace := int64(0)
 		_ = Clientset.CoreV1().Pods(ns).Delete(ctx, podName, metav1.DeleteOptions{GracePeriodSeconds: &grace})
-		_ = wait.PollUntilContextTimeout(ctx, 200*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+		_ = wait.PollUntilContextTimeout(ctx, PodDeletePollInterval, PodDeleteTimeout, true, func(ctx context.Context) (bool, error) {
 			_, err := Clientset.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
 			if apierrors.IsNotFound(err) {
 				return true, nil

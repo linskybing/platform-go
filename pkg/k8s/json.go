@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"context"
 	applyJson "encoding/json"
 	"fmt"
 	"log/slog"
@@ -53,7 +52,9 @@ func CreateByJson(jsonStr []byte, ns string) error {
 		ns = "default"
 	}
 	resourceClient := DynamicClient.Resource(mapping.Resource).Namespace(ns)
-	result, err := resourceClient.Create(context.TODO(), &obj, metav1.CreateOptions{})
+	ctx, cancel := requestContext()
+	defer cancel()
+	result, err := resourceClient.Create(ctx, &obj, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,9 @@ func DeleteByJson(jsonStr []byte, ns string) error {
 	}
 	resourceClient := DynamicClient.Resource(mapping.Resource).Namespace(ns)
 	policy := metav1.DeletePropagationBackground
-	err = resourceClient.Delete(context.TODO(), obj.GetName(), metav1.DeleteOptions{PropagationPolicy: &policy})
+	ctx, cancel := requestContext()
+	defer cancel()
+	err = resourceClient.Delete(ctx, obj.GetName(), metav1.DeleteOptions{PropagationPolicy: &policy})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
@@ -117,7 +120,9 @@ func UpdateByJson(jsonStr []byte, ns string) error {
 		ns = "default"
 	}
 	resourceClient := DynamicClient.Resource(mapping.Resource).Namespace(ns)
-	result, err := resourceClient.Update(context.TODO(), &obj, metav1.UpdateOptions{})
+	ctx, cancel := requestContext()
+	defer cancel()
+	result, err := resourceClient.Update(ctx, &obj, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}

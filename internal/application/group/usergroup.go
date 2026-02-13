@@ -90,6 +90,26 @@ func (s *UserGroupService) RemoveGroupResource(gid string, userName string) erro
 }
 
 func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.UserGroup) (*group.UserGroup, error) {
+	if userGroup == nil {
+		return nil, errors.New("user group payload is nil")
+	}
+	projects, err := s.Repos.Project.ListProjectsByGroup(userGroup.GID)
+	if err != nil {
+		return nil, err
+	}
+	for _, proj := range projects {
+		if proj.MaxProjectUsers <= 0 {
+			continue
+		}
+		count, err := s.Repos.UserGroup.CountUsersByGID(userGroup.GID)
+		if err != nil {
+			return nil, err
+		}
+		if count >= int64(proj.MaxProjectUsers) {
+			return nil, fmt.Errorf("project %s user limit reached", proj.PID)
+		}
+	}
+
 	if err := s.Repos.UserGroup.CreateUserGroup(userGroup); err != nil {
 		return nil, err
 	}

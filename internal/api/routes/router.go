@@ -1,13 +1,19 @@
 package routes
 
 import (
+	"context"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/api/handlers"
 	"github.com/linskybing/platform-go/internal/api/middleware"
 	"github.com/linskybing/platform-go/internal/application"
+	"github.com/linskybing/platform-go/internal/application/executor"
+	"github.com/linskybing/platform-go/internal/config"
 	"github.com/linskybing/platform-go/internal/cron"
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/cache"
+	"github.com/linskybing/platform-go/pkg/k8s"
 	"gorm.io/gorm"
 )
 
@@ -30,6 +36,13 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
 
 	// Start background tasks (cleanup, metrics, etc.)
 	cron.StartCleanupTask(services.Audit)
+	cron.StartClusterResourceCollector(services.Cluster)
+	cron.StartGPUUsageCollector(services.GPUUsage)
+	cron.StartProjectScheduleEnforcer(repos, services.ConfigFile.GetExecutor(), time.Minute)
+	if config.FlashSchedEnabled || config.ExecutorMode == "scheduler" {
+		flashJobClient := k8s.NewFlashJobClient(k8s.DynamicClient)
+		executor.StartFlashJobReconciler(context.Background(), repos, flashJobClient)
+	}
 
 	// Register public routes (no JWT protection)
 	registerAuthRoutes(r, handlers)
@@ -38,18 +51,20 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
 	auth := r.Group("/")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
+		registerClusterRoutes(auth, handlers, authMiddleware)
 		registerAuditRoutes(auth, handlers, authMiddleware)
 		registerConfigFileRoutes(auth, handlers, authMiddleware, repos)
 		registerGroupRoutes(auth, handlers, authMiddleware)
 		registerUserGroupsRoutes(auth, handlers, authMiddleware)
 		registerFormRoutes(auth, handlers, authMiddleware)
 		registerImageRoutes(auth, handlers, authMiddleware)
-		registerJobRoutes(auth, handlers, authMiddleware)
+		// Job routes are now handled by the job plugin
 		registerStorageRoutes(auth, handlers, authMiddleware)
 		registerAdminStorageRoutes(auth, handlers, authMiddleware)
 		registerProjectRoutes(auth, handlers, authMiddleware)
 		registerUserRoutes(auth, handlers, authMiddleware)
 		registerK8sRoutes(auth, handlers, authMiddleware)
+		registerNotificationRoutes(auth, handlers, authMiddleware)
 		registerWebSocketRoutes(auth, services)
 	}
 }
