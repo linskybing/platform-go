@@ -48,13 +48,13 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 
 	for _, pv := range projectViews {
 		// Avoid duplicates (user might be in multiple groups for same project)
-		if seenPIDs[pv.PID] {
+		if seenPIDs[pv.ID] {
 			continue
 		}
-		seenPIDs[pv.PID] = true
+		seenPIDs[pv.ID] = true
 
 		// Get full project details from repository
-		fullProject, err := h.svc.GetProject(pv.PID)
+		fullProject, err := h.svc.GetProject(pv.ID)
 		if err == nil {
 			result = append(result, *fullProject)
 		}
@@ -153,7 +153,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, project, "Project created successfully")
+	response.SuccessWithStatus(c, http.StatusCreated, project, "Project created successfully")
 }
 
 // UpdateProject godoc

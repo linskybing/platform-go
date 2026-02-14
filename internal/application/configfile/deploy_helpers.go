@@ -61,8 +61,8 @@ func (s *ConfigFileService) bindProjectAndUserVolumes(ctx context.Context, targe
 		PVCName string
 		GroupID string
 	}{}
-	if s.Repos != nil && s.Repos.Storage != nil {
-		if list, err := s.Repos.Storage.ListGroupStorageByGID(ctx, project.GID); err == nil {
+	if s.Repos != nil && s.Repos.Storage != nil && project.OwnerID != nil {
+		if list, err := s.Repos.Storage.ListGroupStorageByGID(ctx, *project.OwnerID); err == nil {
 			for _, gs := range list {
 				groupStorages = append(groupStorages, struct {
 					ID      string
@@ -93,7 +93,11 @@ func (s *ConfigFileService) bindProjectAndUserVolumes(ctx context.Context, targe
 			break
 		}
 		if defaultGroupPVCName == "" {
-			return "", "", fmt.Errorf("no group storage available for group %s", project.GID)
+			ownerID := ""
+			if project.OwnerID != nil {
+				ownerID = *project.OwnerID
+			}
+			return "", "", fmt.Errorf("no group storage available for group %s", ownerID)
 		}
 		groupPVCNames[defaultGroupPVCName] = struct{}{}
 	}
@@ -113,7 +117,11 @@ func (s *ConfigFileService) bindProjectAndUserVolumes(ctx context.Context, targe
 	for pvcName := range groupPVCNames {
 		ref, ok := groupPVCByName[pvcName]
 		if !ok {
-			return "", "", fmt.Errorf("group storage %s not found in group %s", pvcName, project.GID)
+			ownerID := ""
+			if project.OwnerID != nil {
+				ownerID = *project.OwnerID
+			}
+			return "", "", fmt.Errorf("group storage %s not found in group %s", pvcName, ownerID)
 		}
 		if !claims.IsAdmin && s.Repos != nil && s.Repos.StoragePermission != nil {
 			perm, err := s.Repos.StoragePermission.GetPermission(ctx, ref.GroupID, claims.UserID, ref.ID)
@@ -137,7 +145,10 @@ func (s *ConfigFileService) determineReadOnlyEnforcement(claims *types.Claims, p
 	if claims.IsAdmin {
 		return false, nil
 	}
-	ug, err := s.Repos.UserGroup.GetUserGroup(context.Background(), claims.UserID, project.GID)
+	if project.OwnerID == nil {
+		return true, fmt.Errorf("project has no owner")
+	}
+	ug, err := s.Repos.UserGroup.GetUserGroup(context.Background(), claims.UserID, *project.OwnerID)
 	if err != nil {
 		// If user is not in group, default to safe (Enforce RO) or error?
 		// Assuming error means access denied usually, but let's be strict.

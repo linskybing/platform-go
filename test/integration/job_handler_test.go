@@ -4,6 +4,7 @@ package integration
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"testing"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/linskybing/platform-go/internal/config/db"
 	"github.com/linskybing/platform-go/internal/domain/job"
 	"github.com/linskybing/platform-go/internal/repository"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,19 +25,20 @@ func TestJobPlugin_Integration(t *testing.T) {
 
 	// Cleanup manual jobs
 	t.Cleanup(func() {
-		db.DB.Where("id LIKE ?", "job-integ-%").Delete(&job.Job{})
+		db.DB.Exec("DELETE FROM jobs WHERE CAST(id AS text) LIKE '00000000-0000-0000-0000-%'")
 	})
 
 	t.Run("CreateJobViaRepo", func(t *testing.T) {
-		jobID := "job-integ-test-repo"
+		jobID := "00000000-0000-0000-0000-000000000001"
 		j := &job.Job{
-			ID:          jobID,
-			ProjectID:   ctx.TestProject.PID,
-			UserID:      ctx.TestUser.UID,
-			Status:      "submitted",
-			SubmitType:  "job",
-			QueueName:   "default",
-			SubmittedAt: time.Now(),
+			ID:             jobID,
+			ProjectID:      ctx.TestProject.ID,
+			UserID:         ctx.TestUser.ID,
+			ConfigCommitID: "00000000-0000-0000-0000-000000000000",
+			Status:         "submitted",
+			SubmitType:     "job",
+			QueueName:      "default",
+			CreatedAt:      time.Now(),
 		}
 
 		// Use a dummy request to get a context, or background
@@ -56,18 +57,20 @@ func TestJobPlugin_Integration(t *testing.T) {
 	t.Run("ListJobs_Success", func(t *testing.T) {
 		// Populate logic
 		j1 := &job.Job{
-			ID:          "job-integ-list-1",
-			ProjectID:   ctx.TestProject.PID,
-			UserID:      ctx.TestUser.UID,
-			Status:      "running",
-			SubmittedAt: time.Now(),
+			ID:             "00000000-0000-0000-0000-000000000002",
+			ProjectID:      ctx.TestProject.ID,
+			UserID:         ctx.TestUser.ID,
+			ConfigCommitID: "00000000-0000-0000-0000-000000000000",
+			Status:         "running",
+			CreatedAt:      time.Now(),
 		}
 		j2 := &job.Job{
-			ID:          "job-integ-list-2",
-			ProjectID:   ctx.TestProject.PID,
-			UserID:      ctx.TestUser.UID,
-			Status:      "completed",
-			SubmittedAt: time.Now(),
+			ID:             "00000000-0000-0000-0000-000000000003",
+			ProjectID:      ctx.TestProject.ID,
+			UserID:         ctx.TestUser.ID,
+			ConfigCommitID: "00000000-0000-0000-0000-000000000000",
+			Status:         "completed",
+			CreatedAt:      time.Now(),
 		}
 		require.NoError(t, db.DB.Create(j1).Error)
 		require.NoError(t, db.DB.Create(j2).Error)
@@ -76,66 +79,69 @@ func TestJobPlugin_Integration(t *testing.T) {
 		resp, err := client.GET("/jobs")
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		_ = resp
 	})
 
 	t.Run("GetJob_Success", func(t *testing.T) {
+		jobID := "00000000-0000-0000-0000-000000000004"
 		j := &job.Job{
-			ID:          "job-integ-get-1",
-			ProjectID:   ctx.TestProject.PID,
-			UserID:      ctx.TestUser.UID,
-			Status:      "running",
-			SubmittedAt: time.Now(),
+			ID:             jobID,
+			ProjectID:      ctx.TestProject.ID,
+			UserID:         ctx.TestUser.ID,
+			ConfigCommitID: "00000000-0000-0000-0000-000000000000",
+			Status:         "running",
+			CreatedAt:      time.Now(),
 		}
 		require.NoError(t, db.DB.Create(j).Error)
 
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
-		resp, err := client.GET("/jobs/job-integ-get-1")
+		resp, err := client.GET(fmt.Sprintf("/jobs/%s", jobID))
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("GetJob_NotFound", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
-		resp, err := client.GET("/jobs/job-integ-nonexistent")
+		resp, err := client.GET("/jobs/00000000-0000-0000-0000-ffffffffffff")
 		require.NoError(t, err)
-		_ = resp
-		// Expect 404 or maybe 200 with error field depending on API design?
-		// Standard REST is 404.
-		// ws_job handler checks `err != nil`.
-		// Let's assume 404.
-		// If fails, we check response.
-		// assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-		// Actually, let's just assert it's NOT 200 if not sure about logic, but 404 is good expectation.
-		// If the handler (handlers/job/job.go) returns ErrorResponse, it sets status.
-		// Assuming standard handler logic.
+		assert.NotEqual(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("SubmitJob_Success", func(t *testing.T) {
+		// First create a config commit to refer to
+		jobYaml := `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: submit-test-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: test
+        image: nginx:latest
+      restartPolicy: Never`
+		createdConfig := createConfigFileAsManager(t, ctx, jobYaml, "for submission")
+		
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		// Generate unique name to avoid collision if run multiple times
-		name, _ := gonanoid.New(8)
 		payload := map[string]interface{}{
-			"project_id": ctx.TestProject.PID,
-			"image":      "nginx:latest",
-			"command":    "echo hello",
-			"name":       fmt.Sprintf("test-job-%s", name),
+			"project_id":       ctx.TestProject.ID,
+			"config_commit_id": createdConfig.Commit.ID,
 		}
 
 		resp, err := client.POST("/jobs/submit", payload)
 		require.NoError(t, err)
-		// 200 or 201
-		assert.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated, "Expected 200 or 201, got %d", resp.StatusCode)
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 
 	t.Run("CancelJob_Success", func(t *testing.T) {
+		jobID := "00000000-0000-0000-0000-000000000005"
 		j := &job.Job{
-			ID:          "job-integ-cancel-1",
-			ProjectID:   ctx.TestProject.PID,
-			UserID:      ctx.TestUser.UID,
-			Status:      "running",
-			SubmittedAt: time.Now(),
+			ID:             jobID,
+			ProjectID:      ctx.TestProject.ID,
+			UserID:         ctx.TestUser.ID,
+			ConfigCommitID: "00000000-0000-0000-0000-000000000000",
+			Status:         "running",
+			CreatedAt:      time.Now(),
 		}
 		require.NoError(t, db.DB.Create(j).Error)
 
@@ -148,4 +154,14 @@ func TestJobPlugin_Integration(t *testing.T) {
 		db.DB.First(&updated, "id = ?", j.ID)
 		assert.Equal(t, "cancelled", updated.Status)
 	})
+}
+
+func randomString(n int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := range b {
+		b[i] = charset[r.Intn(len(charset))]
+	}
+	return string(b)
 }

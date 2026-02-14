@@ -28,16 +28,15 @@ func (s *PreemptionService) PerformPreemption(ctx context.Context, req preemptor
 
 	for _, jobID := range decision.JobsToPreempt {
 		if err := s.evictJob(ctx, jobID, decision.Reason); err != nil {
-			return fmt.Errorf("failed to evict job %d: %w", jobID, err)
+			return fmt.Errorf("failed to evict job %s: %w", jobID, err)
 		}
 	}
 	return nil
 }
 
 // evictJob performs the actual eviction of a job from the cluster.
-func (s *PreemptionService) evictJob(ctx context.Context, jobID uint, reason string) error {
-	idStr := fmt.Sprintf("%d", jobID)
-	err := s.repos.Job.UpdateStatus(ctx, idStr, "PREEMPTED", &reason)
+func (s *PreemptionService) evictJob(ctx context.Context, jobID string, reason string) error {
+	err := s.repos.Job.UpdateStatus(ctx, jobID, "PREEMPTED", &reason)
 	if err != nil {
 		return err
 	}

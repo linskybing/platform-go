@@ -13,6 +13,17 @@ import (
 var DB *gorm.DB
 
 func createEnums() {
+	extensions := []string{
+		`CREATE EXTENSION IF NOT EXISTS ltree;`,
+		`CREATE EXTENSION IF NOT EXISTS btree_gist;`,
+		`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`,
+	}
+	for _, ext := range extensions {
+		if err := DB.Exec(ext).Error; err != nil {
+			slog.Error("failed to create extension", "extension", ext, "error", err)
+		}
+	}
+
 	enums := []string{
 		`DO $$ BEGIN CREATE TYPE user_type AS ENUM ('origin', 'oauth2'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
 		`DO $$ BEGIN CREATE TYPE user_status AS ENUM ('online', 'offline', 'delete'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
@@ -22,9 +33,25 @@ func createEnums() {
 
 	for _, enum := range enums {
 		if err := DB.Exec(enum).Error; err != nil {
-			slog.Error("failed to create enum",
-				"enum", enum,
-				"error", err)
+			slog.Error("failed to create enum", "enum", enum, "error", err)
+		}
+	}
+}
+
+func EnsureConstraints() {
+	// Add EXCLUDE constraint for resource_plans
+	constraintSQL := `
+	ALTER TABLE resource_plans 
+	ADD CONSTRAINT exclude_overlapping_resource_plans 
+	EXCLUDE USING GIST (project_id WITH =, week_window WITH &&);
+	`
+	// Use a check to avoid failing if constraint already exists
+	checkSQL := `SELECT 1 FROM pg_constraint WHERE conname = 'exclude_overlapping_resource_plans'`
+	var exists int
+	DB.Raw(checkSQL).Scan(&exists)
+	if exists == 0 {
+		if err := DB.Exec(constraintSQL).Error; err != nil {
+			slog.Warn("failed to create exclusion constraint", "error", err)
 		}
 	}
 }

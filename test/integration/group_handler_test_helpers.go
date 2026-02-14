@@ -22,7 +22,7 @@ func createGroupAsAdmin(t *testing.T, ctx *TestContext, name string) group.Group
 	require.NoError(t, err)
 
 	var created group.Group
-	err = resp.DecodeJSON(&created)
+	err = resp.DecodeData(&created)
 	require.NoError(t, err)
 	return created
 }

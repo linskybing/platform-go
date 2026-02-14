@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/linskybing/platform-go/internal/domain/common"
 	"github.com/linskybing/platform-go/internal/domain/group"
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"gorm.io/gorm"
@@ -17,6 +18,7 @@ type GroupRepo interface {
 	GetAllGroups(ctx context.Context) ([]group.Group, error)
 	ListGroupsForUser(ctx context.Context, userID string) ([]group.Group, error)
 	ListUsersInGroup(ctx context.Context, groupID string) ([]user.User, error)
+	GetByGroupName(ctx context.Context, name string) (*group.Group, error)
 	UpdateGroup(ctx context.Context, g *group.Group) error
 	Delete(ctx context.Context, id string) error
 	DeleteGroup(ctx context.Context, id string) error
@@ -53,14 +55,6 @@ func NewUserGroupRepo(db *gorm.DB) UserGroupRepo {
 	return &UserGroupRepoImpl{db: db}
 }
 
-func (r *GroupRepoImpl) setAliases(g *group.Group) {
-	if g == nil {
-		return
-	}
-	g.GID = g.ID
-	g.GroupName = g.Name
-}
-
 func (r *GroupRepoImpl) Create(ctx context.Context, g *group.Group) error {
 	return r.db.WithContext(ctx).Create(g).Error
 }
@@ -72,7 +66,6 @@ func (r *GroupRepoImpl) CreateGroup(ctx context.Context, g *group.Group) error {
 func (r *GroupRepoImpl) Get(ctx context.Context, id string) (*group.Group, error) {
 	var g group.Group
 	err := r.db.WithContext(ctx).First(&g, "id = ?", id).Error
-	r.setAliases(&g)
 	return &g, err
 }
 
@@ -80,12 +73,18 @@ func (r *GroupRepoImpl) GetGroupByID(ctx context.Context, id string) (*group.Gro
 	return r.Get(ctx, id)
 }
 
+func (r *GroupRepoImpl) GetByGroupName(ctx context.Context, name string) (*group.Group, error) {
+	var g group.Group
+	err := r.db.WithContext(ctx).First(&g, "name = ?", name).Error
+	if err != nil {
+		return nil, err
+	}
+	return &g, nil
+}
+
 func (r *GroupRepoImpl) List(ctx context.Context) ([]group.Group, error) {
 	var groups []group.Group
 	err := r.db.WithContext(ctx).Find(&groups).Error
-	for i := range groups {
-		r.setAliases(&groups[i])
-	}
 	return groups, err
 }
 
@@ -97,9 +96,6 @@ func (r *GroupRepoImpl) ListGroupsForUser(ctx context.Context, userID string) ([
 	var groups []group.Group
 	err := r.db.WithContext(ctx).Joins("JOIN user_group ug ON ug.group_id = groups.id").
 		Where("ug.user_id = ?", userID).Find(&groups).Error
-	for i := range groups {
-		r.setAliases(&groups[i])
-	}
 	return groups, err
 }
 
@@ -115,7 +111,12 @@ func (r *GroupRepoImpl) UpdateGroup(ctx context.Context, g *group.Group) error {
 }
 
 func (r *GroupRepoImpl) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&group.Group{}, "id = ?", id).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&group.Group{}, "id = ?", id).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&common.ResourceOwner{}, "id = ?", id).Error
+	})
 }
 
 func (r *GroupRepoImpl) DeleteGroup(ctx context.Context, id string) error {
@@ -160,7 +161,7 @@ func (r *UserGroupRepoImpl) DeleteUserGroup(ctx context.Context, uid, gid string
 
 func (r *UserGroupRepoImpl) GetUserGroupsByUID(ctx context.Context, uid string) ([]group.UserGroup, error) {
 	var ugs []group.UserGroup
-	err := r.db.WithContext(ctx).Where("user_id = ?", uid).Find(&ugs).Error
+	err := r.db.WithContext(ctx).Preload("Group").Where("user_id = ?", uid).Find(&ugs).Error
 	return ugs, err
 }
 

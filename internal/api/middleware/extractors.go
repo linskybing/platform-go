@@ -52,7 +52,10 @@ func FromProjectIDParam(repos *repository.Repos) IDExtractor {
 			return ""
 		}
 
-		return project.GID
+		if project.OwnerID == nil {
+			return ""
+		}
+		return *project.OwnerID
 	}
 }
 
@@ -71,7 +74,10 @@ func FromProjectIDParamName(paramName string) IDExtractor {
 			return ""
 		}
 
-		return project.GID
+		if project.OwnerID == nil {
+			return ""
+		}
+		return *project.OwnerID
 	}
 }
 
@@ -97,7 +103,10 @@ func FromConfigCommitIDParam(repos *repository.Repos) IDExtractor {
 			return ""
 		}
 
-		return project.GID
+		if project.OwnerID == nil {
+			return ""
+		}
+		return *project.OwnerID
 	}
 }
 
@@ -106,11 +115,20 @@ func FromConfigCommitIDParam(repos *repository.Repos) IDExtractor {
 func FromProjectIDInPayload() IDExtractor {
 	return func(c *gin.Context, repos *repository.Repos) string {
 		var payload struct {
-			ProjectID string `json:"project_id" form:"project_id"`
+			ProjectID string `json:"project_id" form:"project_id" query:"project_id"`
 		}
 
 		if err := bindPayload(c, &payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+			return ""
+		}
+
+		if payload.ProjectID == "" {
+			payload.ProjectID = c.Query("project_id")
+		}
+
+		if payload.ProjectID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "project_id is required"})
 			return ""
 		}
 
@@ -120,7 +138,10 @@ func FromProjectIDInPayload() IDExtractor {
 			return ""
 		}
 
-		return project.GID
+		if project.OwnerID == nil {
+			return ""
+		}
+		return *project.OwnerID
 	}
 }
 
@@ -129,12 +150,17 @@ func FromProjectIDInPayload() IDExtractor {
 func FromGroupIDInPayload() IDExtractor {
 	return func(c *gin.Context, repos *repository.Repos) string {
 		var payload struct {
-			GroupID string `json:"group_id" form:"group_id"`
+			GroupID string `json:"group_id" form:"group_id" query:"g_id"`
 		}
 
 		if err := bindPayload(c, &payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 			return ""
+		}
+
+		if payload.GroupID == "" {
+			// Try query param if not in body
+			payload.GroupID = c.Query("g_id")
 		}
 
 		if payload.GroupID == "" {

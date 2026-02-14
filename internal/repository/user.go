@@ -33,13 +33,6 @@ func NewUserRepo(db *gorm.DB) UserRepo {
 	return &UserRepoImpl{db: db}
 }
 
-func (r *UserRepoImpl) setAliases(u *user.User) {
-	if u == nil {
-		return
-	}
-	u.UID = u.ID
-}
-
 func (r *UserRepoImpl) Create(ctx context.Context, u *user.User) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		owner := common.ResourceOwner{OwnerType: "USER"}
@@ -54,7 +47,6 @@ func (r *UserRepoImpl) Create(ctx context.Context, u *user.User) error {
 func (r *UserRepoImpl) Get(ctx context.Context, id string) (*user.User, error) {
 	var u user.User
 	err := r.db.WithContext(ctx).First(&u, "id = ?", id).Error
-	r.setAliases(&u)
 	return &u, err
 }
 
@@ -69,7 +61,6 @@ func (r *UserRepoImpl) GetUserRawByID(ctx context.Context, id string) (*user.Use
 func (r *UserRepoImpl) GetByUsername(ctx context.Context, username string) (*user.User, error) {
 	var u user.User
 	err := r.db.WithContext(ctx).First(&u, "username = ?", username).Error
-	r.setAliases(&u)
 	return &u, err
 }
 
@@ -86,9 +77,6 @@ func (r *UserRepoImpl) GetUsernameByID(ctx context.Context, id string) (string, 
 func (r *UserRepoImpl) List(ctx context.Context) ([]user.User, error) {
 	var users []user.User
 	err := r.db.WithContext(ctx).Find(&users).Error
-	for i := range users {
-		r.setAliases(&users[i])
-	}
 	return users, err
 }
 
@@ -101,9 +89,6 @@ func (r *UserRepoImpl) ListUsersPaging(ctx context.Context, offset, limit int) (
 	var count int64
 	r.db.WithContext(ctx).Model(&user.User{}).Count(&count)
 	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&users).Error
-	for i := range users {
-		r.setAliases(&users[i])
-	}
 	return users, count, err
 }
 
@@ -112,9 +97,6 @@ func (r *UserRepoImpl) ListUsersByProjectID(ctx context.Context, pid string) ([]
 	err := r.db.WithContext(ctx).Joins("JOIN user_group ug ON ug.user_id = users.id").
 		Joins("JOIN projects p ON p.owner_id = ug.group_id").
 		Where("p.p_id = ?", pid).Find(&users).Error
-	for i := range users {
-		r.setAliases(&users[i])
-	}
 	return users, err
 }
 
@@ -123,7 +105,12 @@ func (r *UserRepoImpl) SaveUser(ctx context.Context, u *user.User) error {
 }
 
 func (r *UserRepoImpl) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&common.ResourceOwner{}, "id = ?", id).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&user.User{}, "id = ?", id).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&common.ResourceOwner{}, "id = ?", id).Error
+	})
 }
 
 func (r *UserRepoImpl) WithTx(tx *gorm.DB) UserRepo {

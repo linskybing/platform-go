@@ -14,7 +14,7 @@ import (
 
 func TestStoragePermissionHandler_Integration(t *testing.T) {
 	ctx := GetTestContext()
-	pvcID := fmt.Sprintf("group-%s-testpvc", ctx.TestGroup.GID)
+	pvcID := fmt.Sprintf("group-%s-testpvc", ctx.TestGroup.ID)
 	generator := NewTestDataGenerator()
 	cleaner := NewDatabaseCleaner()
 	t.Cleanup(func() {
@@ -23,18 +23,18 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 
 	testUser := generator.GenerateUser("storage-perm-test")
 	require.NoError(t, generator.CreateTestUser(testUser))
-	cleaner.RegisterUser(testUser.UID)
+	cleaner.RegisterUser(testUser.ID)
 
-	testProject := generator.GenerateProject("storage-project", ctx.TestGroup.GID)
+	testProject := generator.GenerateProject("storage-project", ctx.TestGroup.ID)
 	require.NoError(t, generator.CreateTestProject(testProject))
-	cleaner.RegisterProject(testProject.PID)
+	cleaner.RegisterProject(testProject.ID)
 
 	t.Run("SetPermission - Success as Admin", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
 		body := map[string]string{
-			"user_id":    testUser.UID,
-			"group_id":   ctx.TestGroup.GID,
+			"user_id":    testUser.ID,
+			"group_id":   ctx.TestGroup.ID,
 			"pvc_id":     pvcID,
 			"permission": "write",
 		}
@@ -48,8 +48,8 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
 		body := map[string]string{
-			"user_id":    testUser.UID,
-			"group_id":   ctx.TestGroup.GID,
+			"user_id":    testUser.ID,
+			"group_id":   ctx.TestGroup.ID,
 			"pvc_id":     pvcID,
 			"permission": "invalid",
 		}
@@ -61,7 +61,7 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 
 	t.Run("GetUserPermission - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
-		path := fmt.Sprintf("/storage/permissions/group/%s/pvc/%s", ctx.TestGroup.GID, pvcID)
+		path := fmt.Sprintf("/storage/permissions/group/%s/pvc/%s", ctx.TestGroup.ID, pvcID)
 
 		resp, err := client.GET(path)
 		require.NoError(t, err)
@@ -73,14 +73,14 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 
 		testUser2 := generator.GenerateUser("storage-test-2")
 		require.NoError(t, generator.CreateTestUser(testUser2))
-		cleaner.RegisterUser(testUser2.UID)
+		cleaner.RegisterUser(testUser2.ID)
 
 		body := map[string]interface{}{
-			"group_id": ctx.TestGroup.GID,
+			"group_id": ctx.TestGroup.ID,
 			"pvc_id":   pvcID,
 			"permissions": []map[string]string{
-				{"user_id": testUser.UID, "permission": "read"},
-				{"user_id": testUser2.UID, "permission": "read"},
+				{"user_id": testUser.ID, "permission": "read"},
+				{"user_id": testUser2.ID, "permission": "read"},
 			},
 		}
 
@@ -94,7 +94,7 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 		path := "/storage/policies"
 
 		body := map[string]interface{}{
-			"group_id":           ctx.TestGroup.GID,
+			"group_id":           ctx.TestGroup.ID,
 			"pvc_id":             pvcID,
 			"default_permission": "read",
 			"admin_only":         false,
@@ -110,7 +110,7 @@ func TestStoragePermissionHandler_Integration(t *testing.T) {
 		path := "/storage/policies"
 
 		body := map[string]interface{}{
-			"group_id":           ctx.TestGroup.GID,
+			"group_id":           ctx.TestGroup.ID,
 			"pvc_id":             pvcID,
 			"default_permission": "invalid_policy",
 			"admin_only":         false,

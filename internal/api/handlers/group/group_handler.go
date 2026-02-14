@@ -93,7 +93,7 @@ func (h *GroupHandler) CreateGroup(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, group, "Group created successfully")
+	response.SuccessWithStatus(c, http.StatusCreated, group, "Group created successfully")
 }
 
 // UpdateGroup godoc
@@ -126,16 +126,16 @@ func (h *GroupHandler) UpdateGroup(c *gin.Context) {
 	group, err := h.svc.UpdateGroup(c, id, input)
 	if err != nil {
 		if err == application.ErrReservedGroupName {
-			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusForbidden, err.Error())
 		} else if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "group not found"})
+			response.Error(c, http.StatusNotFound, "group not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, group)
+	response.Success(c, group, "Group updated successfully")
 }
 
 // DeleteGroup godoc
@@ -144,30 +144,30 @@ func (h *GroupHandler) UpdateGroup(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Group ID"
-// @Success 200 {object} response.MessageResponse "Group deleted"
-// @Failure 400 {object} response.ErrorResponse "Invalid group id"
-// @Failure 403 {object} response.ErrorResponse "Forbidden to delete 'super' group"
-// @Failure 404 {object} response.ErrorResponse "Group not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=nil} "Group deleted"
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid group id"
+// @Failure 403 {object} response.StandardResponse{data=nil} "Forbidden to delete 'super' group"
+// @Failure 404 {object} response.StandardResponse{data=nil} "Group not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /groups/{id} [delete]
 func (h *GroupHandler) DeleteGroup(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid group id"})
+		response.Error(c, http.StatusBadRequest, "invalid group id")
 		return
 	}
 
 	err = h.svc.DeleteGroup(c, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "group not found"})
+			response.Error(c, http.StatusNotFound, "group not found")
 		} else if err == application.ErrReservedGroupName {
-			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: "super group can't be removed"})
+			response.Error(c, http.StatusForbidden, "super group can't be removed")
 		} else {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "Group deleted"})
+	response.Success(c, nil, "Group deleted successfully")
 }

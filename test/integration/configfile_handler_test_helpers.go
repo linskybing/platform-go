@@ -21,7 +21,7 @@ func createConfigFileAsManager(t *testing.T, ctx *TestContext, rawYaml, message 
 	client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
 
 	formData := map[string]string{
-		"project_id": ctx.TestProject.PID,
+		"project_id": ctx.TestProject.ID,
 		"raw_yaml":   rawYaml,
 	}
 	if message != "" {
@@ -35,7 +35,7 @@ func createConfigFileAsManager(t *testing.T, ctx *TestContext, rawYaml, message 
 	}
 
 	var created configCommitResponse
-	err = resp.DecodeJSON(&created)
+	err = resp.DecodeData(&created)
 	require.NoError(t, err)
 	return created
 }

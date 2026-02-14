@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/linskybing/platform-go/internal/application/configfile"
 	"github.com/linskybing/platform-go/internal/application/executor"
 	"github.com/linskybing/platform-go/internal/config"
@@ -15,7 +16,6 @@ import (
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/response"
 	"github.com/linskybing/platform-go/pkg/types"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type JobHandler struct {
@@ -253,11 +253,7 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 		return
 	}
 
-	jobID, err := gonanoid.New()
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "failed to generate job id")
-		return
-	}
+	jobID := uuid.NewString()
 
 	ctx := c.Request.Context()
 	ctx = configfile.WithJobID(ctx, jobID)
@@ -278,7 +274,7 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"job_id": jobID}, "Job submitted successfully")
+	response.SuccessWithStatus(c, http.StatusCreated, gin.H{"job_id": jobID}, "Job submitted successfully")
 }
 
 func enforceUserJobLimits(ctx context.Context, repos *repository.Repos, proj *project.Project, userID string) error {
@@ -289,7 +285,7 @@ func enforceUserJobLimits(ctx context.Context, repos *repository.Repos, proj *pr
 		return nil
 	}
 	if proj.MaxConcurrentJobsPerUser > 0 {
-		count, err := repos.Job.CountByUserProjectAndStatuses(ctx, userID, proj.PID, []string{string(executor.JobStatusRunning)})
+		count, err := repos.Job.CountByUserProjectAndStatuses(ctx, userID, proj.ID, []string{string(executor.JobStatusRunning)})
 		if err != nil {
 			return err
 		}
@@ -298,7 +294,7 @@ func enforceUserJobLimits(ctx context.Context, repos *repository.Repos, proj *pr
 		}
 	}
 	if proj.MaxQueuedJobsPerUser > 0 {
-		count, err := repos.Job.CountByUserProjectAndStatuses(ctx, userID, proj.PID, []string{string(executor.JobStatusQueued), string(executor.JobStatusSubmitted)})
+		count, err := repos.Job.CountByUserProjectAndStatuses(ctx, userID, proj.ID, []string{string(executor.JobStatusQueued), string(executor.JobStatusSubmitted)})
 		if err != nil {
 			return err
 		}

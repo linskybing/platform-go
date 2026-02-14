@@ -168,10 +168,10 @@ run_db_tests_docker() {
     
     # Wait for services to be ready
     log_info "Waiting for services to be ready..."
-    sleep 10
+    sleep 15
     
     # Verify services are running
-    if ! docker compose -f "$COMPOSE_FILE" ps | grep -q "Up"; then
+    if ! docker compose -f "$COMPOSE_FILE" ps | grep -E "Up|running" > /dev/null; then
         log_error "Services failed to start"
         docker compose -f "$COMPOSE_FILE" logs
         docker compose -f "$COMPOSE_FILE" down -v || true
@@ -185,7 +185,7 @@ run_db_tests_docker() {
     export ENVIRONMENT="test"
     
     log_info "Running Go integration tests..."
-    go test -v -timeout "$TIMEOUT" -tags=integration ./test/integration/... 2>&1 | tee integration-test.log
+    go test -v -count=1 -timeout "$TIMEOUT" -tags=integration ./test/integration/... 2>&1 | tee integration-test.log
     TEST_RESULT=$?
     
     # Cleanup

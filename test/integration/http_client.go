@@ -45,6 +45,13 @@ type Response struct {
 	Headers    http.Header
 }
 
+// StandardResponse matches the API's unified response structure
+type StandardResponse struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+}
+
 // Do performs an HTTP request
 func (c *HTTPClient) Do(req Request) (*Response, error) {
 	// Prepare request body
@@ -266,6 +273,22 @@ func (c *HTTPClient) PUTForm(path string, formData map[string]string) (*Response
 // DecodeJSON decodes JSON response body into target
 func (r *Response) DecodeJSON(target interface{}) error {
 	return json.Unmarshal(r.Body, target)
+}
+
+// DecodeData decodes the 'data' field of the standard response into target
+func (r *Response) DecodeData(target interface{}) error {
+	var full StandardResponse
+	if err := json.Unmarshal(r.Body, &full); err != nil {
+		return err
+	}
+	
+	// Re-marshal and unmarshal to decode interface{} into specific struct
+	dataBytes, err := json.Marshal(full.Data)
+	if err != nil {
+		return err
+	}
+	
+	return json.Unmarshal(dataBytes, target)
 }
 
 // GetErrorMessage extracts error message from response

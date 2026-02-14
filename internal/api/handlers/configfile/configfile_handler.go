@@ -111,7 +111,7 @@ func (h *ConfigFileHandler) CreateConfigFileHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp)
+	response.SuccessWithStatus(c, http.StatusCreated, resp, "Config commit created successfully")
 }
 
 // UpdateConfigFile godoc
@@ -188,7 +188,7 @@ func (h *ConfigFileHandler) DeleteConfigFileHandler(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	response.Success(c, nil, "Config commit deleted successfully")
 }
 
 // ListConfigFilesByProjectID godoc
@@ -268,7 +268,7 @@ func (h *ConfigFileHandler) DestructInstanceHandler(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.Status(http.StatusNoContent)
+	response.Success(c, nil, "destruct successfully")
 }
 
 func (h *ConfigFileHandler) buildCommitResponse(commit *configfile.ConfigCommit) (ConfigCommitResponse, error) {

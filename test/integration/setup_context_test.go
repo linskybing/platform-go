@@ -16,6 +16,7 @@ import (
 	"github.com/linskybing/platform-go/internal/config"
 	"github.com/linskybing/platform-go/internal/config/db"
 	"github.com/linskybing/platform-go/internal/domain/audit"
+	"github.com/linskybing/platform-go/internal/domain/common"
 	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"github.com/linskybing/platform-go/internal/domain/form"
 	"github.com/linskybing/platform-go/internal/domain/group"
@@ -79,28 +80,29 @@ func setupTestContext() *TestContext {
 
 	adminUser := getOrCreateUser("admin", "admin@test.com")
 	superGroup := getOrCreateGroup("super")
-	ensureUserGroup(adminUser.UID, superGroup.GID, "admin")
+	ensureUserGroup(adminUser.ID, superGroup.ID, "admin")
 
 	managerUser := getOrCreateUser(randomName("manager"), randomEmail("manager"))
 	regularUser := getOrCreateUser(randomName("user"), randomEmail("user"))
 
 	testGroup := getOrCreateGroup(randomName("group"))
-	ensureUserGroup(managerUser.UID, testGroup.GID, "manager")
-	ensureUserGroup(regularUser.UID, testGroup.GID, "user")
+	ensureUserGroup(managerUser.ID, testGroup.ID, "manager")
+	ensureUserGroup(regularUser.ID, testGroup.ID, "user")
 
-	testProject := getOrCreateProject(randomName("project"), testGroup.GID)
+	testProject := getOrCreateProject(randomName("project"), testGroup.ID)
+	allowImageGlobally("nginx", "latest")
 
-	adminToken, _, err := middleware.GenerateToken(adminUser.UID, adminUser.Username, time.Hour, repos.UserGroup)
+	adminToken, _, err := middleware.GenerateToken(adminUser.ID, adminUser.Username, time.Hour, repos.UserGroup)
 	if err != nil {
 		panic(fmt.Sprintf("failed to generate admin token: %v", err))
 	}
 
-	managerToken, _, err := middleware.GenerateToken(managerUser.UID, managerUser.Username, time.Hour, repos.UserGroup)
+	managerToken, _, err := middleware.GenerateToken(managerUser.ID, managerUser.Username, time.Hour, repos.UserGroup)
 	if err != nil {
 		panic(fmt.Sprintf("failed to generate manager token: %v", err))
 	}
 
-	userToken, _, err := middleware.GenerateToken(regularUser.UID, regularUser.Username, time.Hour, repos.UserGroup)
+	userToken, _, err := middleware.GenerateToken(regularUser.ID, regularUser.Username, time.Hour, repos.UserGroup)
 	if err != nil {
 		panic(fmt.Sprintf("failed to generate user token: %v", err))
 	}
@@ -147,11 +149,35 @@ func setupTestContext() *TestContext {
 func initDatabase() {
 	db.Init()
 
-	if err := db.DB.AutoMigrate(
+	// Drop tables to ensure fresh schema with correct types (varchar -> uuid)
+	tables := []interface{}{
 		&user.User{},
 		&group.Group{},
 		&group.UserGroup{},
 		&project.Project{},
+		&project.ResourcePlan{},
+		&configfile.ConfigBlob{},
+		&configfile.ConfigCommit{},
+		&resource.Resource{},
+		&job.Job{},
+		&storage.Storage{},
+		&image.ContainerRepository{},
+		&image.ContainerTag{},
+		&image.ImageAllowList{},
+		&image.ImageRequest{},
+		&image.ClusterImageStatus{},
+	}
+	for _, t := range tables {
+		db.DB.Migrator().DropTable(t)
+	}
+
+	if err := db.DB.AutoMigrate(
+		&common.ResourceOwner{},
+		&user.User{},
+		&group.Group{},
+		&group.UserGroup{},
+		&project.Project{},
+		&project.ResourcePlan{},
 		&configfile.ConfigBlob{},
 		&configfile.ConfigCommit{},
 		&resource.Resource{},
@@ -163,6 +189,7 @@ func initDatabase() {
 		&image.ImageAllowList{},
 		&image.ImageRequest{},
 		&image.ClusterImageStatus{},
+		&job.PriorityClass{},
 		&job.Job{},
 		&storage.Storage{},
 		&storage.GroupStoragePermission{},
@@ -170,6 +197,8 @@ func initDatabase() {
 	); err != nil {
 		panic(fmt.Sprintf("failed to migrate database: %v", err))
 	}
+
+	db.EnsureConstraints()
 }
 
 func randomName(prefix string) string {

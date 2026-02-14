@@ -5,9 +5,9 @@ import (
 )
 
 type ProjectUserView struct {
-	PID         string  `gorm:"column:p_id"`
+	ProjectID   string  `gorm:"column:project_id"`
 	ProjectName string  `gorm:"column:project_name"`
-	GID         string  `gorm:"column:g_id"`
+	GroupID     string  `gorm:"column:group_id"`
 	GroupName   string  `gorm:"column:group_name"`
 	Role        *string `gorm:"column:role"` // Role in group or project
 }

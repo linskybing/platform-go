@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/linskybing/platform-go/internal/domain/configfile"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -39,11 +39,7 @@ func (r *ConfigFileRepoImpl) Store(ctx context.Context, projectID, authorID, mes
 		return nil, err
 	}
 	blob := configfile.ConfigBlob{Hash: hashStr, Content: datatypes.JSON(contentJSON)}
-	commitID, err := gonanoid.New()
-	if err != nil {
-		return nil, err
-	}
-	commit := configfile.ConfigCommit{ID: commitID, ProjectID: projectID, BlobHash: hashStr, AuthorID: authorID, Message: message}
+	commit := configfile.ConfigCommit{ID: uuid.NewString(), ProjectID: projectID, BlobHash: hashStr, AuthorID: authorID, Message: message}
 
 	db := r.db.WithContext(ctx)
 	if err := db.FirstOrCreate(&blob).Error; err != nil {

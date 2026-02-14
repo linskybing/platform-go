@@ -45,8 +45,13 @@ type TokenResponse struct {
 
 // Success returns a success response with data
 func Success(c *gin.Context, data interface{}, message string) {
-	c.JSON(200, StandardResponse{
-		Code:    200,
+	SuccessWithStatus(c, 200, data, message)
+}
+
+// SuccessWithStatus returns a success response with a specific status code
+func SuccessWithStatus(c *gin.Context, statusCode int, data interface{}, message string) {
+	c.JSON(statusCode, StandardResponse{
+		Code:    statusCode,
 		Message: message,
 		Data:    data,
 	})

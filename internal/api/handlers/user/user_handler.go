@@ -140,10 +140,10 @@ func (h *UserHandler) Login(c *gin.Context) {
 		true,
 	)
 
-	// Use cookie-only session for browser clients. Do not return the raw token in JSON.
+	// Return token in both cookie and response body for flexibility
 	response.Success(c, response.TokenData{
-		Token:    "",
-		UID:      user.UID,
+		Token:    token,
+		UID:      user.ID,
 		Username: user.Username,
 		IsAdmin:  isAdmin,
 	}, "Login successful")

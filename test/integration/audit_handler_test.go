@@ -22,11 +22,11 @@ func TestAuditHandler_Integration(t *testing.T) {
 
 	testUser := generator.GenerateUser("audit-test")
 	require.NoError(t, generator.CreateTestUser(testUser))
-	cleaner.RegisterUser(testUser.UID)
+	cleaner.RegisterUser(testUser.ID)
 
 	testGroup := generator.GenerateGroup("audit-group")
 	require.NoError(t, generator.CreateTestGroup(testGroup))
-	cleaner.RegisterGroup(testGroup.GID)
+	cleaner.RegisterGroup(testGroup.ID)
 
 	t.Run("GetAuditLogs - Success as Admin", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
@@ -47,7 +47,7 @@ func TestAuditHandler_Integration(t *testing.T) {
 
 	t.Run("GetAuditLogs - Filter by User", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
-		path := fmt.Sprintf("/audit/logs?user_id=%s", testUser.UID)
+		path := fmt.Sprintf("/audit/logs?user_id=%s", testUser.ID)
 
 		resp, err := client.GET(path)
 		require.NoError(t, err)

@@ -9,7 +9,7 @@ import (
 
 type AuditLog struct {
 	ID           uint           `gorm:"primaryKey;autoIncrement"`
-	UserID       string         `gorm:"not null;index;size:21;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"user_id"`
+	UserID       string         `gorm:"type:uuid;not null;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"user_id"`
 	Action       string         `gorm:"type:varchar(20);not null;index" json:"action"`
 	ResourceType string         `gorm:"type:varchar(50);not null;index" json:"resource_type"`
 	ResourceID   string         `gorm:"not null;index" json:"resource_id"`
@@ -19,5 +19,5 @@ type AuditLog struct {
 	UserAgent    string         `gorm:"type:text" json:"user_agent"`
 	Description  string         `gorm:"type:text" json:"description"`
 	CreatedAt    time.Time      `gorm:"autoCreateTime;index" json:"created_at"`
-	User         *user.User     `json:"-" gorm:"foreignKey:UserID;references:UID"`
+	User         *user.User     `json:"-" gorm:"foreignKey:UserID;references:ID"`
 }

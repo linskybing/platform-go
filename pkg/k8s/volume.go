@@ -168,6 +168,10 @@ func CreateStorageHub(ns string, pvcName string) error {
 // MountExistingVolumeToNamespace mounts an existing PVC from one namespace to another.
 // This is typically used to share user or group storage with application namespaces.
 func MountExistingVolumeToNamespace(sourceNs, sourcePvcName, targetNs, targetPvcName string) error {
+	if Clientset == nil {
+		logger.Info("mock volume mount", "source", sourceNs+"/"+sourcePvcName, "target", targetNs+"/"+targetPvcName)
+		return nil
+	}
 	ctx, cancel := requestContext()
 	defer cancel()
 

@@ -71,7 +71,7 @@ func (r *JobRepoImpl) ListByProject(ctx context.Context, projectID string) ([]jo
 	var jobs []job.Job
 	err := r.db.WithContext(ctx).
 		Where("project_id = ?", projectID).
-		Order("submitted_at DESC").
+		Order("created_at DESC").
 		Find(&jobs).Error
 	return jobs, err
 }
@@ -81,7 +81,7 @@ func (r *JobRepoImpl) ListByUser(ctx context.Context, userID string) ([]job.Job,
 	var jobs []job.Job
 	err := r.db.WithContext(ctx).
 		Where("user_id = ?", userID).
-		Order("submitted_at DESC").
+		Order("created_at DESC").
 		Find(&jobs).Error
 	return jobs, err
 }
@@ -94,7 +94,7 @@ func (r *JobRepoImpl) ListByStatus(ctx context.Context, statuses []string) ([]jo
 	}
 	err := r.db.WithContext(ctx).
 		Where("status IN ?", statuses).
-		Order("submitted_at DESC").
+		Order("created_at DESC").
 		Find(&jobs).Error
 	return jobs, err
 }
@@ -108,7 +108,7 @@ func (r *JobRepoImpl) ListByProjectAndStatuses(ctx context.Context, projectID st
 	err := r.db.WithContext(ctx).
 		Where("project_id = ?", projectID).
 		Where("status IN ?", statuses).
-		Order("submitted_at DESC").
+		Order("created_at DESC").
 		Find(&jobs).Error
 	return jobs, err
 }
@@ -132,8 +132,8 @@ func (r *JobRepoImpl) CountByUserProjectAndStatuses(ctx context.Context, userID,
 func (r *JobRepoImpl) FetchNextPending(ctx context.Context) (*job.Job, error) {
 	var j job.Job
 	query := `SELECT * FROM jobs 
-	          WHERE status = 'Pending' 
-	          ORDER BY priority DESC, create_at ASC 
+	          WHERE status = 'PENDING' 
+	          ORDER BY priority_value DESC, created_at ASC 
 	          FOR UPDATE SKIP LOCKED 
 	          LIMIT 1`
 	err := r.db.WithContext(ctx).Raw(query).Scan(&j).Error

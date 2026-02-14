@@ -78,9 +78,14 @@ func (s *GroupService) CreateGroup(c *gin.Context, input group.GroupCreateDTO) (
 		return group.Group{}, ErrReservedGroupName
 	}
 
+	// Check for duplicate name
+	existing, _ := s.Repos.Group.GetByGroupName(context.Background(), input.GroupName)
+	if existing != nil {
+		return group.Group{}, errors.New("group already exists")
+	}
+
 	grp := group.Group{
-		GroupName: input.GroupName,
-		Name:      input.GroupName,
+		Name: input.GroupName,
 	}
 	if input.Description != nil {
 		grp.Description = *input.Description
@@ -116,7 +121,6 @@ func (s *GroupService) UpdateGroup(c *gin.Context, id string, input group.GroupU
 			return group.Group{}, ErrReservedGroupName
 		}
 		grp.Name = *input.GroupName
-		grp.GroupName = *input.GroupName
 	}
 	if input.Description != nil {
 		grp.Description = *input.Description

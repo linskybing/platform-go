@@ -2,14 +2,15 @@ package k8s
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/linskybing/platform-go/internal/config"
 	"github.com/linskybing/platform-go/internal/domain/storage"
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/linskybing/platform-go/pkg/cache"
 	k8sclient "github.com/linskybing/platform-go/pkg/k8s"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 const (
@@ -55,17 +56,19 @@ func (sm *StorageManager) getUserNamespace(userID string) string {
 // --- ID Generation ---
 
 func (sm *StorageManager) generatePVCName(prefix string) (string, error) {
-	suffix, err := gonanoid.Generate("abcdefghijklmnopqrstuvwxyz0123456789", 10)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s-%s", prefix, suffix), nil
+	return fmt.Sprintf("%s-%s", prefix, randomString(10)), nil
 }
 
 func (sm *StorageManager) generateGroupPVCID(groupID string) (string, error) {
-	suffix, err := gonanoid.Generate("abcdefghijklmnopqrstuvwxyz0123456789", 10)
-	if err != nil {
-		return "", err
+	return fmt.Sprintf("group-%s-%s", groupID, randomString(10)), nil
+}
+
+func randomString(n int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := range b {
+		b[i] = charset[r.Intn(len(charset))]
 	}
-	return fmt.Sprintf("group-%s-%s", groupID, suffix), nil
+	return string(b)
 }

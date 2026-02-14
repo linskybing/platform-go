@@ -3,7 +3,7 @@ package storage
 import (
 	"time"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -24,22 +24,22 @@ const (
 
 // GroupStoragePermission represents user permissions for a specific group PVC
 type GroupStoragePermission struct {
-	ID         string            `gorm:"primaryKey;column:id;size:21"`
-	GroupID    string            `gorm:"not null;index:idx_group_pvc_user;size:21"`        // Group ID
-	PVCID      string            `gorm:"size:100;not null;index:idx_group_pvc_user"`       // PVC ID (group-{gid}-{uuid})
-	UserID     string            `gorm:"not null;index:idx_group_pvc_user,unique;size:21"` // User ID
-	Permission StoragePermission `gorm:"type:varchar(20);not null;default:'none'"`         // none, read, write
-	GrantedBy  string            `gorm:"not null;size:21"`                                 // Admin who granted permission
+	ID         string            `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	GroupID    string            `gorm:"not null;index:idx_group_pvc_user;type:uuid"`        // Group ID
+	PVCID      string            `gorm:"size:100;not null;index:idx_group_pvc_user"`         // PVC ID (group-{gid}-{uuid})
+	UserID     string            `gorm:"not null;index:idx_group_pvc_user,unique;type:uuid"` // User ID
+	Permission StoragePermission `gorm:"type:varchar(20);not null;default:'none'"`           // none, read, write
+	GrantedBy  string            `gorm:"not null;type:uuid"`                                 // Admin who granted permission
 	GrantedAt  time.Time         `gorm:"column:granted_at;autoCreateTime"`
 	UpdatedAt  time.Time         `gorm:"column:updated_at;autoUpdateTime"`
 	RevokedAt  *time.Time        `gorm:"column:revoked_at;index"` // NULL if active
 }
 
-func (m *GroupStoragePermission) BeforeCreate(tx *gorm.DB) (err error) {
+func (m *GroupStoragePermission) BeforeCreate(tx *gorm.DB) error {
 	if m.ID == "" {
-		m.ID, err = gonanoid.New()
+		m.ID = uuid.NewString()
 	}
-	return
+	return nil
 }
 
 // TableName specifies the database table name
@@ -64,21 +64,21 @@ func (p *GroupStoragePermission) CanWrite() bool {
 
 // GroupStorageAccessPolicy defines default access policy for a group PVC
 type GroupStorageAccessPolicy struct {
-	ID                string            `gorm:"primaryKey;column:id;size:21"`
-	GroupID           string            `gorm:"not null;index;size:21"`
+	ID                string            `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	GroupID           string            `gorm:"not null;index;type:uuid"`
 	PVCID             string            `gorm:"size:100;not null;uniqueIndex"`            // One policy per PVC
 	DefaultPermission StoragePermission `gorm:"type:varchar(20);not null;default:'none'"` // Default for new members
 	AdminOnly         bool              `gorm:"default:false"`                            // Only admins can access
-	CreatedBy         string            `gorm:"not null;size:21"`                         // Admin who created policy
+	CreatedBy         string            `gorm:"not null;type:uuid"`                       // Admin who created policy
 	CreatedAt         time.Time         `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt         time.Time         `gorm:"column:updated_at;autoUpdateTime"`
 }
 
-func (m *GroupStorageAccessPolicy) BeforeCreate(tx *gorm.DB) (err error) {
+func (m *GroupStorageAccessPolicy) BeforeCreate(tx *gorm.DB) error {
 	if m.ID == "" {
-		m.ID, err = gonanoid.New()
+		m.ID = uuid.NewString()
 	}
-	return
+	return nil
 }
 
 // TableName specifies the database table name

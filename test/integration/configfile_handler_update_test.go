@@ -31,7 +31,7 @@ func TestConfigFileUpdate(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var updatedCommit configCommitResponse
-		err = resp.DecodeJSON(&updatedCommit)
+		err = resp.DecodeData(&updatedCommit)
 		require.NoError(t, err)
 		assert.NotEmpty(t, updatedCommit.Commit.ID)
 		assert.Contains(t, updatedCommit.Content, "updated-pod")
@@ -40,7 +40,7 @@ func TestConfigFileUpdate(t *testing.T) {
 		require.NoError(t, err)
 
 		var fetched configCommitResponse
-		err = getResp.DecodeJSON(&fetched)
+		err = getResp.DecodeData(&fetched)
 		require.NoError(t, err)
 		assert.Contains(t, fetched.Content, "updated-pod")
 	})

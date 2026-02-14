@@ -97,7 +97,7 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 		return nil, errors.New("user group payload is nil")
 	}
 	ctx := c.Request.Context()
-	projects, err := s.Repos.Project.ListProjectsByGroup(ctx, userGroup.GID)
+	projects, err := s.Repos.Project.ListProjectsByGroup(ctx, userGroup.GroupID)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 		if proj.MaxProjectUsers <= 0 {
 			continue
 		}
-		count, err := s.Repos.UserGroup.CountUsersByGID(ctx, userGroup.GID)
+		count, err := s.Repos.UserGroup.CountUsersByGID(ctx, userGroup.GroupID)
 		if err != nil {
 			return nil, err
 		}
@@ -118,18 +118,18 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 		return nil, err
 	}
 
-	uesrName, err := s.Repos.User.GetUsernameByID(ctx, userGroup.UID)
+	uesrName, err := s.Repos.User.GetUsernameByID(ctx, userGroup.UserID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.AllocateGroupResource(userGroup.GID, uesrName); err != nil {
+	if err := s.AllocateGroupResource(userGroup.GroupID, uesrName); err != nil {
 		return nil, err
 	}
 
 	utils.LogAuditWithConsole(c, "create", "user_group",
-		fmt.Sprintf("u_id=%s,g_id=%s", userGroup.UID, userGroup.GID),
+		fmt.Sprintf("user_id=%s,group_id=%s", userGroup.UserID, userGroup.GroupID),
 		nil, *userGroup, "", s.Repos.Audit)
 
 	return userGroup, nil
@@ -138,9 +138,9 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *group.UserGroup, existing group.UserGroup) (*group.UserGroup, error) {
 	ctx := c.Request.Context()
 	// Check if trying to downgrade admin user in super group
-	groupData, err := s.Repos.Group.GetGroupByID(ctx, userGroup.GID)
+	groupData, err := s.Repos.Group.GetGroupByID(ctx, userGroup.GroupID)
 	if err == nil && groupData.Name == config.ReservedGroupName {
-		username, err := s.Repos.User.GetUsernameByID(ctx, userGroup.UID)
+		username, err := s.Repos.User.GetUsernameByID(ctx, userGroup.UserID)
 		if err == nil && username == config.ReservedAdminUsername {
 			// Check if role is being changed to something other than admin
 			if userGroup.Role != "admin" && existing.Role == "admin" {
@@ -154,7 +154,7 @@ func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *group.User
 	}
 
 	utils.LogAuditWithConsole(c, "update", "user_group",
-		fmt.Sprintf("u_id=%s,g_id=%s", userGroup.UID, userGroup.GID),
+		fmt.Sprintf("user_id=%s,group_id=%s", userGroup.UserID, userGroup.GroupID),
 		existing, *userGroup, "", s.Repos.Audit)
 
 	return userGroup, nil
@@ -191,7 +191,7 @@ func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid string) erro
 	}
 
 	utils.LogAuditWithConsole(c, "delete", "user_group",
-		fmt.Sprintf("u_id=%s,g_id=%s", uid, gid),
+		fmt.Sprintf("user_id=%s,group_id=%s", uid, gid),
 		*oldUserGroup, nil, "", s.Repos.Audit)
 
 	return nil
@@ -220,35 +220,35 @@ func (s *UserGroupService) FormatByUID(records []group.UserGroup) map[string]map
 
 	for _, r := range records {
 		// Get group name for this group
-		groupData, err := s.Repos.Group.GetGroupByID(ctx, r.GID)
+		groupData, err := s.Repos.Group.GetGroupByID(ctx, r.GroupID)
 		groupName := ""
 		if err == nil {
 			groupName = groupData.Name
 		}
 
 		groupInfo := map[string]interface{}{
-			"GID":       r.GID,
-			"GroupName": groupName,
-			"Role":      r.Role,
+			"group_id":   r.GroupID,
+			"group_name": groupName,
+			"role":       r.Role,
 		}
 
-		if u, exists := result[r.UID]; exists {
+		if u, exists := result[r.UserID]; exists {
 			// Append to existing groups array
-			groups := u["Groups"].([]map[string]interface{})
+			groups := u["groups"].([]map[string]interface{})
 			groups = append(groups, groupInfo)
-			u["Groups"] = groups
+			u["groups"] = groups
 		} else {
 			// Get username
-			username, err := s.Repos.User.GetUsernameByID(ctx, r.UID)
+			username, err := s.Repos.User.GetUsernameByID(ctx, r.UserID)
 			if err != nil {
 				username = "" // If we can't get the username, use empty string
 			}
 
 			// Create new entry with groups array
-			result[r.UID] = map[string]interface{}{
-				"UID":      r.UID,
-				"UserName": username,
-				"Groups":   []map[string]interface{}{groupInfo},
+			result[r.UserID] = map[string]interface{}{
+				"user_id":   r.UserID,
+				"user_name": username,
+				"groups":    []map[string]interface{}{groupInfo},
 			}
 		}
 	}
@@ -267,29 +267,29 @@ func (s *UserGroupService) FormatByGID(records []group.UserGroup) map[string]map
 		}
 
 		userInfo := map[string]interface{}{
-			"UID":      r.UID,
-			"Username": username,
-			"Role":     r.Role,
+			"user_id":  r.UserID,
+			"username": username,
+			"role":     r.Role,
 		}
 
-		if g, exists := result[r.GID]; exists {
+		if g, exists := result[r.GroupID]; exists {
 			// Append to existing users array
-			users := g["Users"].([]map[string]interface{})
+			users := g["users"].([]map[string]interface{})
 			users = append(users, userInfo)
-			g["Users"] = users
+			g["users"] = users
 		} else {
 			// Get group name
-			groupData, err := s.Repos.Group.GetGroupByID(ctx, r.GID)
+			groupData, err := s.Repos.Group.GetGroupByID(ctx, r.GroupID)
 			groupName := ""
 			if err == nil {
 				groupName = groupData.Name
 			}
 
 			// Create new entry with users array
-			result[r.GID] = map[string]interface{}{
-				"GID":       r.GID,
-				"GroupName": groupName,
-				"Users":     []map[string]interface{}{userInfo},
+			result[r.GroupID] = map[string]interface{}{
+				"group_id":   r.GroupID,
+				"group_name": groupName,
+				"users":      []map[string]interface{}{userInfo},
 			}
 		}
 	}

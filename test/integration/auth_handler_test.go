@@ -70,8 +70,11 @@ func TestUserRegistrationAndLogin_Integration(t *testing.T) {
 		err = resp.DecodeJSON(&result)
 		require.NoError(t, err)
 
-		if uid, ok := result["user_id"].(string); ok {
-			cleaner.RegisterUser(uid)
+		if result["data"] != nil {
+			data := result["data"].(map[string]interface{})
+			if uid, ok := data["user_id"].(string); ok {
+				cleaner.RegisterUser(uid)
+			}
 		}
 	})
 
@@ -105,7 +108,9 @@ func TestUserRegistrationAndLogin_Integration(t *testing.T) {
 		var result map[string]interface{}
 		err = resp.DecodeJSON(&result)
 		require.NoError(t, err)
-		assert.NotEmpty(t, result["token"])
+		
+		data := result["data"].(map[string]interface{})
+		assert.NotEmpty(t, data["token"])
 	})
 
 	t.Run("Login - Wrong Password", func(t *testing.T) {

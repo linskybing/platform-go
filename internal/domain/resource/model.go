@@ -20,9 +20,7 @@ const (
 // Resource represents a K8s resource (Pod, Service, etc.) managed by the platform.
 type Resource struct {
 	ID             string         `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	RID            string         `gorm:"-"` // Legacy Alias
-	ConfigCommitID string         `gorm:"column:config_commit_id;type:varchar(21);not null;index"`
-	CommitID       string         `gorm:"-"`                // Legacy Alias
+	ConfigCommitID string         `gorm:"column:config_commit_id;type:uuid;not null;index"`
 	Type           ResourceType   `gorm:"size:50;not null"` // Pod, Service, etc.
 	Name           string         `gorm:"size:100;not null"`
 	ParsedYAML     datatypes.JSON `gorm:"type:jsonb;not null"`

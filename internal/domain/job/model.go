@@ -2,12 +2,15 @@ package job
 
 import (
 	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Job represents a job execution record in the high-concurrency queue.
 type Job struct {
-	ID              string     `gorm:"primaryKey;type:uuid"`
-	ConfigCommitID  string     `gorm:"type:varchar(21);not null;index"`
+	ID              string     `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	ConfigCommitID  string     `gorm:"type:uuid;not null;index"`
 	ProjectID       string     `gorm:"type:uuid;not null;index"`
 	UserID          string     `gorm:"type:uuid;not null;index"`
 	Status          string     `gorm:"size:50;not null;default:'PENDING'"` // PENDING, RUNNING, COMPLETED, FAILED, PREEMPTED
@@ -26,3 +29,10 @@ type Job struct {
 }
 
 func (Job) TableName() string { return "jobs" }
+
+func (j *Job) BeforeCreate(tx *gorm.DB) error {
+	if j.ID == "" {
+		j.ID = uuid.NewString()
+	}
+	return nil
+}

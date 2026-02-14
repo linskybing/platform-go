@@ -7,9 +7,9 @@ import (
 
 // PreemptionDecision represents a decision to preempt jobs
 type PreemptionDecision struct {
-	JobsToPreempt    []uint
+	JobsToPreempt    []string
 	Reason           string
-	RequestedBy      uint
+	RequestedBy      string
 	EstimatedTime    time.Time
 	GracePeriod      time.Duration
 	CreateCheckpoint bool
@@ -18,9 +18,9 @@ type PreemptionDecision struct {
 // Preemptor defines the interface for job preemption
 type Preemptor interface {
 	SelectJobsToPreempt(ctx context.Context, requiredResources ResourceRequirement) (*PreemptionDecision, error)
-	PreemptJob(ctx context.Context, jobID uint) error
-	CreateCheckpoint(ctx context.Context, jobID uint) error
-	NotifyPreemption(ctx context.Context, jobID uint, reason string) error
+	PreemptJob(ctx context.Context, jobID string) error
+	CreateCheckpoint(ctx context.Context, jobID string) error
+	NotifyPreemption(ctx context.Context, jobID string, reason string) error
 }
 
 // ResourceRequirement represents resource requirements for a workload

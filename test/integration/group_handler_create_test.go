@@ -66,11 +66,11 @@ func TestGroupCreate(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
 		createDTO := map[string]string{
-			"group_name": ctx.TestGroup.GroupName,
+			"group_name": ctx.TestGroup.Name,
 		}
 
 		resp, err := client.POSTForm("/groups", createDTO)
 		require.NoError(t, err)
-		assert.True(t, resp.StatusCode == http.StatusCreated || resp.StatusCode >= 400)
+		assert.GreaterOrEqual(t, resp.StatusCode, 400)
 	})
 }

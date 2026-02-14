@@ -20,7 +20,7 @@ func registerConfigFileRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *m
 	configFile := auth.Group("/configfiles")
 	{
 		// List all config files - authenticated users see their accessible files
-		configFile.GET("", am.Admin(), h.ConfigFile.ListConfigFilesHandler)
+		configFile.GET("", h.ConfigFile.ListConfigFilesHandler)
 
 		// View specific config file - group member access
 		configFile.GET("/:id", am.GroupMember(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.GetConfigFileHandler)

@@ -24,7 +24,7 @@ func TestGroupRead(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var groups []group.Group
-		err = resp.DecodeJSON(&groups)
+		err = resp.DecodeData(&groups)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(groups), 1)
 	})
@@ -32,16 +32,16 @@ func TestGroupRead(t *testing.T) {
 	t.Run("GetGroupByID - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/groups/%s", ctx.TestGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.TestGroup.ID)
 		resp, err := client.GET(path)
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var g group.Group
-		err = resp.DecodeJSON(&g)
+		err = resp.DecodeData(&g)
 		require.NoError(t, err)
-		assert.Equal(t, ctx.TestGroup.GID, g.GID)
+		assert.Equal(t, ctx.TestGroup.ID, g.ID)
 	})
 
 	t.Run("GetGroupByID - Not Found", func(t *testing.T) {

@@ -32,11 +32,10 @@ func NewTestDataGenerator() *TestDataGenerator {
 
 // GenerateUser generates a random test user
 func (g *TestDataGenerator) GenerateUser(prefix string) *user.User {
-	email := fmt.Sprintf("%s-%d@test.com", prefix, g.rand.Intn(10000))
 	return &user.User{
-		Username: fmt.Sprintf("%s-user-%d", prefix, g.rand.Intn(10000)),
-		Email:    &email,
-		Password: "password123",
+		Username:     fmt.Sprintf("%s-user-%d", prefix, g.rand.Intn(10000)),
+		Email:        fmt.Sprintf("%s-%d@test.com", prefix, g.rand.Intn(10000)),
+		PasswordHash: "password123",
 	}
 }
 
@@ -52,15 +51,15 @@ func (g *TestDataGenerator) GenerateUsers(prefix string, count int) []*user.User
 // GenerateGroup generates a random test group
 func (g *TestDataGenerator) GenerateGroup(prefix string) *group.Group {
 	return &group.Group{
-		GroupName: fmt.Sprintf("%s-group-%d", prefix, g.rand.Intn(10000)),
+		Name: fmt.Sprintf("%s-group-%d", prefix, g.rand.Intn(10000)),
 	}
 }
 
 // GenerateProject generates a random test project
 func (g *TestDataGenerator) GenerateProject(prefix string, gid string) *project.Project {
 	return &project.Project{
-		ProjectName: fmt.Sprintf("%s-project-%d", prefix, g.rand.Intn(10000)),
-		GID:         gid,
+		Name:    fmt.Sprintf("%s-project-%d", prefix, g.rand.Intn(10000)),
+		OwnerID: &gid,
 	}
 }
 
@@ -82,9 +81,9 @@ func (g *TestDataGenerator) CreateTestProject(p *project.Project) error {
 // AddUserToGroup adds a user to a group with specified role
 func (g *TestDataGenerator) AddUserToGroup(uid, gid string, role string) error {
 	ug := &group.UserGroup{
-		UID:  uid,
-		GID:  gid,
-		Role: role,
+		UserID:  uid,
+		GroupID: gid,
+		Role:    role,
 	}
 	return db.DB.Create(ug).Error
 }
@@ -214,25 +213,25 @@ func (c *DatabaseCleaner) Cleanup() error {
 
 	// Delete user groups
 	for _, uid := range c.userIDs {
-		_ = db.DB.Where("u_id = ?", uid).Delete(&group.UserGroup{}).Error
+		_ = db.DB.Where("user_id = ?", uid).Delete(&group.UserGroup{}).Error
 	}
 	for _, gid := range c.groupIDs {
-		_ = db.DB.Where("g_id = ?", gid).Delete(&group.UserGroup{}).Error
+		_ = db.DB.Where("group_id = ?", gid).Delete(&group.UserGroup{}).Error
 	}
 
 	// Delete projects
 	for _, pid := range c.projectIDs {
-		_ = db.DB.Delete(&project.Project{PID: pid}).Error
+		_ = db.DB.Exec("DELETE FROM projects WHERE p_id = ?", pid).Error
 	}
 
 	// Delete users
 	for _, uid := range c.userIDs {
-		_ = db.DB.Delete(&user.User{UID: uid}).Error
+		_ = db.DB.Exec("DELETE FROM users WHERE id = ?", uid).Error
 	}
 
 	// Delete groups
 	for _, gid := range c.groupIDs {
-		_ = db.DB.Delete(&group.Group{GID: gid}).Error
+		_ = db.DB.Exec("DELETE FROM groups WHERE id = ?", gid).Error
 	}
 
 	return nil

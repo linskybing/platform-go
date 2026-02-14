@@ -26,6 +26,12 @@ theme:
         name: Switch to light mode
 
 nav:
+  - English:
+    - Home: en/index.md
+    - Architecture: en/architecture.md
+    - Database: en/database.md
+    - Frontend Integration: en/frontend_integration.md
+    - Development: en/contributing.md
   - Home: index.md
   - Architecture: architecture.md
   - API Reference: api_reference.md

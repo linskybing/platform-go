@@ -29,7 +29,7 @@ func TestConfigFileInstanceLifecycle(t *testing.T) {
 			t.Errorf("User should have permission to create instance")
 		}
 		if resp.StatusCode == http.StatusOK && k8sValidator != nil {
-			namespace := fmt.Sprintf("proj-%s", ctx.TestProject.PID)
+			namespace := fmt.Sprintf("proj-%s", ctx.TestProject.ID)
 			deploymentName := "test-config-deployment"
 
 			exists, err := k8sValidator.DeploymentExists(namespace, deploymentName)

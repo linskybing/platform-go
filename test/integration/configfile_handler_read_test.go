@@ -27,7 +27,7 @@ func TestConfigFileRead(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var cf configCommitResponse
-		err = resp.DecodeJSON(&cf)
+		err = resp.DecodeData(&cf)
 		require.NoError(t, err)
 		assert.Equal(t, created.Commit.ID, cf.Commit.ID)
 	})
@@ -47,14 +47,14 @@ func TestConfigFileRead(t *testing.T) {
 	t.Run("ListConfigFilesByProject - Success", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
-		path := fmt.Sprintf("/projects/%s/config-files", ctx.TestProject.PID)
+		path := fmt.Sprintf("/projects/%s/config-files", ctx.TestProject.ID)
 		resp, err := client.GET(path)
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var configs []configfile.ConfigCommit
-		err = resp.DecodeJSON(&configs)
+		err = resp.DecodeData(&configs)
 		require.NoError(t, err)
 	})
 }

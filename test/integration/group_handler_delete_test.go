@@ -19,7 +19,7 @@ func TestGroupDelete(t *testing.T) {
 		created := createGroupAsAdmin(t, ctx, "group-to-delete")
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		path := fmt.Sprintf("/groups/%s", created.GID)
+		path := fmt.Sprintf("/groups/%s", created.ID)
 		deleteResp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -34,7 +34,7 @@ func TestGroupDelete(t *testing.T) {
 		created := createGroupAsAdmin(t, ctx, "manager-forbidden-delete")
 		client := NewHTTPClient(ctx.Router, ctx.ManagerToken)
 
-		path := fmt.Sprintf("/groups/%s", created.GID)
+		path := fmt.Sprintf("/groups/%s", created.ID)
 		resp, err := client.DELETE(path)
 
 		require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestGroupDelete(t *testing.T) {
 	t.Run("DeleteGroup - Cannot Delete Reserved Group", func(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.AdminToken)
 
-		path := fmt.Sprintf("/groups/%s", ctx.SuperGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.SuperGroup.ID)
 		resp, err := client.DELETE(path)
 
 		require.NoError(t, err)

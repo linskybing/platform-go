@@ -1,0 +1,28 @@
+feat: Modernize platform architecture to multi-tenant cloud-native standard
+
+This commit completes the architectural refactoring of the platform, transitioning from legacy patterns to a high-concurrency, high-integrity system leveraging advanced PostgreSQL and Kubernetes best practices.
+
+Core Architectural Changes:
+- **Global UUID Standard**: Standardized all primary and foreign keys to UUID v4 across the entire system (User, Group, Project, Job, ConfigCommit, Image, etc.).
+- **Class Table Inheritance (CTI)**: Implemented `resource_owners` supertype to enforce strict referential integrity for polymorphic associations (Storage, Audit Logs).
+- **Hierarchical Project Management**: Refactored `projects` to use PostgreSQL `ltree` extension for optimized subtree queries and tree traversal.
+- **High-Concurrency Job Queue**: Optimized job fetching using `SELECT ... FOR UPDATE SKIP LOCKED` to eliminate worker contention.
+- **Git-like Configuration Versioning**: Implemented Content-Addressable Storage (CAS) for deduplicated, immutable configuration blobs.
+- **Advanced Scheduling**: Implemented `int4range` time windows with `EXCLUDE USING GIST` constraints to prevent resource over-allocation at the database level.
+
+API & Frontend Enhancements:
+- **Response Standardization**: All endpoints now return a unified `StandardResponse` wrapper.
+- **RESTful Compliance**: Standardized status codes (e.g., 201 Created for POST) and query binding.
+- **Comprehensive Documentation**: Established full English documentation including architecture guides, database schema details, and a dedicated frontend integration guide.
+
+Cleanup & Verification:
+- **Legacy Removal**: Deleted over 20 redundant test files and removed outdated ID aliases (UID, GID, PID) from domain models and repositories.
+- **Full Test Coverage**: Updated and verified the entire integration test suite to align with the new UUID schema and standardized API format.
+- **Robust Helpers**: Enhanced integration test helpers with automatic table cleanup and global image whitelisting for stable verification.
+
+Files Modified:
+- `internal/domain/`: Full entity refactoring to UUID and clean structs.
+- `internal/repository/`: Optimized SQL patterns and tree operations.
+- `internal/api/`: Standardized handlers and middleware extractors.
+- `docs/en/`: New technical documentation set.
+- `test/integration/`: Comprehensive suite updates.

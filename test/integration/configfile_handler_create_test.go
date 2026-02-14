@@ -16,7 +16,7 @@ func TestCreateConfigFile(t *testing.T) {
 
 	t.Run("Success as Manager", func(t *testing.T) {
 		created := createConfigFileAsManager(t, ctx, "apiVersion: v1\nkind: Pod\nmetadata:\n  name: test-pod", "initial commit")
-		assert.Equal(t, ctx.TestProject.PID, created.Commit.ProjectID)
+		assert.Equal(t, ctx.TestProject.ID, created.Commit.ProjectID)
 		assert.NotEmpty(t, created.Commit.ID)
 		assert.Contains(t, created.Content, "test-pod")
 	})
@@ -25,7 +25,7 @@ func TestCreateConfigFile(t *testing.T) {
 		client := NewHTTPClient(ctx.Router, ctx.UserToken)
 
 		formData := map[string]string{
-			"project_id": ctx.TestProject.PID,
+			"project_id": ctx.TestProject.ID,
 			"filename":   "unauthorized-config.yaml",
 			"raw_yaml":   "apiVersion: v1\nkind: Pod\nmetadata:\n  name: unauthorized-pod",
 		}
@@ -51,7 +51,7 @@ func TestCreateConfigFile(t *testing.T) {
 			{
 				name: "Missing raw_yaml",
 				input: map[string]interface{}{
-					"project_id": ctx.TestProject.PID,
+					"project_id": ctx.TestProject.ID,
 				},
 			},
 		}

@@ -140,9 +140,9 @@ func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
 	}
 
 	userGroup := &group.UserGroup{
-		UID:  input.UID,
-		GID:  input.GID,
-		Role: input.Role,
+		UserID:  input.UID,
+		GroupID: input.GID,
+		Role:    input.Role,
 	}
 
 	if _, err := h.svc.CreateUserGroup(c, userGroup); err != nil {
@@ -194,7 +194,7 @@ func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 	existing, err := h.svc.GetUserGroup(input.UID, input.GID)
 	if err != nil {
 		// If relation does not exist, create it instead of failing the update
-		created := &group.UserGroup{UID: input.UID, GID: input.GID, Role: input.Role}
+		created := &group.UserGroup{UserID: input.UID, GroupID: input.GID, Role: input.Role}
 		if _, errCreate := h.svc.CreateUserGroup(c, created); errCreate != nil {
 			response.Error(c, http.StatusInternalServerError, errCreate.Error())
 			return
@@ -204,9 +204,9 @@ func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 	}
 
 	updated := &group.UserGroup{
-		UID:  existing.UID,
-		GID:  existing.GID,
-		Role: input.Role,
+		UserID:  existing.UserID,
+		GroupID: existing.GroupID,
+		Role:    input.Role,
 	}
 
 	if _, err := h.svc.UpdateUserGroup(c, updated, existing); err != nil {
@@ -231,7 +231,7 @@ func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 // @Router /user-group [delete]
 func (h *UserGroupHandler) DeleteUserGroup(c *gin.Context) {
 	var input group.UserGroupDeleteDTO
-	if err := c.ShouldBind(&input); err != nil {
+	if err := c.ShouldBindQuery(&input); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -259,15 +259,15 @@ func (h *UserGroupHandler) DeleteUserGroup(c *gin.Context) {
 // @Router /user-groups [post]
 func (h *UserGroupHandler) AddUserToGroup(c *gin.Context) {
 	var input group.UserGroupCreateDTO
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBind(&input); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	userGroup := &group.UserGroup{
-		UID:  input.UID,
-		GID:  input.GID,
-		Role: input.Role,
+		UserID:  input.UID,
+		GroupID: input.GID,
+		Role:    input.Role,
 	}
 
 	userGroup, err := h.svc.CreateUserGroup(c, userGroup)
@@ -287,16 +287,21 @@ func (h *UserGroupHandler) AddUserToGroup(c *gin.Context) {
 // @Success 200 {object} response.StandardResponse{data=nil}
 // @Failure 400 {object} response.StandardResponse{data=nil}
 // @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 404 {object} response.StandardResponse{data=nil}
 // @Router /user-groups [delete]
 func (h *UserGroupHandler) RemoveUserFromGroup(c *gin.Context) {
 	var input group.UserGroupDeleteDTO
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBindQuery(&input); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := h.svc.DeleteUserGroup(c, input.UID, input.GID); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error()) // Assuming bad request if deletion fails
+		if err == application.ErrReservedUser {
+			response.Error(c, http.StatusForbidden, err.Error())
+		} else {
+			response.Error(c, http.StatusNotFound, err.Error())
+		}
 		return
 	}
 
@@ -326,9 +331,9 @@ func (h *UserGroupHandler) UpdateUserRole(c *gin.Context) {
 	}
 
 	userGroup := &group.UserGroup{
-		UID:  input.UID,
-		GID:  input.GID,
-		Role: input.Role,
+		UserID:  input.UID,
+		GroupID: input.GID,
+		Role:    input.Role,
 	}
 
 	userGroup, err = h.svc.UpdateUserGroup(c, userGroup, existing)
@@ -368,7 +373,7 @@ func (h *UserGroupHandler) GetGroupMembers(c *gin.Context) {
 	// Extract users array for the requested group id (or empty list)
 	users := []map[string]interface{}{}
 	if entry, ok := formatted[groupIDStr]; ok {
-		if u, ok2 := entry["Users"].([]map[string]interface{}); ok2 {
+		if u, ok2 := entry["users"].([]map[string]interface{}); ok2 {
 			users = u
 		}
 	}

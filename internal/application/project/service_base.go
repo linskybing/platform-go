@@ -77,11 +77,11 @@ func (s *ProjectService) GetProjectsByUser(userID string) ([]view.ProjectUserVie
 	var views []view.ProjectUserView
 	for _, n := range nodes {
 		v := view.ProjectUserView{
-			PID:         n.ID,
+			ProjectID:   n.ID,
 			ProjectName: n.Name,
 		}
 		if n.ParentID != nil {
-			v.GID = *n.ParentID
+			v.GroupID = *n.ParentID
 			if name, ok := groupMap[*n.ParentID]; ok {
 				v.GroupName = name
 			}
@@ -103,21 +103,21 @@ func (s *ProjectService) GroupProjectsByGID(records []view.ProjectUserView) map[
 	}
 	grouped := make(map[string]map[string]interface{})
 	for _, rec := range records {
-		group, ok := grouped[rec.GID]
+		group, ok := grouped[rec.GroupID]
 		if !ok {
 			group = map[string]interface{}{
-				"group_id":   rec.GID,
+				"group_id":   rec.GroupID,
 				"group_name": rec.GroupName,
 				"projects":   []map[string]string{},
 			}
 		}
 		projects := group["projects"].([]map[string]string)
 		projects = append(projects, map[string]string{
-			"p_id":         rec.PID,
+			"p_id":         rec.ProjectID,
 			"project_name": rec.ProjectName,
 		})
 		group["projects"] = projects
-		grouped[rec.GID] = group
+		grouped[rec.GroupID] = group
 	}
 	return grouped
 }

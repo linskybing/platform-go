@@ -26,6 +26,7 @@ func (s *ProjectService) CreateProject(c *gin.Context, input domProject.CreatePr
 		Name:        input.ProjectName,
 		Description: getValue(input.Description),
 		ParentID:    &groupNode.ID,
+		OwnerID:     &input.GID,
 	}
 
 	if err := s.Repos.Project.CreateNode(ctx, p); err != nil {
@@ -33,8 +34,9 @@ func (s *ProjectService) CreateProject(c *gin.Context, input domProject.CreatePr
 	}
 
 	plan := &domProject.ResourcePlan{
-		ProjectID: p.ID,
-		GPULimit:  getValueInt(input.GPUQuota),
+		ProjectID:  p.ID,
+		GPULimit:   getValueInt(input.GPUQuota),
+		WeekWindow: "[0,604800)", // Default: Full week
 	}
 	if err := s.Repos.Project.CreateResourcePlan(ctx, plan); err != nil {
 		return nil, fmt.Errorf("failed to create resource plan: %w", err)
@@ -72,6 +74,7 @@ func (s *ProjectService) UpdateProject(c *gin.Context, id string, input domProje
 				return nil, err
 			}
 			p.ParentID = &newGroupNode.ID
+			p.OwnerID = input.GID // Update OwnerID as well
 		}
 	}
 

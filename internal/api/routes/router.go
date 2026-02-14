@@ -59,7 +59,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
 		// Job routes are now handled by the job plugin
 		registerStorageRoutes(auth, handlers, authMiddleware)
 		registerAdminStorageRoutes(auth, handlers, authMiddleware)
-		registerProjectRoutes(auth, handlers, authMiddleware)
+		registerProjectRoutes(auth, handlers, authMiddleware, repos)
 		registerUserRoutes(auth, handlers, authMiddleware)
 		registerK8sRoutes(auth, handlers, authMiddleware)
 		registerNotificationRoutes(auth, handlers, authMiddleware)

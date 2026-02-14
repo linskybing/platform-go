@@ -25,7 +25,7 @@ func TestGroupUpdate(t *testing.T) {
 			"group_name": "updated-group-name",
 		}
 
-		path := fmt.Sprintf("/groups/%s", created.GID)
+		path := fmt.Sprintf("/groups/%s", created.ID)
 		resp, err := client.PUTForm(path, updateDTO)
 
 		require.NoError(t, err)
@@ -35,9 +35,9 @@ func TestGroupUpdate(t *testing.T) {
 		require.NoError(t, err)
 
 		var updated group.Group
-		err = getResp.DecodeJSON(&updated)
+		err = getResp.DecodeData(&updated)
 		require.NoError(t, err)
-		assert.Equal(t, "updated-group-name", updated.GroupName)
+		assert.Equal(t, "updated-group-name", updated.Name)
 	})
 
 	t.Run("UpdateGroup - Forbidden for Regular User", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestGroupUpdate(t *testing.T) {
 			"group_name": "hacked",
 		}
 
-		path := fmt.Sprintf("/groups/%s", ctx.TestGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.TestGroup.ID)
 		resp, err := client.PUTForm(path, updateDTO)
 
 		require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestGroupUpdate(t *testing.T) {
 			"group_name": "new-super-name",
 		}
 
-		path := fmt.Sprintf("/groups/%s", ctx.SuperGroup.GID)
+		path := fmt.Sprintf("/groups/%s", ctx.SuperGroup.ID)
 		resp, err := client.PUTForm(path, updateDTO)
 
 		require.NoError(t, err)
@@ -71,8 +71,8 @@ func TestGroupUpdate(t *testing.T) {
 		require.NoError(t, err)
 
 		var g group.Group
-		err = getResp.DecodeJSON(&g)
+		err = getResp.DecodeData(&g)
 		require.NoError(t, err)
-		assert.Equal(t, config.ReservedGroupName, g.GroupName, "Super group name should remain unchanged")
+		assert.Equal(t, config.ReservedGroupName, g.Name, "Super group name should remain unchanged")
 	})
 }

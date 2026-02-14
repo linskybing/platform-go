@@ -11,6 +11,7 @@ import (
 
 	"github.com/linskybing/platform-go/internal/config/db"
 	"github.com/linskybing/platform-go/internal/domain/group"
+	"github.com/linskybing/platform-go/internal/domain/image"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"gorm.io/gorm"
@@ -87,9 +88,10 @@ func getOrCreateUser(username, email string) *user.User {
 	}
 
 	u = user.User{
-		Username: username,
-		Email:    &email,
-		Status:   "online",
+		Username:     username,
+		Email:        email,
+		Status:       "online",
+		IsSuperAdmin: username == "admin",
 	}
 	if err := db.DB.Create(&u).Error; err != nil {
 		panic(fmt.Sprintf("failed to create user %s: %v", username, err))
@@ -99,7 +101,7 @@ func getOrCreateUser(username, email string) *user.User {
 
 func getOrCreateGroup(groupName string) *group.Group {
 	var g group.Group
-	err := db.DB.Where("group_name = ?", groupName).First(&g).Error
+	err := db.DB.Where("name = ?", groupName).First(&g).Error
 	if err == nil {
 		return &g
 	}
@@ -108,7 +110,7 @@ func getOrCreateGroup(groupName string) *group.Group {
 	}
 
 	g = group.Group{
-		GroupName:   groupName,
+		Name:        groupName,
 		Description: fmt.Sprintf("Test group %s", groupName),
 	}
 	if err := db.DB.Create(&g).Error; err != nil {
@@ -119,7 +121,7 @@ func getOrCreateGroup(groupName string) *group.Group {
 
 func ensureUserGroup(uid string, gid string, role string) {
 	var ug group.UserGroup
-	err := db.DB.Where("u_id = ? AND g_id = ?", uid, gid).First(&ug).Error
+	err := db.DB.Where("user_id = ? AND group_id = ?", uid, gid).First(&ug).Error
 	if err == nil {
 		return
 	}
@@ -128,9 +130,9 @@ func ensureUserGroup(uid string, gid string, role string) {
 	}
 
 	ug = group.UserGroup{
-		UID:  uid,
-		GID:  gid,
-		Role: role,
+		UserID:  uid,
+		GroupID: gid,
+		Role:    role,
 	}
 	if err := db.DB.Create(&ug).Error; err != nil {
 		panic(fmt.Sprintf("failed to create user_group (uid=%s, gid=%s, role=%s): %v", uid, gid, role, err))
@@ -139,7 +141,7 @@ func ensureUserGroup(uid string, gid string, role string) {
 
 func getOrCreateProject(name string, gid string) *project.Project {
 	var p project.Project
-	err := db.DB.Where("project_name = ? AND g_id = ?", name, gid).First(&p).Error
+	err := db.DB.Preload("ResourcePlan").Where("project_name = ? AND owner_id = ?", name, gid).First(&p).Error
 	if err == nil {
 		return &p
 	}
@@ -148,12 +150,56 @@ func getOrCreateProject(name string, gid string) *project.Project {
 	}
 
 	p = project.Project{
-		ProjectName: name,
-		GID:         gid,
+		Name:        name,
+		OwnerID:     &gid,
 		Description: fmt.Sprintf("Test project %s", name),
 	}
 	if err := db.DB.Create(&p).Error; err != nil {
 		panic(fmt.Sprintf("failed to create project %s (gid=%s): %v", name, gid, err))
 	}
+
+	// Create default resource plan
+	plan := &project.ResourcePlan{
+		ProjectID:  p.ID,
+		WeekWindow: "[0,604800)",
+		GPULimit:   10,
+	}
+	db.DB.Create(plan)
+
+	// Reload to get generated fields like Path and preloaded ResourcePlan
+	db.DB.Preload("ResourcePlan").First(&p, "p_id = ?", p.ID)
 	return &p
+}
+
+func allowImageGlobally(name, tag string) {
+	parts := strings.Split(name, "/")
+	var namespace, repoName string
+	if len(parts) >= 2 {
+		namespace = parts[0]
+		repoName = strings.Join(parts[1:], "/")
+	} else {
+		namespace = "library"
+		repoName = name
+	}
+
+	repo := image.ContainerRepository{
+		Namespace: namespace,
+		Name:      repoName,
+		FullName:  name,
+	}
+	db.DB.Where(image.ContainerRepository{FullName: name}).FirstOrCreate(&repo)
+
+	tagEntity := image.ContainerTag{
+		RepositoryID: repo.ID,
+		Name:         tag,
+	}
+	db.DB.Where(image.ContainerTag{RepositoryID: repo.ID, Name: tag}).FirstOrCreate(&tagEntity)
+
+	rule := image.ImageAllowList{
+		RepositoryID: repo.ID,
+		TagID:        &tagEntity.ID,
+		IsEnabled:    true,
+		CreatedBy:    getOrCreateUser("admin", "admin@test.com").ID,
+	}
+	db.DB.Where(image.ImageAllowList{RepositoryID: repo.ID, TagID: &tagEntity.ID}).FirstOrCreate(&rule)
 }

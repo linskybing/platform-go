@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/linskybing/platform-go/internal/application/executor"
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/pkg/k8s"
 	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"gorm.io/datatypes"
 )
 
@@ -78,11 +78,7 @@ func (s *ConfigFileService) CreateInstance(ctx context.Context, id string, claim
 		if ctxJobID, ok := jobIDFromContext(ctx); ok {
 			jobID = ctxJobID
 		} else {
-			jobIDValue, err := gonanoid.New()
-			if err != nil {
-				return fmt.Errorf("failed to generate job ID: %w", err)
-			}
-			jobID = jobIDValue
+			jobID = uuid.NewString()
 		}
 		if ctxQueueName, ok := queueNameFromContext(ctx); ok {
 			queueName = ctxQueueName

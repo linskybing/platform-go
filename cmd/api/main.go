@@ -12,6 +12,7 @@ import (
 	"github.com/linskybing/platform-go/internal/config/db"
 	"github.com/linskybing/platform-go/internal/cron"
 	"github.com/linskybing/platform-go/internal/domain/audit"
+	"github.com/linskybing/platform-go/internal/domain/common"
 	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"github.com/linskybing/platform-go/internal/domain/form"
 	"github.com/linskybing/platform-go/internal/domain/gpuusage"
@@ -83,6 +84,7 @@ func main() {
 	// Auto migrate database schemas in phases to diagnose FK ordering
 	log.Println("AutoMigrating core models: user + project")
 	if err := db.DB.AutoMigrate(
+		&common.ResourceOwner{},
 		&user.User{},
 		&project.Project{},
 	); err != nil {
@@ -116,12 +118,16 @@ func main() {
 	log.Println("AutoMigrating storage and job models")
 	if err := db.DB.AutoMigrate(
 		&storage.Storage{},
+		&job.PriorityClass{},
 		&job.Job{},
 		&gpuusage.JobGPUUsageSnapshot{},
 		&gpuusage.JobGPUUsageSummary{},
 	); err != nil {
 		log.Fatalf("Failed to migrate storage and job database models: %v", err)
 	}
+
+	// Ensure constraints that require tables to exist
+	db.EnsureConstraints()
 
 	if err := db.RunMigrations(); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)

@@ -2,7 +2,10 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/linskybing/platform-go/internal/domain/common"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"gorm.io/gorm"
 )
@@ -40,18 +43,6 @@ func NewProjectRepo(db *gorm.DB) ProjectRepo {
 	return &ProjectRepoImpl{db: db}
 }
 
-func (r *ProjectRepoImpl) setAliases(n *project.Project) {
-	if n == nil {
-		return
-	}
-	n.PID = n.ID
-	n.ProjectName = n.Name
-	n.CreateAt = n.CreatedAt
-	if n.OwnerID != nil {
-		n.GID = *n.OwnerID
-	}
-}
-
 func (r *ProjectRepoImpl) CreateProject(ctx context.Context, node *project.Project) error {
 	return r.db.WithContext(ctx).Create(node).Error
 }
@@ -71,7 +62,6 @@ func (r *ProjectRepoImpl) UpdateNode(ctx context.Context, node *project.Project)
 func (r *ProjectRepoImpl) GetProjectByID(ctx context.Context, id string) (*project.Project, error) {
 	var n project.Project
 	err := r.db.WithContext(ctx).Preload("ResourcePlan").First(&n, "p_id = ?", id).Error
-	r.setAliases(&n)
 	return &n, err
 }
 
@@ -82,16 +72,12 @@ func (r *ProjectRepoImpl) GetNode(ctx context.Context, id string) (*project.Proj
 func (r *ProjectRepoImpl) GetNodeByOwner(ctx context.Context, ownerID string) (*project.Project, error) {
 	var n project.Project
 	err := r.db.WithContext(ctx).First(&n, "owner_id = ?", ownerID).Error
-	r.setAliases(&n)
 	return &n, err
 }
 
 func (r *ProjectRepoImpl) ListProjects(ctx context.Context) ([]project.Project, error) {
 	var nodes []project.Project
 	err := r.db.WithContext(ctx).Find(&nodes).Error
-	for i := range nodes {
-		r.setAliases(&nodes[i])
-	}
 	return nodes, err
 }
 
@@ -104,18 +90,12 @@ func (r *ProjectRepoImpl) ListNodes(ctx context.Context, parentID *string) ([]pr
 		query = query.Where("parent_id IS NULL")
 	}
 	err := query.Find(&nodes).Error
-	for i := range nodes {
-		r.setAliases(&nodes[i])
-	}
 	return nodes, err
 }
 
 func (r *ProjectRepoImpl) ListProjectsByGroup(ctx context.Context, gid string) ([]project.Project, error) {
 	var nodes []project.Project
 	err := r.db.WithContext(ctx).Where("owner_id = ?", gid).Find(&nodes).Error
-	for i := range nodes {
-		r.setAliases(&nodes[i])
-	}
 	return nodes, err
 }
 
@@ -123,9 +103,6 @@ func (r *ProjectRepoImpl) GetSubtree(ctx context.Context, rootID string) ([]proj
 	var nodes []project.Project
 	subQuery := r.db.Model(&project.Project{}).Select("path").Where("p_id = ?", rootID)
 	err := r.db.WithContext(ctx).Preload("ResourcePlan").Where("path <@ (?)", subQuery).Find(&nodes).Error
-	for i := range nodes {
-		r.setAliases(&nodes[i])
-	}
 	return nodes, err
 }
 
@@ -133,16 +110,38 @@ func (r *ProjectRepoImpl) GetAncestors(ctx context.Context, nodeID string) ([]pr
 	var nodes []project.Project
 	subQuery := r.db.Model(&project.Project{}).Select("path").Where("p_id = ?", nodeID)
 	err := r.db.WithContext(ctx).Preload("ResourcePlan").Where("path @> (?)", subQuery).Find(&nodes).Error
-	for i := range nodes {
-		r.setAliases(&nodes[i])
-	}
 	return nodes, err
 }
 
 func (r *ProjectRepoImpl) MoveNode(ctx context.Context, nodeID, newParentID string) error {
-	return r.db.WithContext(ctx).Model(&project.Project{}).
-		Where("p_id = ?", nodeID).
-		Update("parent_id", newParentID).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var node project.Project
+		if err := tx.First(&node, "p_id = ?", nodeID).Error; err != nil {
+			return err
+		}
+
+		var newParent project.Project
+		if err := tx.First(&newParent, "p_id = ?", newParentID).Error; err != nil {
+			return err
+		}
+
+		oldPath := node.Path
+		newNodeID := strings.ReplaceAll(node.ID, "-", "_")
+		newPath := common.Ltree(fmt.Sprintf("%s.%s", newParent.Path, newNodeID))
+
+		// Update the node itself
+		if err := tx.Model(&node).Updates(map[string]interface{}{
+			"parent_id": newParentID,
+			"path":      newPath,
+		}).Error; err != nil {
+			return err
+		}
+
+		// Update all descendants
+		// path = new_path || subpath(path, nlevel(old_path))
+		query := `UPDATE projects SET path = ? || subpath(path, nlevel(?)) WHERE path <@ ? AND p_id != ?`
+		return tx.Exec(query, newPath, oldPath, oldPath, nodeID).Error
+	})
 }
 
 func (r *ProjectRepoImpl) DeleteNode(ctx context.Context, id string) error {
@@ -156,9 +155,6 @@ func (r *ProjectRepoImpl) ListDescendantProjects(ctx context.Context, groupOwner
 	}
 	query := `SELECT * FROM projects WHERE path <@ ANY (SELECT path FROM projects WHERE owner_id IN ?)`
 	err := r.db.WithContext(ctx).Raw(query, groupOwnerIDs).Scan(&nodes).Error
-	for i := range nodes {
-		r.setAliases(&nodes[i])
-	}
 	return nodes, err
 }
 
