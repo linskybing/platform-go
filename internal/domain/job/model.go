@@ -6,7 +6,7 @@ import (
 
 // Job represents a job execution record in the high-concurrency queue.
 type Job struct {
-	ID              string     `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	ID              string     `gorm:"primaryKey;type:uuid"`
 	ConfigCommitID  string     `gorm:"type:varchar(21);not null;index"`
 	ProjectID       string     `gorm:"type:uuid;not null;index"`
 	UserID          string     `gorm:"type:uuid;not null;index"`

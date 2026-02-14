@@ -1,8 +1,8 @@
 .PHONY: help test test-unit test-coverage test-race test-verbose fmt fmt-check lint vet \
-         build build-api build-scheduler clean deps \
+         build build-api clean deps \
          integration-test integration-test-db integration-test-k8s \
          ci ci-extended production-check \
-         k8s-deploy k8s-delete k8s-status k8s-logs-api k8s-logs-scheduler
+         k8s-deploy k8s-delete k8s-status k8s-logs-api
 
 # Project paths
 PROJECT_ROOT := $(shell pwd)
@@ -39,9 +39,7 @@ help:
 	@echo "  make vet               - Run go vet"
 	@echo ""
 	@echo "$(CYAN)=== Build ===$(NC)"
-	@echo "  make build             - Build API and scheduler binaries"
-	@echo "  make build-api         - Build API binary only"
-	@echo "  make build-scheduler   - Build scheduler binary only"
+	@echo "  make build             - Build API binary"
 	@echo "  make clean             - Remove build artifacts"
 	@echo "  make deps              - Download and verify dependencies"
 	@echo ""
@@ -50,7 +48,6 @@ help:
 	@echo "  make k8s-delete        - Delete all resources from Kubernetes"
 	@echo "  make k8s-status        - Check Kubernetes resource status"
 	@echo "  make k8s-logs-api      - Stream API server logs"
-	@echo "  make k8s-logs-scheduler - Stream scheduler logs"
 	@echo ""
 	@echo "$(CYAN)=== CI/CD Pipelines ===$(NC)"
 	@echo "  make ci                - Run CI pipeline (format, lint, vet, unit tests, build)"
@@ -137,18 +134,13 @@ vet:
 	@go vet ./...
 
 ## Build targets
-build: build-api build-scheduler
+build: build-api
 	@echo "$(GREEN)Build complete$(NC)"
 
 build-api:
 	@echo "$(YELLOW)Building API server...$(NC)"
 	@go build -o platform-api ./cmd/api
 	@echo "$(GREEN)Built: platform-api$(NC)"
-
-build-scheduler:
-	@echo "$(YELLOW)Building scheduler...$(NC)"
-	@go build -o platform-scheduler ./cmd/scheduler
-	@echo "$(GREEN)Built: platform-scheduler$(NC)"
 
 ## Dependency targets
 deps:
@@ -160,7 +152,6 @@ deps:
 ## Cleanup
 clean:
 	@echo "$(YELLOW)Cleaning build artifacts...$(NC)"
-	@rm -f platform-api platform-scheduler
 	@rm -f coverage.out coverage.html
 	@echo "$(GREEN)Clean complete$(NC)"
 
@@ -171,12 +162,10 @@ k8s-deploy:
 	@kubectl apply -f k8s/postgres.yaml
 	@kubectl apply -f k8s/ca.yaml
 	@kubectl apply -f k8s/go-api.yaml
-	@kubectl apply -f k8s/go-scheduler.yaml
 	@echo "$(GREEN)Kubernetes deployment complete$(NC)"
 
 k8s-delete:
 	@echo "$(YELLOW)Deleting Kubernetes resources...$(NC)"
-	@kubectl delete -f k8s/go-scheduler.yaml || true
 	@kubectl delete -f k8s/go-api.yaml || true
 	@kubectl delete -f k8s/ca.yaml || true
 	@kubectl delete -f k8s/postgres.yaml || true
@@ -194,9 +183,6 @@ k8s-status:
 
 k8s-logs-api:
 	@kubectl logs -f deployment/go-api --tail=100
-
-k8s-logs-scheduler:
-	@kubectl logs -f deployment/go-scheduler --tail=100
 
 ## Combined targets
 ci: fmt-check lint vet test-unit build
