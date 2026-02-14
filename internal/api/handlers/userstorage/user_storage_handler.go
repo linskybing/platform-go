@@ -33,9 +33,9 @@ func NewUserStorageHandler(k8sSvc *k8s.K8sService, auditRepo repository.AuditRep
 // @Security BearerAuth
 // @Produce json
 // @Param username path string true "Username"
-// @Success 200 {object} map[string]bool
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=map[string]bool}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /admin/user-storage/{username}/status [get]
 func (h *UserStorageHandler) CheckStatus(c *gin.Context) {
 	username := c.Param("username")
@@ -59,9 +59,9 @@ func (h *UserStorageHandler) CheckStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param username path string true "Username"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /admin/user-storage/{username}/init [post]
 func (h *UserStorageHandler) Initialize(c *gin.Context) {
 	username := c.Param("username")
@@ -95,9 +95,9 @@ func (h *UserStorageHandler) Initialize(c *gin.Context) {
 // @Produce json
 // @Param username path string true "Username"
 // @Param request body map[string]string true "New size (e.g., {\"new_size\": \"20Gi\"})"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /admin/user-storage/{username}/expand [put]
 func (h *UserStorageHandler) Expand(c *gin.Context) {
 	username := c.Param("username")
@@ -131,9 +131,9 @@ func (h *UserStorageHandler) Expand(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param username path string true "Username"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /admin/user-storage/{username} [delete]
 func (h *UserStorageHandler) Delete(c *gin.Context) {
 	username := c.Param("username")

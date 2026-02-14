@@ -25,20 +25,20 @@ func NewProjectHandler(svc *application.ProjectService) *ProjectHandler {
 // @Tags projects
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {array} models.Project
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=[]project.Project}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /projects [get]
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	// Get project views for this user
 	projectViews, err := h.svc.ListProjects()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	// Return empty array if no projects
 	if len(projectViews) == 0 {
-		c.JSON(http.StatusOK, []project.Project{})
+		response.Success(c, []project.Project{}, "No projects found")
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.Success(c, result, "Projects retrieved successfully")
 }
 
 // GetProjectsByUser godoc
@@ -69,18 +69,18 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "User ID"
-// @Success 200 {array} map[string]project.GroupProjects
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=map[string]project.GroupProjects}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /projects/by-user [get]
 func (h *ProjectHandler) GetProjectsByUser(c *gin.Context) {
 	id, err := utils.GetUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid id"})
+		response.Error(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 	records, err := h.svc.GetProjectsByUser(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -91,7 +91,7 @@ func (h *ProjectHandler) GetProjectsByUser(c *gin.Context) {
 		grouped = make(map[string]map[string]interface{})
 	}
 
-	c.JSON(http.StatusOK, grouped)
+	response.Success(c, grouped, "Projects by user retrieved successfully")
 }
 
 // GetProjectByID godoc
@@ -100,23 +100,23 @@ func (h *ProjectHandler) GetProjectsByUser(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path uint true "Project ID"
-// @Success 200 {object} models.Project
-// @Failure 400 {object} response.ErrorResponse "Invalid project id"
-// @Failure 404 {object} response.ErrorResponse "Project not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=project.Project}
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid project id"
+// @Failure 404 {object} response.StandardResponse{data=nil} "Project not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /projects/{id} [get]
 func (h *ProjectHandler) GetProjectByID(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid project id"})
+		response.Error(c, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
 	project, err := h.svc.GetProject(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "project not found"})
+		response.Error(c, http.StatusNotFound, "Project not found")
 		return
 	}
-	c.JSON(http.StatusOK, project)
+	response.Success(c, project, "Project retrieved successfully")
 }
 
 // CreateProject godoc
@@ -128,14 +128,14 @@ func (h *ProjectHandler) GetProjectByID(c *gin.Context) {
 // @Param project_name formData string true "Project name"
 // @Param description formData string false "Description"
 // @Param g_id formData uint true "Group ID"
-// @Success 201 {object} models.Project
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 201 {object} response.StandardResponse{data=project.Project}
+// @Failure 400 {object} response.StandardResponse{data=nil} "Bad request"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /projects [post]
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	var input project.CreateProjectDTO
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -149,11 +149,11 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 
 	project, err := h.svc.CreateProject(c, input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, project)
+	response.Success(c, project, "Project created successfully")
 }
 
 // UpdateProject godoc
@@ -166,20 +166,20 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 // @Param project_name formData string false "Project name"
 // @Param description formData string false "Description"
 // @Param g_id formData uint false "Group ID"
-// @Success 200 {object} models.Project
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 404 {object} response.ErrorResponse "Project not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=project.Project}
+// @Failure 400 {object} response.StandardResponse{data=nil} "Bad request"
+// @Failure 404 {object} response.StandardResponse{data=nil} "Project not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /projects/{id} [put]
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid project id"})
+		response.Error(c, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
 	var input project.UpdateProjectDTO
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -194,14 +194,14 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	project, err := h.svc.UpdateProject(c, id, input)
 	if err != nil {
 		if errors.Is(err, application.ErrProjectNotFound) {
-			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "project not found"})
+			response.Error(c, http.StatusNotFound, "Project not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, project)
+	response.Success(c, project, "Project updated successfully")
 }
 
 // DeleteProject godoc
@@ -210,22 +210,22 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path uint true "Project ID"
-// @Success 200 {object} response.MessageResponse "Project deleted"
-// @Failure 400 {object} response.ErrorResponse "Invalid project id"
-// @Failure 404 {object} response.ErrorResponse "Project not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=nil} "Project deleted"
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid project id"
+// @Failure 404 {object} response.StandardResponse{data=nil} "Project not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /projects/{id} [delete]
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid project id"})
+		response.Error(c, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
 
 	err = h.svc.DeleteProject(c, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "project deleted"})
+	response.Success(c, nil, "Project deleted successfully")
 }

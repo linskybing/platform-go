@@ -31,10 +31,10 @@ func NewUserHandler(svc *application.UserService) *UserHandler {
 // @Accept x-www-form-urlencoded
 // @Produce json
 // @Param input body user.CreateUserInput true "User registration info"
-// @Success 201 {object} response.MessageResponse "User registered successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid input"
-// @Failure 409 {object} response.ErrorResponse "Username already taken"
-// @Failure 500 {object} response.ErrorResponse "Failed to create user"
+// @Success 201 {object} response.StandardResponse{data=nil} "User registered successfully"
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid input"
+// @Failure 409 {object} response.StandardResponse{data=nil} "Username already taken"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Failed to create user"
 // @Router /register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	var input user.CreateUserInput
@@ -79,25 +79,25 @@ func (h *UserHandler) Register(c *gin.Context) {
 				msgs = append(msgs, msg)
 			}
 
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: strings.Join(msgs, "; ")})
+			response.Error(c, http.StatusBadRequest, strings.Join(msgs, "; "))
 			return
 		}
 
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid input"})
+		response.Error(c, http.StatusBadRequest, "Invalid input")
 		return
 	}
 
 	err := h.svc.RegisterUser(input)
 	if err != nil {
 		if errors.Is(err, application.ErrUsernameTaken) {
-			c.JSON(http.StatusConflict, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusConflict, err.Error())
 		} else {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, response.MessageResponse{Message: "User registered successfully"})
+	response.Success(c, nil, "User registered successfully")
 }
 
 // Login godoc
@@ -107,10 +107,10 @@ func (h *UserHandler) Register(c *gin.Context) {
 // @Produce json
 // @Param username formData string true "Username"
 // @Param password formData string true "Password"
-// @Success 200 {object} response.TokenResponse "JWT token and user info"
-// @Failure 400 {object} response.ErrorResponse "Invalid input"
-// @Failure 401 {object} response.ErrorResponse "Invalid username or password"
-// @Failure 500 {object} response.ErrorResponse "Failed to generate token"
+// @Success 200 {object} response.StandardResponse{data=response.TokenData} "JWT token and user info"
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid input"
+// @Failure 401 {object} response.StandardResponse{data=nil} "Invalid username or password"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Failed to generate token"
 // @Router /login [post]
 func (h *UserHandler) Login(c *gin.Context) {
 	var req struct {
@@ -119,13 +119,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid input"})
+		response.Error(c, http.StatusBadRequest, "Invalid input")
 		return
 	}
 
 	user, token, isAdmin, err := h.svc.LoginUser(req.Username, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Invalid username or password"})
+		response.Error(c, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
 
@@ -141,19 +141,19 @@ func (h *UserHandler) Login(c *gin.Context) {
 	)
 
 	// Use cookie-only session for browser clients. Do not return the raw token in JSON.
-	c.JSON(http.StatusOK, response.TokenResponse{
+	response.Success(c, response.TokenData{
 		Token:    "",
 		UID:      user.UID,
 		Username: user.Username,
 		IsAdmin:  isAdmin,
-	})
+	}, "Login successful")
 }
 
 // Logout godoc
 // @Summary User logout
 // @Tags auth
 // @Produce json
-// @Success 200 {object} response.BasicResponse "Logout successful"
+// @Success 200 {object} response.StandardResponse{data=nil} "Logout successful"
 // @Router /logout [post]
 func (h *UserHandler) Logout(c *gin.Context) {
 	c.SetCookie(
@@ -166,9 +166,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 		true,
 	)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Logout successful",
-	})
+	response.Success(c, nil, "Logout successful")
 }
 
 // AuthStatus godoc
@@ -176,8 +174,8 @@ func (h *UserHandler) Logout(c *gin.Context) {
 // @Tags auth
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {object} response.SuccessResponse
-// @Failure 401 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=object}
+// @Failure 401 {object} response.StandardResponse{data=nil}
 // @Router /auth/status [get]
 func (h *UserHandler) AuthStatus(c *gin.Context) {
 	uid, err := utils.GetUserIDFromContext(c)
@@ -196,20 +194,20 @@ func (h *UserHandler) AuthStatus(c *gin.Context) {
 // @Tags users
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {array} user.UserWithSuperAdmin
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=[]user.UserWithSuperAdmin}
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /users [get]
 func (h *UserHandler) GetUsers(c *gin.Context) {
 	users, err := h.svc.ListUsers()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusOK, []user.UserWithSuperAdmin{})
+			response.Success(c, []user.UserWithSuperAdmin{}, "No users found") // Return empty array for no records
 			return
 		}
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, users)
+	response.Success(c, users, "Users retrieved successfully")
 }
 
 // ListUsersPaging godoc
@@ -219,8 +217,8 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 // @Produce json
 // @Param page query int false "Page number (default: 1)"
 // @Param limit query int false "Items per page (default: 10, max: 100)"
-// @Success 200 {object} response.SuccessResponse{data=[]user.UserWithSuperAdmin}
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=[]user.UserWithSuperAdmin}
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /users/paging [get]
 func (h *UserHandler) ListUsersPaging(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -235,10 +233,10 @@ func (h *UserHandler) ListUsersPaging(c *gin.Context) {
 
 	users, err := h.svc.ListUserByPaging(page, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, response.SuccessResponse{Data: users})
+	response.Success(c, users, "Paginated users retrieved successfully")
 }
 
 // GetUserByID godoc
@@ -247,24 +245,24 @@ func (h *UserHandler) ListUsersPaging(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "User ID"
-// @Success 200 {object} user.UserWithSuperAdmin
-// @Failure 400 {object} response.ErrorResponse "Invalid user id"
-// @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=user.UserWithSuperAdmin}
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid user id"
+// @Failure 404 {object} response.StandardResponse{data=nil} "User not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /users/{id} [get]
 func (h *UserHandler) GetUserByID(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid user id"})
+		response.Error(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
 	user, err := h.svc.FindUserByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "User not found"})
+		response.Error(c, http.StatusNotFound, "User not found")
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	response.Success(c, user, "User retrieved successfully")
 }
 
 // UpdateUser updates the information of a user by ID.
@@ -281,22 +279,22 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 // @Param full_name formData string false "Full name"
 // @Param type formData string false "User type: origin or oauth2"
 // @Param status formData string false "User status: online, offline, delete"
-// @Success 200 {object} user.UserDTO "Updated user info"
-// @Failure 400 {object} response.ErrorResponse "Bad request error"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=user.UserDTO} "Updated user info"
+// @Failure 400 {object} response.StandardResponse{data=nil} "Bad request error"
+// @Failure 401 {object} response.StandardResponse{data=nil} "Unauthorized"
+// @Failure 404 {object} response.StandardResponse{data=nil} "User not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid user id"})
+		response.Error(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
 	var input user.UpdateUserInput
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -304,16 +302,16 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case application.ErrUserNotFound:
-			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 		case application.ErrMissingOldPassword, application.ErrIncorrectPassword:
-			c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusUnauthorized, err.Error())
 		default:
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, updatedUser)
+	response.Success(c, updatedUser, "User updated successfully")
 }
 
 // DeleteUser godoc
@@ -322,23 +320,23 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "User ID"
-// @Success 204 "No Content"
-// @Failure 400 {object} response.ErrorResponse "Invalid user id"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=nil} "User deleted successfully"
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid user id"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid user id"})
+		response.Error(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
 	if err := h.svc.RemoveUser(id); err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	response.Success(c, nil, "User deleted successfully")
 }
 
 // GetUserSettings godoc
@@ -347,9 +345,9 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path string true "User ID"
-// @Success 200 {object} user.UserSettings
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=user.UserSettings}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /users/{id}/settings [get]
 func (h *UserHandler) GetUserSettings(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
@@ -364,7 +362,7 @@ func (h *UserHandler) GetUserSettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, settings)
+	response.Success(c, settings, "User settings retrieved successfully")
 }
 
 // UpdateUserSettings godoc
@@ -375,9 +373,9 @@ func (h *UserHandler) GetUserSettings(c *gin.Context) {
 // @Produce json
 // @Param id path string true "User ID"
 // @Param settings body map[string]interface{} true "Settings to update"
-// @Success 200 {object} user.UserSettings
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=user.UserSettings}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /users/{id}/settings [put]
 func (h *UserHandler) UpdateUserSettings(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
@@ -406,5 +404,5 @@ func (h *UserHandler) UpdateUserSettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, settings)
+	response.Success(c, settings, "User settings updated successfully")
 }

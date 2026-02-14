@@ -23,16 +23,16 @@ const (
 
 // SubmitRequest contains all information needed to submit a job
 type SubmitRequest struct {
-	JobID        string
-	ConfigFileID string
-	ProjectID    string
-	Namespace    string
-	UserID       string
-	Username     string
-	Resources    []ResourcePayload
-	SubmitType   SubmitType
-	QueueName    string // for future scheduler
-	Priority     int32  // for future scheduler
+	JobID          string
+	ConfigCommitID string
+	ProjectID      string
+	Namespace      string
+	UserID         string
+	Username       string
+	Resources      []ResourcePayload
+	SubmitType     SubmitType
+	QueueName      string // for future scheduler
+	Priority       int32  // for future scheduler
 }
 
 // ResourcePayload represents a Kubernetes resource to be deployed

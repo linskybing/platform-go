@@ -81,7 +81,7 @@ func (pbm *PVCBindingManager) CreateProjectPVCBinding(ctx context.Context, req *
 		return nil, fmt.Errorf("failed to get PV name: %w", err)
 	}
 
-	projectNamespace, err := pbm.resolveProjectNamespace(req.ProjectID, userID)
+	projectNamespace, err := pbm.resolveProjectNamespace(ctx, req.ProjectID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (pbm *PVCBindingManager) ensureProjectNamespace(ctx context.Context, namesp
 
 // ListProjectPVCBindings lists all PVC bindings for a project
 func (pbm *PVCBindingManager) ListProjectPVCBindings(ctx context.Context, projectID, userID string) ([]storage.ProjectPVCBindingInfo, error) {
-	projectNamespace, err := pbm.resolveProjectNamespace(projectID, userID)
+	projectNamespace, err := pbm.resolveProjectNamespace(ctx, projectID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ func (pbm *PVCBindingManager) DeleteProjectPVCBindingByID(ctx context.Context, b
 
 // DeleteProjectPVCBinding deletes a project PVC binding
 func (pbm *PVCBindingManager) DeleteProjectPVCBinding(ctx context.Context, projectID, userID string, pvcName string) error {
-	projectNamespace, err := pbm.resolveProjectNamespace(projectID, userID)
+	projectNamespace, err := pbm.resolveProjectNamespace(ctx, projectID, userID)
 	if err != nil {
 		return err
 	}
@@ -298,12 +298,12 @@ func (pbm *PVCBindingManager) DeleteProjectPVCBinding(ctx context.Context, proje
 	return nil
 }
 
-func (pbm *PVCBindingManager) resolveProjectNamespace(projectID, userID string) (string, error) {
+func (pbm *PVCBindingManager) resolveProjectNamespace(ctx context.Context, projectID, userID string) (string, error) {
 	if pbm.repos == nil || pbm.repos.User == nil {
 		safeUser := k8sclient.ToSafeK8sName(userID)
 		return k8sclient.FormatNamespaceName(projectID, safeUser), nil
 	}
-	user, err := pbm.repos.User.GetUserRawByID(userID)
+	user, err := pbm.repos.User.GetUserRawByID(ctx, userID)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve user for namespace: %w", err)
 	}

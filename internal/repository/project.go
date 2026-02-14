@@ -1,113 +1,184 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/linskybing/platform-go/internal/domain/project"
-	"github.com/linskybing/platform-go/internal/domain/view"
 	"gorm.io/gorm"
 )
 
 type ProjectRepo interface {
-	project.Repository
-	ListProjectsByUserID(userID string) ([]view.ProjectUserView, error)
-	GetAllProjectGroupViews() ([]view.ProjectGroupView, error)
+	CreateProject(ctx context.Context, node *project.Project) error
+	CreateNode(ctx context.Context, node *project.Project) error
+	UpdateProject(ctx context.Context, node *project.Project) error
+	UpdateNode(ctx context.Context, node *project.Project) error
+	GetProjectByID(ctx context.Context, id string) (*project.Project, error)
+	GetNode(ctx context.Context, id string) (*project.Project, error)
+	GetNodeByOwner(ctx context.Context, ownerID string) (*project.Project, error)
+	ListProjects(ctx context.Context) ([]project.Project, error)
+	ListNodes(ctx context.Context, parentID *string) ([]project.Project, error)
+	ListProjectsByGroup(ctx context.Context, gid string) ([]project.Project, error)
+	ListDescendantProjects(ctx context.Context, groupOwnerIDs []string) ([]project.Project, error)
+
+	GetSubtree(ctx context.Context, rootID string) ([]project.Project, error)
+	GetAncestors(ctx context.Context, nodeID string) ([]project.Project, error)
+	MoveNode(ctx context.Context, nodeID, newParentID string) error
+	DeleteNode(ctx context.Context, id string) error
+
+	CreateResourcePlan(ctx context.Context, plan *project.ResourcePlan) error
+	UpdateResourcePlan(ctx context.Context, plan *project.ResourcePlan) error
+	GetResourcePlan(ctx context.Context, projectID string) (*project.ResourcePlan, error)
+
 	WithTx(tx *gorm.DB) ProjectRepo
 }
 
-type DBProjectRepo struct {
+type ProjectRepoImpl struct {
 	db *gorm.DB
 }
 
-func NewProjectRepo(db *gorm.DB) *DBProjectRepo {
-	return &DBProjectRepo{
-		db: db,
+func NewProjectRepo(db *gorm.DB) ProjectRepo {
+	return &ProjectRepoImpl{db: db}
+}
+
+func (r *ProjectRepoImpl) setAliases(n *project.Project) {
+	if n == nil {
+		return
+	}
+	n.PID = n.ID
+	n.ProjectName = n.Name
+	n.CreateAt = n.CreatedAt
+	if n.OwnerID != nil {
+		n.GID = *n.OwnerID
 	}
 }
 
-func (r *DBProjectRepo) GetProjectByID(id string) (project.Project, error) {
-	var project project.Project
-	err := r.db.First(&project, "p_id = ?", id).Error
-	return project, err
+func (r *ProjectRepoImpl) CreateProject(ctx context.Context, node *project.Project) error {
+	return r.db.WithContext(ctx).Create(node).Error
 }
 
-func (r *DBProjectRepo) GetGroupIDByProjectID(pID string) (string, error) {
-	var gID string
-	err := r.db.Model(&project.Project{}).Select("g_id").Where("p_id = ?", pID).Scan(&gID).Error
-	if err != nil {
-		return "", err
+func (r *ProjectRepoImpl) CreateNode(ctx context.Context, node *project.Project) error {
+	return r.CreateProject(ctx, node)
+}
+
+func (r *ProjectRepoImpl) UpdateProject(ctx context.Context, node *project.Project) error {
+	return r.db.WithContext(ctx).Save(node).Error
+}
+
+func (r *ProjectRepoImpl) UpdateNode(ctx context.Context, node *project.Project) error {
+	return r.UpdateProject(ctx, node)
+}
+
+func (r *ProjectRepoImpl) GetProjectByID(ctx context.Context, id string) (*project.Project, error) {
+	var n project.Project
+	err := r.db.WithContext(ctx).Preload("ResourcePlan").First(&n, "p_id = ?", id).Error
+	r.setAliases(&n)
+	return &n, err
+}
+
+func (r *ProjectRepoImpl) GetNode(ctx context.Context, id string) (*project.Project, error) {
+	return r.GetProjectByID(ctx, id)
+}
+
+func (r *ProjectRepoImpl) GetNodeByOwner(ctx context.Context, ownerID string) (*project.Project, error) {
+	var n project.Project
+	err := r.db.WithContext(ctx).First(&n, "owner_id = ?", ownerID).Error
+	r.setAliases(&n)
+	return &n, err
+}
+
+func (r *ProjectRepoImpl) ListProjects(ctx context.Context) ([]project.Project, error) {
+	var nodes []project.Project
+	err := r.db.WithContext(ctx).Find(&nodes).Error
+	for i := range nodes {
+		r.setAliases(&nodes[i])
 	}
-	return gID, nil
+	return nodes, err
 }
 
-func (r *DBProjectRepo) CreateProject(p *project.Project) error {
-	return r.db.Create(p).Error
-}
-
-func (r *DBProjectRepo) UpdateProject(p *project.Project) error {
-	return r.db.Save(p).Error
-}
-
-func (r *DBProjectRepo) DeleteProject(id string) error {
-	return r.db.Delete(&project.Project{}, "p_id = ?", id).Error
-}
-
-func (r *DBProjectRepo) ListProjects() ([]project.Project, error) {
-	var projects []project.Project
-	err := r.db.Find(&projects).Error
-	return projects, err
-}
-
-func (r *DBProjectRepo) ListProjectsByGroup(id string) ([]project.Project, error) {
-	var projects []project.Project
-	if err := r.db.Where("g_id = ?", id).Find(&projects).Error; err != nil {
-		return nil, err
+func (r *ProjectRepoImpl) ListNodes(ctx context.Context, parentID *string) ([]project.Project, error) {
+	var nodes []project.Project
+	query := r.db.WithContext(ctx).Preload("ResourcePlan")
+	if parentID != nil {
+		query = query.Where("parent_id = ?", *parentID)
+	} else {
+		query = query.Where("parent_id IS NULL")
 	}
-	return projects, nil
+	err := query.Find(&nodes).Error
+	for i := range nodes {
+		r.setAliases(&nodes[i])
+	}
+	return nodes, err
 }
 
-func (r *DBProjectRepo) ListProjectsByUserID(userID string) ([]view.ProjectUserView, error) {
-	var results []view.ProjectUserView
-
-	err := r.db.Table("project_list p").
-		Select(`
-            p.p_id, p.project_name, 
-            g.g_id, g.group_name, 
-            u.u_id, u.username, ug.role
-        `).
-		Joins("JOIN group_list g ON p.g_id = g.g_id").
-		Joins("JOIN user_group ug ON ug.g_id = g.g_id").
-		Joins("JOIN users u ON u.u_id = ug.u_id").
-		Where("u.u_id = ?", userID).
-		Scan(&results).Error
-
-	return results, err
+func (r *ProjectRepoImpl) ListProjectsByGroup(ctx context.Context, gid string) ([]project.Project, error) {
+	var nodes []project.Project
+	err := r.db.WithContext(ctx).Where("owner_id = ?", gid).Find(&nodes).Error
+	for i := range nodes {
+		r.setAliases(&nodes[i])
+	}
+	return nodes, err
 }
 
-func (r *DBProjectRepo) GetAllProjectGroupViews() ([]view.ProjectGroupView, error) {
-	var results []view.ProjectGroupView
-
-	err := r.db.Table("group_list g").
-		Select(`
-            g.g_id, 
-            g.group_name, 
-            COUNT(DISTINCT p.p_id) AS project_count, 
-            COUNT(r.r_id) AS resource_count, 
-            MAX(g.create_at) AS group_create_at, 
-            MAX(g.update_at) AS group_update_at
-        `).
-		Joins("LEFT JOIN project_list p ON p.g_id = g.g_id").
-		Joins("LEFT JOIN config_files cf ON cf.project_id = p.p_id").
-		Joins("LEFT JOIN resource_list r ON r.cf_id = cf.cf_id").
-		Group("g.g_id, g.group_name").
-		Scan(&results).Error
-
-	return results, err
+func (r *ProjectRepoImpl) GetSubtree(ctx context.Context, rootID string) ([]project.Project, error) {
+	var nodes []project.Project
+	subQuery := r.db.Model(&project.Project{}).Select("path").Where("p_id = ?", rootID)
+	err := r.db.WithContext(ctx).Preload("ResourcePlan").Where("path <@ (?)", subQuery).Find(&nodes).Error
+	for i := range nodes {
+		r.setAliases(&nodes[i])
+	}
+	return nodes, err
 }
 
-func (r *DBProjectRepo) WithTx(tx *gorm.DB) ProjectRepo {
+func (r *ProjectRepoImpl) GetAncestors(ctx context.Context, nodeID string) ([]project.Project, error) {
+	var nodes []project.Project
+	subQuery := r.db.Model(&project.Project{}).Select("path").Where("p_id = ?", nodeID)
+	err := r.db.WithContext(ctx).Preload("ResourcePlan").Where("path @> (?)", subQuery).Find(&nodes).Error
+	for i := range nodes {
+		r.setAliases(&nodes[i])
+	}
+	return nodes, err
+}
+
+func (r *ProjectRepoImpl) MoveNode(ctx context.Context, nodeID, newParentID string) error {
+	return r.db.WithContext(ctx).Model(&project.Project{}).
+		Where("p_id = ?", nodeID).
+		Update("parent_id", newParentID).Error
+}
+
+func (r *ProjectRepoImpl) DeleteNode(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Delete(&project.Project{}, "p_id = ?", id).Error
+}
+
+func (r *ProjectRepoImpl) ListDescendantProjects(ctx context.Context, groupOwnerIDs []string) ([]project.Project, error) {
+	var nodes []project.Project
+	if len(groupOwnerIDs) == 0 {
+		return nodes, nil
+	}
+	query := `SELECT * FROM projects WHERE path <@ ANY (SELECT path FROM projects WHERE owner_id IN ?)`
+	err := r.db.WithContext(ctx).Raw(query, groupOwnerIDs).Scan(&nodes).Error
+	for i := range nodes {
+		r.setAliases(&nodes[i])
+	}
+	return nodes, err
+}
+
+func (r *ProjectRepoImpl) CreateResourcePlan(ctx context.Context, plan *project.ResourcePlan) error {
+	return r.db.WithContext(ctx).Create(plan).Error
+}
+
+func (r *ProjectRepoImpl) UpdateResourcePlan(ctx context.Context, plan *project.ResourcePlan) error {
+	return r.db.WithContext(ctx).Save(plan).Error
+}
+
+func (r *ProjectRepoImpl) GetResourcePlan(ctx context.Context, projectID string) (*project.ResourcePlan, error) {
+	var p project.ResourcePlan
+	err := r.db.WithContext(ctx).First(&p, "project_id = ?", projectID).Error
+	return &p, err
+}
+
+func (r *ProjectRepoImpl) WithTx(tx *gorm.DB) ProjectRepo {
 	if tx == nil {
 		return r
 	}
-	return &DBProjectRepo{
-		db: tx,
-	}
+	return &ProjectRepoImpl{db: tx}
 }

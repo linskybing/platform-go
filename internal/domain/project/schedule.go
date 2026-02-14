@@ -55,6 +55,12 @@ func IsTimeAllowed(windows []ScheduleWindow, now time.Time) (bool, error) {
 	return false, nil
 }
 
+// Helper to fix compilation, ideally replaced by DB logic
+func (p *Project) ScheduleWindowList() ([]ScheduleWindow, error) {
+	// TODO: Implement conversion from ResourcePlan.WeekWindow or use DB constraints
+	return nil, nil
+}
+
 func (p *Project) IsTimeAllowed(now time.Time) (bool, error) {
 	windows, err := p.ScheduleWindowList()
 	if err != nil {

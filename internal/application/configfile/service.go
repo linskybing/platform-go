@@ -2,8 +2,7 @@ package configfile
 
 import (
 	"context"
-	"log/slog"
-	"time"
+	"fmt"
 
 	"github.com/linskybing/platform-go/internal/application/executor"
 	"github.com/linskybing/platform-go/internal/application/image"
@@ -13,102 +12,94 @@ import (
 )
 
 type ConfigFileService struct {
-	Repos        *repository.Repos
-	imageService *image.ImageService
-	cache        *cache.Service
-	executor     executor.Executor
+	Repos    *repository.Repos
+	cache    *cache.Service
+	executor executor.Executor
+	imageSvc *image.ImageService
 }
 
 func NewConfigFileService(repos *repository.Repos) *ConfigFileService {
-	return NewConfigFileServiceWithCache(repos, nil)
-}
-
-func NewConfigFileServiceWithCache(repos *repository.Repos, cacheSvc *cache.Service) *ConfigFileService {
-	return &ConfigFileService{
-		Repos:        repos,
-		imageService: image.NewImageService(repos.Image),
-		cache:        cacheSvc,
-		executor:     nil, // Will use direct K8s deployment if nil
-	}
+	return NewConfigFileServiceWithExecutor(repos, nil, nil)
 }
 
 func NewConfigFileServiceWithExecutor(repos *repository.Repos, cacheSvc *cache.Service, exec executor.Executor) *ConfigFileService {
+	var imageSvc *image.ImageService
+	if repos != nil && repos.Image != nil {
+		imageSvc = image.NewImageService(repos.Image)
+	}
 	return &ConfigFileService{
-		Repos:        repos,
-		imageService: image.NewImageService(repos.Image),
-		cache:        cacheSvc,
-		executor:     exec,
+		Repos:    repos,
+		cache:    cacheSvc,
+		executor: exec,
+		imageSvc: imageSvc,
 	}
 }
 
-// GetExecutor returns the executor used by this service
+// GetLatestConfig retrieves the current configuration state for a project.
+func (s *ConfigFileService) GetLatestConfig(projectID string) (*configfile.ConfigBlob, error) {
+	commit, err := s.Repos.ConfigFile.GetHead(context.Background(), projectID)
+	if err != nil {
+		return nil, err
+	}
+	return s.Repos.ConfigFile.GetBlob(context.Background(), commit.BlobHash)
+}
+
+// UpdateConfig creates a new version of the configuration.
+func (s *ConfigFileService) UpdateConfig(projectID, authorID, message string, content []byte) (*configfile.ConfigCommit, error) {
+	resourcesToCreate, err := s.parseAndValidateResources(string(content))
+	if err != nil {
+		return nil, err
+	}
+
+	tx := s.Repos.DB().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	commit, err := s.Repos.ConfigFile.WithTx(tx).Store(context.Background(), projectID, authorID, message, content)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to update config: %w", err)
+	}
+
+	for _, res := range resourcesToCreate {
+		res.ConfigCommitID = commit.ID
+		if err := s.Repos.Resource.WithTx(tx).CreateResource(context.Background(), res); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to create resource %s/%s: %w", res.Type, res.Name, err)
+		}
+	}
+
+	if res := tx.Commit(); res.Error != nil {
+		return nil, fmt.Errorf("transaction commit failed: %w", res.Error)
+	}
+
+	return commit, nil
+}
+
+// GetHistory retrieves the commit history for a project.
+func (s *ConfigFileService) GetHistory(projectID string) ([]configfile.ConfigCommit, error) {
+	return s.Repos.ConfigFile.GetHistory(context.Background(), projectID)
+}
+
+// ListConfigFiles returns all config commits.
+func (s *ConfigFileService) ListConfigFiles() ([]configfile.ConfigCommit, error) {
+	return s.Repos.ConfigFile.ListAllCommits(context.Background())
+}
+
+// GetConfigFile returns a single config commit by ID.
+func (s *ConfigFileService) GetConfigFile(id string) (*configfile.ConfigCommit, error) {
+	return s.Repos.ConfigFile.GetCommit(context.Background(), id)
+}
+
+// ListConfigFilesByProjectID returns commit history for a project.
+func (s *ConfigFileService) ListConfigFilesByProjectID(projectID string) ([]configfile.ConfigCommit, error) {
+	return s.Repos.ConfigFile.GetHistory(context.Background(), projectID)
+}
+
 func (s *ConfigFileService) GetExecutor() executor.Executor {
 	return s.executor
-}
-
-const configFileCacheTTL = 5 * time.Minute
-
-func (s *ConfigFileService) ListConfigFiles() ([]configfile.ConfigFile, error) {
-	if s.cache != nil && s.cache.Enabled() {
-		var cached []configfile.ConfigFile
-		if err := s.cache.GetJSON(context.Background(), configFileListKey(), &cached); err == nil {
-			return cached, nil
-		}
-	}
-
-	files, err := s.Repos.ConfigFile.ListConfigFiles()
-	if err != nil {
-		return nil, err
-	}
-	if s.cache != nil && s.cache.Enabled() {
-		if err := s.cache.AsyncSetJSON(context.Background(), configFileListKey(), files, configFileCacheTTL); err != nil {
-			slog.Warn("failed to cache config file list",
-				"error", err)
-		}
-	}
-	return files, nil
-}
-
-func (s *ConfigFileService) GetConfigFile(id string) (*configfile.ConfigFile, error) {
-	if s.cache != nil && s.cache.Enabled() {
-		var cached configfile.ConfigFile
-		if err := s.cache.GetJSON(context.Background(), configFileByIDKey(id), &cached); err == nil {
-			return &cached, nil
-		}
-	}
-
-	cf, err := s.Repos.ConfigFile.GetConfigFileByID(id)
-	if err != nil {
-		return nil, err
-	}
-	if s.cache != nil && s.cache.Enabled() {
-		if err := s.cache.AsyncSetJSON(context.Background(), configFileByIDKey(id), cf, configFileCacheTTL); err != nil {
-			slog.Warn("failed to cache config file",
-				"config_id", id,
-				"error", err)
-		}
-	}
-	return cf, nil
-}
-
-func (s *ConfigFileService) ListConfigFilesByProjectID(projectID string) ([]configfile.ConfigFile, error) {
-	if s.cache != nil && s.cache.Enabled() {
-		var cached []configfile.ConfigFile
-		if err := s.cache.GetJSON(context.Background(), configFileByProjectKey(projectID), &cached); err == nil {
-			return cached, nil
-		}
-	}
-
-	files, err := s.Repos.ConfigFile.GetConfigFilesByProjectID(projectID)
-	if err != nil {
-		return nil, err
-	}
-	if s.cache != nil && s.cache.Enabled() {
-		if err := s.cache.AsyncSetJSON(context.Background(), configFileByProjectKey(projectID), files, configFileCacheTTL); err != nil {
-			slog.Warn("failed to cache project config files",
-				"project_id", projectID,
-				"error", err)
-		}
-	}
-	return files, nil
 }

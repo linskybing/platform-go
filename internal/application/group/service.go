@@ -35,40 +35,42 @@ func NewGroupServiceWithCache(repos *repository.Repos, cacheSvc *cache.Service) 
 const groupCacheTTL = 5 * time.Minute
 
 func (s *GroupService) ListGroups() ([]group.Group, error) {
+	ctx := context.Background()
 	if s.cache != nil && s.cache.Enabled() {
 		var cached []group.Group
-		if err := s.cache.GetJSON(context.Background(), groupListKey(), &cached); err == nil {
+		if err := s.cache.GetJSON(ctx, groupListKey(), &cached); err == nil {
 			return cached, nil
 		}
 	}
 
-	groups, err := s.Repos.Group.GetAllGroups()
+	groups, err := s.Repos.Group.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), groupListKey(), groups, groupCacheTTL)
+		_ = s.cache.AsyncSetJSON(ctx, groupListKey(), groups, groupCacheTTL)
 	}
 
 	return groups, nil
 }
 
 func (s *GroupService) GetGroup(id string) (group.Group, error) {
+	ctx := context.Background()
 	if s.cache != nil && s.cache.Enabled() {
 		var cached group.Group
-		if err := s.cache.GetJSON(context.Background(), groupByIDKey(id), &cached); err == nil {
+		if err := s.cache.GetJSON(ctx, groupByIDKey(id), &cached); err == nil {
 			return cached, nil
 		}
 	}
 
-	grp, err := s.Repos.Group.GetGroupByID(id)
+	grp, err := s.Repos.Group.Get(ctx, id)
 	if err != nil {
 		return group.Group{}, err
 	}
 	if s.cache != nil && s.cache.Enabled() {
-		_ = s.cache.AsyncSetJSON(context.Background(), groupByIDKey(id), grp, groupCacheTTL)
+		_ = s.cache.AsyncSetJSON(ctx, groupByIDKey(id), grp, groupCacheTTL)
 	}
-	return grp, nil
+	return *grp, nil
 }
 
 func (s *GroupService) CreateGroup(c *gin.Context, input group.GroupCreateDTO) (group.Group, error) {
@@ -78,76 +80,77 @@ func (s *GroupService) CreateGroup(c *gin.Context, input group.GroupCreateDTO) (
 
 	grp := group.Group{
 		GroupName: input.GroupName,
+		Name:      input.GroupName,
 	}
 	if input.Description != nil {
 		grp.Description = *input.Description
 	}
 
-	err := s.Repos.Group.CreateGroup(&grp)
+	ctx := c.Request.Context()
+	err := s.Repos.Group.Create(ctx, &grp)
 	if err != nil {
 		return group.Group{}, err
 	}
-	s.invalidateGroupCache(grp.GID)
-	utils.LogAuditWithConsole(c, "create", "group", fmt.Sprintf("g_id=%s", grp.GID), nil, grp, "", s.Repos.Audit)
+	s.invalidateGroupCache(grp.ID)
+	utils.LogAuditWithConsole(c, "create", "group", fmt.Sprintf("g_id=%s", grp.ID), nil, grp, "", s.Repos.Audit)
 
 	return grp, nil
 }
 
 func (s *GroupService) UpdateGroup(c *gin.Context, id string, input group.GroupUpdateDTO) (group.Group, error) {
-	grp, err := s.Repos.Group.GetGroupByID(id)
+	ctx := c.Request.Context()
+	grp, err := s.Repos.Group.Get(ctx, id)
 	if err != nil {
 		return group.Group{}, err
 	}
 
 	// Cannot modify the reserved super group's name
-	if grp.GroupName == config.ReservedGroupName && input.GroupName != nil {
+	if grp.Name == config.ReservedGroupName && input.GroupName != nil {
 		return group.Group{}, ErrReservedGroupName
 	}
 
-	oldGroup := grp
+	oldGroup := *grp
 
 	if input.GroupName != nil {
-		// Prevent updating reserved group name (both TO and FROM)
-		if grp.GroupName == config.ReservedGroupName {
+		if grp.Name == config.ReservedGroupName || *input.GroupName == config.ReservedGroupName {
 			return group.Group{}, ErrReservedGroupName
 		}
-		if *input.GroupName == config.ReservedGroupName {
-			return group.Group{}, ErrReservedGroupName
-		}
+		grp.Name = *input.GroupName
 		grp.GroupName = *input.GroupName
 	}
 	if input.Description != nil {
 		grp.Description = *input.Description
 	}
 
-	err = s.Repos.Group.UpdateGroup(&grp)
+	err = s.Repos.Group.UpdateGroup(ctx, grp)
 	if err != nil {
 		return group.Group{}, err
 	}
-	s.invalidateGroupCache(grp.GID)
+	s.invalidateGroupCache(grp.ID)
 
-	utils.LogAuditWithConsole(c, "update", "group", fmt.Sprintf("g_id=%s", grp.GID), oldGroup, grp, "", s.Repos.Audit)
+	utils.LogAuditWithConsole(c, "update", "group", fmt.Sprintf("g_id=%s", grp.ID), oldGroup, *grp, "", s.Repos.Audit)
 
-	return grp, nil
+	return *grp, nil
 }
 
 func (s *GroupService) DeleteGroup(c *gin.Context, id string) error {
-	group, err := s.Repos.Group.GetGroupByID(id)
+	ctx := c.Request.Context()
+	grp, err := s.Repos.Group.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	if group.GroupName == config.ReservedGroupName {
+	if grp.Name == config.ReservedGroupName {
 		return ErrReservedGroupName
 	}
 
-	err = s.Repos.Group.DeleteGroup(id)
+	err = s.Repos.Group.Delete(ctx, id)
 	if err != nil {
 		return err
 	}
-	s.invalidateGroupCache(group.GID)
+	s.invalidateGroupCache(grp.ID)
 
-	utils.LogAuditWithConsole(c, "delete", "group", fmt.Sprintf("g_id=%s", group.GID), group, nil, "", s.Repos.Audit)
+	utils.LogAuditWithConsole(c, "delete", "group", fmt.Sprintf("g_id=%s", grp.ID), *grp, nil, "", s.Repos.Audit)
 
 	return nil
 }

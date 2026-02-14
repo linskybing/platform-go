@@ -35,10 +35,10 @@ func NewStoragePermissionHandler(pm *k8s.PermissionManager) *StoragePermissionHa
 // @Accept json
 // @Produce json
 // @Param request body storage.SetStoragePermissionRequest true "Permission request"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 403 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /storage/permissions [post]
 func (h *StoragePermissionHandler) SetPermission(c *gin.Context) {
 	var req storage.SetStoragePermissionRequest
@@ -74,10 +74,10 @@ func (h *StoragePermissionHandler) SetPermission(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body storage.BatchSetPermissionsRequest true "Batch permissions request"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 403 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /storage/permissions/batch [post]
 func (h *StoragePermissionHandler) BatchSetPermissions(c *gin.Context) {
 	var req storage.BatchSetPermissionsRequest
@@ -108,9 +108,9 @@ func (h *StoragePermissionHandler) BatchSetPermissions(c *gin.Context) {
 // @Produce json
 // @Param group_id path int true "Group ID"
 // @Param pvc_id path string true "PVC ID"
-// @Success 200 {object} response.Response{data=storage.GroupStoragePermission}
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=storage.GroupStoragePermission}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /storage/permissions/group/{group_id}/pvc/{pvc_id} [get]
 func (h *StoragePermissionHandler) GetUserPermission(c *gin.Context) {
 	groupID := c.Param("group_id")
@@ -148,9 +148,9 @@ func (h *StoragePermissionHandler) GetUserPermission(c *gin.Context) {
 // @Produce json
 // @Param group_id path string true "Group ID"
 // @Param pvc_id path string true "PVC ID"
-// @Success 200 {object} response.Response{data=[]storage.GroupStoragePermission}
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=[]storage.GroupStoragePermission}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /storage/permissions/group/{group_id}/pvc/{pvc_id}/list [get]
 func (h *StoragePermissionHandler) ListPVCPermissions(c *gin.Context) {
 	groupID := c.Param("group_id")
@@ -182,10 +182,10 @@ func (h *StoragePermissionHandler) ListPVCPermissions(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body storage.SetStorageAccessPolicyRequest true "Access policy request"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 403 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /storage/policies [post]
 func (h *StoragePermissionHandler) SetAccessPolicy(c *gin.Context) {
 	var req storage.SetStorageAccessPolicyRequest

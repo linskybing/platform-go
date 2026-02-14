@@ -30,17 +30,17 @@ func (e *LocalExecutor) Submit(ctx context.Context, req *SubmitRequest) (*Submit
 	// Create job record with status "running"
 	now := time.Now()
 	j := &job.Job{
-		ID:           req.JobID,
-		ConfigFileID: req.ConfigFileID,
-		ProjectID:    req.ProjectID,
-		Namespace:    req.Namespace,
-		UserID:       req.UserID,
-		Status:       string(JobStatusRunning),
-		SubmitType:   string(req.SubmitType),
-		QueueName:    req.QueueName,
-		Priority:     req.Priority,
-		SubmittedAt:  now,
-		StartedAt:    &now,
+		ID:             req.JobID,
+		ConfigCommitID: req.ConfigCommitID,
+		ProjectID:      req.ProjectID,
+		Namespace:      req.Namespace,
+		UserID:         req.UserID,
+		Status:         string(JobStatusRunning),
+		SubmitType:     string(req.SubmitType),
+		QueueName:      req.QueueName,
+		PriorityValue:  int(req.Priority),
+		CreatedAt:      now,
+		StartedAt:      &now,
 	}
 
 	if err := e.repos.Job.Create(ctx, j); err != nil {

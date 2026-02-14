@@ -37,23 +37,23 @@ func StreamPodLogsHandler(c *gin.Context) {
 	container := c.Query("container")
 
 	if namespace == "" {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "namespace is required"})
+		response.Error(c, http.StatusBadRequest, "Namespace is required")
 		return
 	}
 	if podName == "" && jobName == "" {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "pod or job is required"})
+		response.Error(c, http.StatusBadRequest, "Pod or job is required")
 		return
 	}
 
 	if k8s.Clientset == nil {
-		c.JSON(http.StatusServiceUnavailable, response.ErrorResponse{Error: "k8s client not available"})
+		response.Error(c, http.StatusServiceUnavailable, "K8s client not available")
 		return
 	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		logger.Error("websocket upgrade failed", "namespace", namespace, "pod", podName, "job", jobName, "error", err)
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "websocket upgrade failed"})
+		response.Error(c, http.StatusInternalServerError, "Websocket upgrade failed")
 		return
 	}
 	defer func() {

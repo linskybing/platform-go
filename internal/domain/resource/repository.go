@@ -7,7 +7,7 @@ type Repository interface {
 	UpdateResource(resource *Resource) error
 	DeleteResource(rid string) error
 	ListResourcesByProjectID(pid string) ([]Resource, error)
-	ListResourcesByConfigFileID(cfID string) ([]Resource, error)
-	GetResourceByConfigFileIDAndName(cfID string, name string) (*Resource, error)
+	ListResourcesByCommitID(commitID string) ([]Resource, error)
+	GetResourceByCommitIDAndName(commitID string, name string) (*Resource, error)
 	GetGroupIDByResourceID(rID string) (string, error)
 }

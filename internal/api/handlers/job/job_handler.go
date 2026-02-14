@@ -33,22 +33,22 @@ func NewJobHandler(repos *repository.Repos, exec executor.Executor, configSvc *c
 }
 
 type SubmitJobRequest struct {
-	ConfigFileID string `json:"config_file_id"`
-	ProjectID    string `json:"project_id"`
-	SubmitType   string `json:"submit_type"`
-	QueueName    string `json:"queue_name"`
-	Priority     int32  `json:"priority"`
+	ConfigCommitID string `json:"config_commit_id"`
+	ProjectID      string `json:"project_id"`
+	SubmitType     string `json:"submit_type"`
+	QueueName      string `json:"queue_name"`
+	Priority       int32  `json:"priority"`
 }
 
 // ListTemplates godoc
-// @Summary List available job templates (config files)
+// @Summary List available job templates (config commits)
 // @Tags jobs
 // @Security BearerAuth
 // @Produce json
 // @Param project_id query string false "Filter by project ID"
-// @Success 200 {array} configfile.ConfigFile
-// @Failure 401 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=[]configfile.ConfigCommit}
+// @Failure 401 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /jobs/templates [get]
 func (h *JobHandler) ListTemplates(c *gin.Context) {
 	projectID := c.Query("project_id")
@@ -60,7 +60,7 @@ func (h *JobHandler) ListTemplates(c *gin.Context) {
 			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
-		c.JSON(http.StatusOK, templates)
+		response.Success(c, templates, "Job templates retrieved successfully")
 		return
 	}
 
@@ -69,7 +69,7 @@ func (h *JobHandler) ListTemplates(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, templates)
+	response.Success(c, templates, "Job templates retrieved successfully")
 }
 
 // ListJobs godoc
@@ -77,9 +77,9 @@ func (h *JobHandler) ListTemplates(c *gin.Context) {
 // @Tags jobs
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {array} job.Job
-// @Failure 401 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=[]job.Job}
+// @Failure 401 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /jobs [get]
 func (h *JobHandler) ListJobs(c *gin.Context) {
 	claims, exists := c.Get("claims")
@@ -109,7 +109,7 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, jobs)
+	response.Success(c, jobs, "Jobs retrieved successfully")
 }
 
 // GetJob godoc
@@ -118,9 +118,9 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path string true "Job ID"
-// @Success 200 {object} job.Job
-// @Failure 404 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=job.Job}
+// @Failure 404 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /jobs/:id [get]
 func (h *JobHandler) GetJob(c *gin.Context) {
 	id := c.Param("id")
@@ -142,7 +142,7 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, job)
+	response.Success(c, job, "Job retrieved successfully")
 }
 
 // CancelJob godoc
@@ -151,9 +151,9 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path string true "Job ID"
-// @Success 200 {object} response.MessageResponse
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /jobs/:id/cancel [post]
 func (h *JobHandler) CancelJob(c *gin.Context) {
 	id := c.Param("id")
@@ -173,7 +173,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "job cancelled successfully"})
+	response.Success(c, nil, "Job cancelled successfully")
 }
 
 // SubmitJob godoc
@@ -183,9 +183,9 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param payload body SubmitJobRequest true "Submit request"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=map[string]string}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /jobs/submit [post]
 func (h *JobHandler) SubmitJob(c *gin.Context) {
 	if h.config == nil {
@@ -198,8 +198,8 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid request payload")
 		return
 	}
-	if req.ConfigFileID == "" {
-		response.Error(c, http.StatusBadRequest, "config_file_id required")
+	if req.ConfigCommitID == "" {
+		response.Error(c, http.StatusBadRequest, "config_commit_id required")
 		return
 	}
 
@@ -227,16 +227,16 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 		return
 	}
 
-	cf, err := h.config.GetConfigFile(req.ConfigFileID)
+	commit, err := h.config.GetConfigFile(req.ConfigCommitID)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid config_file_id")
+		response.Error(c, http.StatusBadRequest, "invalid config_commit_id")
 		return
 	}
-	if req.ProjectID != "" && req.ProjectID != cf.ProjectID {
-		response.Error(c, http.StatusBadRequest, "project_id does not match config file")
+	if req.ProjectID != "" && req.ProjectID != commit.ProjectID {
+		response.Error(c, http.StatusBadRequest, "project_id does not match config commit")
 		return
 	}
-	proj, err := h.repos.Project.GetProjectByID(cf.ProjectID)
+	proj, err := h.repos.Project.GetProjectByID(c.Request.Context(), commit.ProjectID)
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "project not found")
 		return
@@ -273,16 +273,19 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 		ctx = configfile.WithPriority(ctx, req.Priority)
 	}
 
-	if err := h.config.CreateInstance(ctx, req.ConfigFileID, userClaims); err != nil {
+	if err := h.config.CreateInstance(ctx, req.ConfigCommitID, userClaims); err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"job_id": jobID})
+	response.Success(c, gin.H{"job_id": jobID}, "Job submitted successfully")
 }
 
-func enforceUserJobLimits(ctx context.Context, repos *repository.Repos, proj project.Project, userID string) error {
+func enforceUserJobLimits(ctx context.Context, repos *repository.Repos, proj *project.Project, userID string) error {
 	if repos == nil || repos.Job == nil {
+		return nil
+	}
+	if proj == nil {
 		return nil
 	}
 	if proj.MaxConcurrentJobsPerUser > 0 {

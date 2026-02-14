@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/events"
+	"github.com/linskybing/platform-go/internal/priority"
 	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/k8s"
 	"gorm.io/gorm"
@@ -18,21 +19,22 @@ type Manager struct {
 }
 
 func NewManager(db *gorm.DB, cacheSvc *cache.Service) *Manager {
-	// Assuming k8s.Clientset is available via legacy global or passed in.
-	// Ideally passed in, but for now bridging the gap.
 	var client k8sclient.Interface
 	if c, ok := k8s.Clientset.(k8sclient.Interface); ok {
 		client = c
 	}
 
+	priorityMgr := priority.NewManager()
+
 	pCtx := PluginContext{
-		DB:           db,
-		Cache:        cacheSvc,
-		K8sClient:    client,
-		Config:       make(map[string]string),    // Populate from config if needed
-		EventBus:     events.NewMemoryEventBus(), // Use global bus if one exists instead
-		HookRegistry: NewHookRegistry(),
-		Logger:       slog.Default(),
+		DB:              db,
+		Cache:           cacheSvc,
+		K8sClient:       client,
+		Config:          make(map[string]string),
+		EventBus:        events.NewMemoryEventBus(),
+		HookRegistry:    NewHookRegistry(),
+		PriorityManager: priorityMgr,
+		Logger:          slog.Default(),
 	}
 
 	return &Manager{

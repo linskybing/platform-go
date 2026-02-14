@@ -46,7 +46,7 @@ func FromProjectIDParam(repos *repository.Repos) IDExtractor {
 			return ""
 		}
 
-		project, err := repos.Project.GetProjectByID(projectIDStr)
+		project, err := repos.Project.GetProjectByID(c.Request.Context(), projectIDStr)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
 			return ""
@@ -65,7 +65,7 @@ func FromProjectIDParamName(paramName string) IDExtractor {
 			return ""
 		}
 
-		project, err := r.Project.GetProjectByID(projectIDStr)
+		project, err := r.Project.GetProjectByID(c.Request.Context(), projectIDStr)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
 			return ""
@@ -75,23 +75,23 @@ func FromProjectIDParamName(paramName string) IDExtractor {
 	}
 }
 
-// FromConfigFileIDParam extracts group ID by looking up config file's project's group.
-// Use when URL has /:id representing a config file ID.
-func FromConfigFileIDParam(repos *repository.Repos) IDExtractor {
+// FromConfigCommitIDParam extracts group ID by looking up config commit's project.
+// Use when URL has /:id representing a config commit ID.
+func FromConfigCommitIDParam(repos *repository.Repos) IDExtractor {
 	return func(c *gin.Context, r *repository.Repos) string {
 		configIDStr := c.Param("id")
 		if configIDStr == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config file ID"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config commit ID"})
 			return ""
 		}
 
-		configFile, err := repos.ConfigFile.GetConfigFileByID(configIDStr)
-		if err != nil || configFile == nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "config file not found"})
+		commit, err := repos.ConfigFile.GetCommit(c.Request.Context(), configIDStr)
+		if err != nil || commit == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "config commit not found"})
 			return ""
 		}
 
-		project, err := repos.Project.GetProjectByID(configFile.ProjectID)
+		project, err := repos.Project.GetProjectByID(c.Request.Context(), commit.ProjectID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
 			return ""
@@ -114,7 +114,7 @@ func FromProjectIDInPayload() IDExtractor {
 			return ""
 		}
 
-		project, err := repos.Project.GetProjectByID(payload.ProjectID)
+		project, err := repos.Project.GetProjectByID(c.Request.Context(), payload.ProjectID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
 			return ""

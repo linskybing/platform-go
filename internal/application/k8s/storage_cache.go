@@ -11,7 +11,7 @@ import (
 
 // CacheEntry holds PVC data and metadata
 type CacheEntry struct {
-	PVCs      []storage.GroupStorage
+	PVCs      []storage.Storage
 	Timestamp time.Time
 	TTL       time.Duration
 }
@@ -23,7 +23,7 @@ func (ce *CacheEntry) IsExpired() bool {
 
 // getCachedPVCs retrieves cached PVCs for a group with TTL validation.
 // Returns the cached PVCs and a boolean indicating cache hit.
-func (sm *StorageManager) getCachedPVCs(groupID string) ([]storage.GroupStorage, bool) {
+func (sm *StorageManager) getCachedPVCs(groupID string) ([]storage.Storage, bool) {
 	sm.cacheMutex.RLock()
 	defer sm.cacheMutex.RUnlock()
 
@@ -43,7 +43,7 @@ func (sm *StorageManager) getCachedPVCs(groupID string) ([]storage.GroupStorage,
 }
 
 // setCachedPVCs stores PVCs in cache with TTL.
-func (sm *StorageManager) setCachedPVCs(groupID string, pvcs []storage.GroupStorage, ttl time.Duration) {
+func (sm *StorageManager) setCachedPVCs(groupID string, pvcs []storage.Storage, ttl time.Duration) {
 	sm.cacheMutex.Lock()
 	defer sm.cacheMutex.Unlock()
 

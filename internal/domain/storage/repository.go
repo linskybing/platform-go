@@ -2,30 +2,28 @@ package storage
 
 import (
 	"context"
-
 	"gorm.io/gorm"
 )
 
-// Repository defines data access interface for storage resources
+// StorageRepo defines data access interface for storage resources
 type StorageRepo interface {
-	// Storage
-	CreateUserStorage(ctx context.Context, pvc *UserStorage) error
-	CreateGroupStorage(ctx context.Context, pvc *GroupStorage) error
+	// Unified Storage Methods
+	CreateStorage(ctx context.Context, storage *Storage) error
+	GetStorage(ctx context.Context, id string) (*Storage, error)
+	GetStorageByOwnerID(ctx context.Context, ownerID string) (*Storage, error)
+	ListStorageByOwnerID(ctx context.Context, ownerID string) ([]Storage, error)
+	ListAllStorage(ctx context.Context) ([]Storage, error)
+	UpdateStorage(ctx context.Context, storage *Storage) error
+	DeleteStorage(ctx context.Context, id string) error
 
-	GetUserStorage(ctx context.Context, id string) (*UserStorage, error)
-	GetGroupStorage(ctx context.Context, id string) (*GroupStorage, error)
-	GetUserStorageByUserID(ctx context.Context, userID string) (*UserStorage, error)
-
-	ListUserStorage(ctx context.Context) ([]UserStorage, error)
-	ListGroupStorage(ctx context.Context) ([]GroupStorage, error)
-	ListGroupStorageByGID(ctx context.Context, gid string) ([]GroupStorage, error)
-
-	UpdateUserStorage(ctx context.Context, pvc *UserStorage) error
-	UpdateGroupStorage(ctx context.Context, pvc *GroupStorage) error
-
-	DeleteUserStorage(ctx context.Context, id string) error
-	DeleteUserStorageByUserID(ctx context.Context, userID string) error
+	// Legacy support
+	ListGroupStorageByGID(ctx context.Context, gid string) ([]Storage, error)
+	GetGroupStorage(ctx context.Context, id string) (*Storage, error)
 	DeleteGroupStorage(ctx context.Context, id string) error
+	GetUserStorageByUserID(ctx context.Context, userID string) (*Storage, error)
+	DeleteUserStorageByUserID(ctx context.Context, userID string) error
+	UpdateUserStorage(ctx context.Context, s *Storage) error
+	CreateUserStorage(ctx context.Context, s *Storage) error
 
 	WithTx(tx *gorm.DB) StorageRepo
 }

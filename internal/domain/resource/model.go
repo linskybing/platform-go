@@ -3,39 +3,31 @@ package resource
 import (
 	"time"
 
-	"github.com/linskybing/platform-go/internal/domain/configfile"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
-// ResourceType defines the type of Kubernetes resource
 type ResourceType string
 
 const (
-	ResourcePod        ResourceType = "pod"        // Kubernetes Pod
-	ResourceService    ResourceType = "service"    // Kubernetes Service
-	ResourceDeployment ResourceType = "deployment" // Kubernetes Deployment
-	ResourceConfigMap  ResourceType = "configmap"  // Kubernetes ConfigMap
-	ResourceIngress    ResourceType = "ingress"    // Kubernetes Ingress
-	ResourceJob        ResourceType = "job"        // Kubernetes Job
+	ResourcePod        ResourceType = "Pod"
+	ResourceService    ResourceType = "Service"
+	ResourceDeployment ResourceType = "Deployment"
+	ResourceConfigMap  ResourceType = "ConfigMap"
+	ResourceIngress    ResourceType = "Ingress"
+	ResourceJob        ResourceType = "Job"
 )
 
-// Resource represents a Kubernetes resource configuration
+// Resource represents a K8s resource (Pod, Service, etc.) managed by the platform.
 type Resource struct {
-	RID         string                 `gorm:"primaryKey;column:r_id;size:21"`
-	CFID        string                 `gorm:"not null;column:cf_id;size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"` // ConfigFile ID
-	Type        ResourceType           `gorm:"type:resource_type;not null"`
-	Name        string                 `gorm:"size:50;not null"`
-	ParsedYAML  datatypes.JSON         `gorm:"type:jsonb;not null;"`
-	Description *string                `gorm:"type:text"`
-	CreatedAt   time.Time              `gorm:"column:create_at;autoCreateTime"`
-	ConfigFile  *configfile.ConfigFile `json:"-" gorm:"-"`
+	ID             string         `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	RID            string         `gorm:"-"` // Legacy Alias
+	ConfigCommitID string         `gorm:"column:config_commit_id;type:varchar(21);not null;index"`
+	CommitID       string         `gorm:"-"`                // Legacy Alias
+	Type           ResourceType   `gorm:"size:50;not null"` // Pod, Service, etc.
+	Name           string         `gorm:"size:100;not null"`
+	ParsedYAML     datatypes.JSON `gorm:"type:jsonb;not null"`
+	Description    string         `gorm:"type:text"`
+	CreatedAt      time.Time      `gorm:"autoCreateTime"`
 }
 
-func (m *Resource) BeforeCreate(tx *gorm.DB) (err error) {
-	if m.RID == "" {
-		m.RID, err = gonanoid.New()
-	}
-	return
-}
+func (Resource) TableName() string { return "resources" }

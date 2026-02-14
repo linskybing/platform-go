@@ -1,14 +1,14 @@
 package configfile
 
 type ConfigFileUpdateDTO struct {
-	Filename *string `form:"filename"`
-	RawYaml  *string `form:"raw_yaml"`
+	RawYaml *string `form:"raw_yaml"`
+	Message *string `form:"message"`
 }
 
 type CreateConfigFileInput struct {
-	Filename  string `form:"filename" binding:"required"`
 	RawYaml   string `form:"raw_yaml" binding:"required"`
 	ProjectID string `form:"project_id" binding:"required"`
+	Message   string `form:"message"`
 }
 
 // GetProjectID returns the project ID for GID lookup

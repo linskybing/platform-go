@@ -23,39 +23,35 @@ func NewUserGroupHandler(svc *application.UserGroupService) *UserGroupHandler {
 // @Produce json
 // @Param u_id query uint true "User ID"
 // @Param g_id query uint true "Group ID"
-// @Success 200 {object} response.SuccessResponse{data=group.UserGroupView}
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 404 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=group.UserGroupView}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 404 {object} response.StandardResponse{data=nil}
 // @Router /user-group [get]
 func (h *UserGroupHandler) GetUserGroup(c *gin.Context) {
 	uidStr := c.Query("u_id")
 	gidStr := c.Query("g_id")
 
 	if uidStr == "" || gidStr == "" {
-		c.JSON(http.StatusOK, []group.UserGroup{})
+		response.Success(c, []group.UserGroup{}, "No user-group relations found")
 		return
 	}
 
 	userGroup, err := h.svc.GetUserGroup(uidStr, gidStr)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "User-Group relation not found"})
+		response.Error(c, http.StatusNotFound, "User-Group relation not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.SuccessResponse{
-		Code:    0,
-		Message: "success",
-		Data:    userGroup,
-	})
+	response.Success(c, userGroup, "User-Group relation retrieved successfully")
 }
 
 // @Summary Get all users in a group
 // @Tags user_group
 // @Produce json
 // @Param g_id query uint true "Group ID"
-// @Success 200 {object} response.SuccessResponse{data=[]group.GroupUsers}
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=[]group.GroupUsers}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /user-group/by-group [get]
 func (h *UserGroupHandler) GetUserGroupsByGID(c *gin.Context) {
 	gidStr := c.Query("g_id")
@@ -63,17 +59,17 @@ func (h *UserGroupHandler) GetUserGroupsByGID(c *gin.Context) {
 		gidStr = c.Query("gid")
 	}
 	if gidStr == "" {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Missing g_id"})
+		response.Error(c, http.StatusBadRequest, "Missing g_id")
 		return
 	}
 
 	rawData, err := h.svc.GetUserGroupsByGID(gidStr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	formattedData := h.svc.FormatByGID(rawData)
-	c.JSON(http.StatusOK, formattedData)
+	response.Success(c, formattedData, "Users in group retrieved successfully")
 }
 
 // controller
@@ -81,9 +77,9 @@ func (h *UserGroupHandler) GetUserGroupsByGID(c *gin.Context) {
 // @Tags user_group
 // @Produce json
 // @Param u_id query uint true "User ID"
-// @Success 200 {object} response.SuccessResponse{data=[]group.UserGroups}
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=[]group.UserGroups}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /user-group/by-user [get]
 func (h *UserGroupHandler) GetUserGroupsByUID(c *gin.Context) {
 	uidStr := c.Query("u_id")
@@ -91,17 +87,17 @@ func (h *UserGroupHandler) GetUserGroupsByUID(c *gin.Context) {
 		uidStr = c.Query("uid")
 	}
 	if uidStr == "" {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Missing u_id"})
+		response.Error(c, http.StatusBadRequest, "Missing u_id")
 		return
 	}
 
 	rawData, err := h.svc.GetUserGroupsByUID(uidStr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, rawData)
+	response.Success(c, rawData, "Groups for user retrieved successfully")
 }
 
 // @Summary Create a user-group relation
@@ -111,20 +107,22 @@ func (h *UserGroupHandler) GetUserGroupsByUID(c *gin.Context) {
 // @Param u_id formData uint true "User ID"
 // @Param g_id formData uint true "Group ID"
 // @Param role formData string true "Role (admin, manager, user)"
-// @Success 201 {object} group.UserGroup
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 201 {object} response.StandardResponse{data=group.UserGroup}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 401 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /user-group [post]
 func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
 	var input group.UserGroupInputDTO
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	requesterID, err := utils.GetUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 
@@ -132,11 +130,11 @@ func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
 		// Only super admin can elevate to admin role.
 		isSuper, superErr := utils.IsSuperAdmin(requesterID, h.svc.Repos.UserGroup)
 		if superErr != nil {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "internal error"})
+			response.Error(c, http.StatusInternalServerError, "Internal error")
 			return
 		}
 		if !isSuper {
-			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: "admin role assignment requires super admin"})
+			response.Error(c, http.StatusForbidden, "Admin role assignment requires super admin")
 			return
 		}
 	}
@@ -148,10 +146,10 @@ func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
 	}
 
 	if _, err := h.svc.CreateUserGroup(c, userGroup); err != nil {
-		c.JSON(http.StatusOK, userGroup)
+		response.Error(c, http.StatusInternalServerError, err.Error()) // assuming internal error if creation fails
 		return
 	}
-	c.JSON(http.StatusOK, userGroup)
+	response.Success(c, userGroup, "User-Group relation created successfully")
 }
 
 // @Summary Update role of a user-group relation
@@ -161,32 +159,34 @@ func (h *UserGroupHandler) CreateUserGroup(c *gin.Context) {
 // @Param u_id formData uint true "User ID"
 // @Param g_id formData uint true "Group ID"
 // @Param role formData string true "Role (admin, manager, user)"
-// @Success 200 {object} group.UserGroup
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 404 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=group.UserGroup}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 401 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 404 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /user-group [put]
 func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 	var input group.UserGroupInputDTO
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	requesterID, err := utils.GetUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 
 	if input.Role == "admin" {
 		isSuper, superErr := utils.IsSuperAdmin(requesterID, h.svc.Repos.UserGroup)
 		if superErr != nil {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "internal error"})
+			response.Error(c, http.StatusInternalServerError, "Internal error")
 			return
 		}
 		if !isSuper {
-			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: "admin role assignment requires super admin"})
+			response.Error(c, http.StatusForbidden, "Admin role assignment requires super admin")
 			return
 		}
 	}
@@ -196,10 +196,10 @@ func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 		// If relation does not exist, create it instead of failing the update
 		created := &group.UserGroup{UID: input.UID, GID: input.GID, Role: input.Role}
 		if _, errCreate := h.svc.CreateUserGroup(c, created); errCreate != nil {
-			c.JSON(http.StatusOK, created)
+			response.Error(c, http.StatusInternalServerError, errCreate.Error())
 			return
 		}
-		c.JSON(http.StatusOK, created)
+		response.Success(c, created, "User-Group relation created/updated successfully")
 		return
 	}
 
@@ -210,11 +210,11 @@ func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 	}
 
 	if _, err := h.svc.UpdateUserGroup(c, updated, existing); err != nil {
-		c.JSON(http.StatusOK, updated)
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, updated)
+	response.Success(c, updated, "User-Group relation updated successfully")
 }
 
 // @Summary Delete a user-group relation
@@ -223,27 +223,29 @@ func (h *UserGroupHandler) UpdateUserGroup(c *gin.Context) {
 // @Produce json
 // @Param u_id formData uint true "User ID"
 // @Param g_id formData uint true "Group ID"
-// @Success 204 {string} string "deleted"
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 500 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=nil} "User-Group relation deleted successfully"
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 404 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /user-group [delete]
 func (h *UserGroupHandler) DeleteUserGroup(c *gin.Context) {
 	var input group.UserGroupDeleteDTO
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := h.svc.DeleteUserGroup(c, input.UID, input.GID); err != nil {
 		if err == application.ErrReservedUser {
-			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusForbidden, err.Error())
 		} else {
-			c.JSON(http.StatusNotFound, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error()) // Assuming 404 if not found
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "deleted"})
+	response.Success(c, nil, "User-Group relation deleted successfully")
 }
 
 // @Summary Add user to group
@@ -251,14 +253,14 @@ func (h *UserGroupHandler) DeleteUserGroup(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body group.UserGroupCreateDTO true "Add user to group request"
-// @Success 200 {object} response.SuccessResponse
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 409 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=group.UserGroup}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 409 {object} response.StandardResponse{data=nil}
 // @Router /user-groups [post]
 func (h *UserGroupHandler) AddUserToGroup(c *gin.Context) {
 	var input group.UserGroupCreateDTO
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -270,15 +272,11 @@ func (h *UserGroupHandler) AddUserToGroup(c *gin.Context) {
 
 	userGroup, err := h.svc.CreateUserGroup(c, userGroup)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error()) // Assuming bad request if creation fails for some reason
 		return
 	}
 
-	c.JSON(http.StatusOK, response.SuccessResponse{
-		Code:    0,
-		Message: "User added to group",
-		Data:    userGroup,
-	})
+	response.Success(c, userGroup, "User added to group successfully")
 }
 
 // @Summary Remove user from group
@@ -286,23 +284,23 @@ func (h *UserGroupHandler) AddUserToGroup(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body group.UserGroupDeleteDTO true "Remove user from group request"
-// @Success 200 {object} response.MessageResponse
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 403 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
 // @Router /user-groups [delete]
 func (h *UserGroupHandler) RemoveUserFromGroup(c *gin.Context) {
 	var input group.UserGroupDeleteDTO
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := h.svc.DeleteUserGroup(c, input.UID, input.GID); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error()) // Assuming bad request if deletion fails
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "User removed from group"})
+	response.Success(c, nil, "User removed from group successfully")
 }
 
 // @Summary Update user role in group
@@ -310,20 +308,20 @@ func (h *UserGroupHandler) RemoveUserFromGroup(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body group.UserGroupRoleDTO true "Update user role request"
-// @Success 200 {object} response.SuccessResponse
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 404 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=group.UserGroup}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 404 {object} response.StandardResponse{data=nil}
 // @Router /user-groups/role [post]
 func (h *UserGroupHandler) UpdateUserRole(c *gin.Context) {
 	var input group.UserGroupRoleDTO
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	existing, err := h.svc.GetUserGroup(input.UID, input.GID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -335,36 +333,32 @@ func (h *UserGroupHandler) UpdateUserRole(c *gin.Context) {
 
 	userGroup, err = h.svc.UpdateUserGroup(c, userGroup, existing)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, response.SuccessResponse{
-		Code:    0,
-		Message: "User role updated",
-		Data:    userGroup,
-	})
+	response.Success(c, userGroup, "User role updated successfully")
 }
 
 // @Summary Get group members
 // @Tags user_group
 // @Produce json
 // @Param group_id path uint true "Group ID"
-// @Success 200 {object} response.SuccessResponse{data=[]group.UserGroupView}
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 404 {object} response.ErrorResponse
+// @Success 200 {object} response.StandardResponse{data=[]group.UserGroupView}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 404 {object} response.StandardResponse{data=nil}
 // @Router /user-groups/{group_id}/members [get]
 func (h *UserGroupHandler) GetGroupMembers(c *gin.Context) {
 	groupIDStr := c.Param("group_id")
 	if groupIDStr == "" {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "group_id is required"})
+		response.Error(c, http.StatusBadRequest, "Group ID is required")
 		return
 	}
 
 	// Retrieve raw user-group relations from the service
 	raw, err := h.svc.GetUserGroupsByGID(groupIDStr)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -379,9 +373,5 @@ func (h *UserGroupHandler) GetGroupMembers(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, response.SuccessResponse{
-		Code:    0,
-		Message: "success",
-		Data:    users,
-	})
+	response.Success(c, users, "Group members retrieved successfully")
 }

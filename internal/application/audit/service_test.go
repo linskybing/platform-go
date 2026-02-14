@@ -4,25 +4,37 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/linskybing/platform-go/internal/domain/audit"
 	"github.com/linskybing/platform-go/internal/repository"
-	"github.com/linskybing/platform-go/internal/repository/mock"
+	"gorm.io/gorm"
 )
 
-func TestAuditService_QueryAuditLogs(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+type stubAuditRepo struct {
+	getAuditLogs func(params repository.AuditQueryParams) ([]audit.AuditLog, error)
+}
 
-	// Create a mock audit repository
-	mockAudit := mock.NewMockAuditRepo(ctrl)
-	repos := &repository.Repos{Audit: mockAudit}
+func (s *stubAuditRepo) GetAuditLogs(params repository.AuditQueryParams) ([]audit.AuditLog, error) {
+	if s.getAuditLogs != nil {
+		return s.getAuditLogs(params)
+	}
+	return nil, nil
+}
+
+func (s *stubAuditRepo) CreateAuditLog(a *audit.AuditLog) error     { return nil }
+func (s *stubAuditRepo) DeleteOldAuditLogs(retentionDays int) error { return nil }
+func (s *stubAuditRepo) WithTx(tx *gorm.DB) repository.AuditRepo    { return s }
+
+func TestAuditService_QueryAuditLogs(t *testing.T) {
+	stubAudit := &stubAuditRepo{}
+	repos := &repository.Repos{Audit: stubAudit}
 	svc := NewAuditService(repos)
 
 	params := repository.AuditQueryParams{Limit: 10}
 
 	expected := []audit.AuditLog{{ID: 1}}
-	mockAudit.EXPECT().GetAuditLogs(params).Return(expected, nil)
+	stubAudit.getAuditLogs = func(params repository.AuditQueryParams) ([]audit.AuditLog, error) {
+		return expected, nil
+	}
 
 	result, err := svc.QueryAuditLogs(params)
 	if err != nil {
@@ -32,7 +44,9 @@ func TestAuditService_QueryAuditLogs(t *testing.T) {
 		t.Fatalf("expected one audit log with ID=1, got %+v", result)
 	}
 
-	mockAudit.EXPECT().GetAuditLogs(params).Return(nil, errors.New("db error"))
+	stubAudit.getAuditLogs = func(params repository.AuditQueryParams) ([]audit.AuditLog, error) {
+		return nil, errors.New("db error")
+	}
 	_, err = svc.QueryAuditLogs(params)
 	if err == nil || err.Error() != "db error" {
 		t.Fatalf("expected db error, got %v", err)

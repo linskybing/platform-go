@@ -17,7 +17,7 @@ import (
 func WatchImagePullHandler(c *gin.Context, service *application.ImageService) {
 	jobID := c.Param("job_id")
 	if jobID == "" {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "job_id parameter is required"})
+		response.Error(c, http.StatusBadRequest, "Job ID parameter is required")
 		return
 	}
 
@@ -25,7 +25,7 @@ func WatchImagePullHandler(c *gin.Context, service *application.ImageService) {
 	if err != nil {
 		logger := slog.Default()
 		logger.Error("websocket upgrade failed", "job_id", jobID, "error", err)
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "websocket upgrade failed"})
+		response.Error(c, http.StatusInternalServerError, "Websocket upgrade failed")
 		return
 	}
 	defer func() {
@@ -109,7 +109,7 @@ func WatchMultiplePullJobsHandler(c *gin.Context, service *application.ImageServ
 	if err != nil {
 		logger := slog.Default()
 		logger.Error("websocket upgrade failed for multi-job watch", "error", err)
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "websocket upgrade failed"})
+		response.Error(c, http.StatusInternalServerError, "Websocket upgrade failed")
 		return
 	}
 	defer func() {

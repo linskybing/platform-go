@@ -1,16 +1,12 @@
 package configfile
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"strings"
 
-	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/pkg/k8s"
-	"github.com/linskybing/platform-go/pkg/types"
 	"github.com/linskybing/platform-go/pkg/utils"
 	"gorm.io/datatypes"
 	k8sRes "k8s.io/apimachinery/pkg/api/resource"
@@ -120,72 +116,6 @@ func (s *ConfigFileService) parseAndValidateResources(rawYaml string) ([]*resour
 // 	}
 // 	return nil
 // }
-
-// syncConfigFileResources manages the diff (create/update/delete) for config file updates.
-func (s *ConfigFileService) syncConfigFileResources(ctx context.Context, cf *configfile.ConfigFile, rawYaml string, newResources []*resource.Resource, claims *types.Claims) error {
-	// 1. Fetch existing resources
-	existingResources, err := s.Repos.Resource.ListResourcesByConfigFileID(cf.CFID)
-	if err != nil {
-		return err
-	}
-
-	existingMap := make(map[string]resource.Resource)
-	for _, r := range existingResources {
-		existingMap[r.Name] = r
-	}
-
-	// 2. Track which existing resources are still present
-	processedNames := make(map[string]bool)
-
-	// 3. Update or Create
-	for i, newRes := range newResources {
-		name := newRes.Name
-		processedNames[name] = true
-
-		if val, exists := existingMap[name]; exists {
-			// Update
-			oldTarget := val
-			val.Name = name
-			val.ParsedYAML = newRes.ParsedYAML
-			val.Type = newRes.Type // Ensure type is updated if kind changed (rare but possible)
-
-			slog.Debug("updating resource for document",
-				"document_index", i+1,
-				"resource_name", name)
-			if err := s.Repos.Resource.UpdateResource(&val); err != nil {
-				return fmt.Errorf("failed to update resource %s: %w", name, err)
-			}
-			utils.LogAudit(claims.UserID, "", "", "update", "resource",
-				fmt.Sprintf("r_id=%s", val.RID), oldTarget, val, "", s.Repos.Audit)
-		} else {
-			// Create
-			newRes.CFID = cf.CFID
-			slog.Debug("creating resource for document",
-				"document_index", i+1,
-				"resource_name", name)
-			if err := s.Repos.Resource.CreateResource(newRes); err != nil {
-				return fmt.Errorf("failed to create resource %s: %w", name, err)
-			}
-			utils.LogAudit(claims.UserID, "", "", "create", "resource",
-				fmt.Sprintf("r_id=%s", newRes.RID), nil, *newRes, "", s.Repos.Audit)
-		}
-	}
-
-	// 4. Delete removed resources
-	for name, res := range existingMap {
-		if !processedNames[name] {
-			// Remove from DB (Instance cleanup happens separately via re-deploy usually, or should be handled here if strictly synced)
-			// Note: This logic assumes the instance is cleaned up via deleteConfigFileInstance call in Service before this,
-			// or will be updated by next Apply.
-			if err := s.Repos.Resource.DeleteResource(res.RID); err != nil {
-				return fmt.Errorf("failed to delete unused resource %s: %w", name, err)
-			}
-			utils.LogAudit(claims.UserID, "", "", "delete", "resource",
-				fmt.Sprintf("r_id=%s", res.RID), res, nil, "", s.Repos.Audit)
-		}
-	}
-	return nil
-}
 
 func validateContainerLimits(obj map[string]interface{}) error {
 	if obj == nil {

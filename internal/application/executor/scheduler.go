@@ -64,16 +64,16 @@ func (e *SchedulerExecutor) Submit(ctx context.Context, req *SubmitRequest) (*Su
 	}
 
 	jobRecord := &job.Job{
-		ID:           req.JobID,
-		ConfigFileID: req.ConfigFileID,
-		ProjectID:    req.ProjectID,
-		Namespace:    req.Namespace,
-		UserID:       req.UserID,
-		Status:       string(JobStatusQueued),
-		SubmitType:   string(req.SubmitType),
-		QueueName:    queueName,
-		Priority:     req.Priority,
-		SubmittedAt:  time.Now(),
+		ID:             req.JobID,
+		ConfigCommitID: req.ConfigCommitID,
+		ProjectID:      req.ProjectID,
+		Namespace:      req.Namespace,
+		UserID:         req.UserID,
+		Status:         string(JobStatusQueued),
+		SubmitType:     string(req.SubmitType),
+		QueueName:      queueName,
+		PriorityValue:  int(req.Priority),
+		CreatedAt:      time.Now(),
 	}
 	if err := e.repos.Job.Create(ctx, jobRecord); err != nil {
 		return nil, fmt.Errorf("failed to create job record: %w", err)
@@ -110,11 +110,11 @@ func (e *SchedulerExecutor) Submit(ctx context.Context, req *SubmitRequest) (*Su
 			Name:      req.JobID,
 			Namespace: req.Namespace,
 			Labels: map[string]string{
-				"platform.job-id":        req.JobID,
-				"platform.project-id":    req.ProjectID,
-				"platform.configfile-id": req.ConfigFileID,
-				"platform.user-id":       req.UserID,
-				"platform.username":      req.Username,
+				"platform.job-id":          req.JobID,
+				"platform.project-id":      req.ProjectID,
+				"platform.configcommit-id": req.ConfigCommitID,
+				"platform.user-id":         req.UserID,
+				"platform.username":        req.Username,
 			},
 		},
 		Spec: k8stypes.FlashJobSpec{

@@ -18,8 +18,7 @@ Contains main applications for the platform. Each subdirectory has its own `main
 
 ```
 cmd/
-├─ api/         - HTTP API server entry point
-└─ scheduler/   - Job scheduler service entry point
+└─ api/         - HTTP API server entry point
 ```
 
 ## Subdirectories
@@ -32,12 +31,3 @@ HTTP REST API server implementation.
 - Listens on port 8080 by default
 - Handles all RESTful API requests
 - Integrated with PostgreSQL database
-
-### scheduler/
-
-Job scheduling service implementation.
-
-- Runs the job scheduling service
-- Implements priority-based resource allocation
-- Manages job queues and execution
-- Monitors job completion

@@ -18,6 +18,7 @@ type JobRepo interface {
 	ListByStatus(ctx context.Context, statuses []string) ([]job.Job, error)
 	ListByProjectAndStatuses(ctx context.Context, projectID string, statuses []string) ([]job.Job, error)
 	CountByUserProjectAndStatuses(ctx context.Context, userID, projectID string, statuses []string) (int64, error)
+	FetchNextPending(ctx context.Context) (*job.Job, error)
 
 	WithTx(tx *gorm.DB) JobRepo
 }
@@ -125,6 +126,24 @@ func (r *JobRepoImpl) CountByUserProjectAndStatuses(ctx context.Context, userID,
 		return 0, err
 	}
 	return count, nil
+}
+
+// FetchNextPending retrieves and locks the next available job in the queue.
+func (r *JobRepoImpl) FetchNextPending(ctx context.Context) (*job.Job, error) {
+	var j job.Job
+	query := `SELECT * FROM jobs 
+	          WHERE status = 'Pending' 
+	          ORDER BY priority DESC, create_at ASC 
+	          FOR UPDATE SKIP LOCKED 
+	          LIMIT 1`
+	err := r.db.WithContext(ctx).Raw(query).Scan(&j).Error
+	if err != nil {
+		return nil, err
+	}
+	if j.ID == "" {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &j, nil
 }
 
 func (r *JobRepoImpl) WithTx(tx *gorm.DB) JobRepo {

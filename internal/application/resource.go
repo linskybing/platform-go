@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 
 	"github.com/linskybing/platform-go/internal/domain/resource"
@@ -20,9 +21,9 @@ func NewResourceService(repos *repository.Repos) *ResourceService {
 }
 
 func (s *ResourceService) ListResourcesByProjectID(projectID string) ([]resource.Resource, error) {
-	return s.Repos.Resource.ListResourcesByProjectID(projectID)
+	return s.Repos.Resource.ListResourcesByProjectID(context.Background(), projectID)
 }
 
-func (s *ResourceService) ListResourcesByConfigFileID(cfID string) ([]resource.Resource, error) {
-	return s.Repos.Resource.ListResourcesByConfigFileID(cfID)
+func (s *ResourceService) ListResourcesByCommitID(commitID string) ([]resource.Resource, error) {
+	return s.Repos.Resource.ListResourcesByCommitID(context.Background(), commitID)
 }

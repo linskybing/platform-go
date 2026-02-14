@@ -25,16 +25,16 @@ func NewGroupHandler(svc *application.GroupService) *GroupHandler {
 // @Tags groups
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {array} models.Group
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=[]domaingroup.Group}
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /groups [get]
 func (h *GroupHandler) GetGroups(c *gin.Context) {
 	groups, err := h.svc.ListGroups()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, groups)
+	response.Success(c, groups, "Groups retrieved successfully")
 }
 
 // GetGroupByID godoc
@@ -43,24 +43,24 @@ func (h *GroupHandler) GetGroups(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Group ID"
-// @Success 200 {object} models.Group
-// @Failure 400 {object} response.ErrorResponse "Invalid group id"
-// @Failure 404 {object} response.ErrorResponse "Group not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.StandardResponse{data=domaingroup.Group}
+// @Failure 400 {object} response.StandardResponse{data=nil} "Invalid group id"
+// @Failure 404 {object} response.StandardResponse{data=nil} "Group not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /groups/{id} [get]
 func (h *GroupHandler) GetGroupByID(c *gin.Context) {
 	gid, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "invalid group id"})
+		response.Error(c, http.StatusBadRequest, "Invalid group ID")
 		return
 	}
 	group, err := h.svc.GetGroup(gid)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "group not found"})
+		response.Error(c, http.StatusNotFound, "Group not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, group)
+	response.Success(c, group, "Group retrieved successfully")
 }
 
 // CreateGroup godoc
@@ -71,29 +71,29 @@ func (h *GroupHandler) GetGroupByID(c *gin.Context) {
 // @Produce json
 // @Param group_name formData string true "Group name"
 // @Param description formData string false "Description"
-// @Success 201 {object} models.Group
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 403 {object} response.ErrorResponse "Forbidden (reserved name)"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 201 {object} response.StandardResponse{data=domaingroup.Group}
+// @Failure 400 {object} response.StandardResponse{data=nil} "Bad request"
+// @Failure 403 {object} response.StandardResponse{data=nil} "Forbidden (reserved name)"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal server error"
 // @Router /groups [post]
 func (h *GroupHandler) CreateGroup(c *gin.Context) {
 	var input domaingroup.GroupCreateDTO
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	group, err := h.svc.CreateGroup(c, input)
 	if err != nil {
 		if err == application.ErrReservedGroupName {
-			c.JSON(http.StatusForbidden, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusForbidden, err.Error())
 		} else {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, group)
+	response.Success(c, group, "Group created successfully")
 }
 
 // UpdateGroup godoc

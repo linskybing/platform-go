@@ -1,63 +1,47 @@
 package project
 
 import (
-	"encoding/json"
 	"time"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
+	"github.com/linskybing/platform-go/internal/domain/common"
 )
 
-// Project represents a user project with resource quotas
+// Project represents a node in the project tree (Project or SubProject).
 type Project struct {
-	PID         string `gorm:"primaryKey;column:p_id;size:20"`
-	ProjectName string `gorm:"size:100;not null"`
-	Description string `gorm:"type:text"`
+	ID          string       `gorm:"primaryKey;type:uuid;column:p_id;default:uuid_generate_v4()"` // Map to existing p_id
+	PID         string       `gorm:"-"`                                                           // Legacy Alias
+	ParentID    *string      `gorm:"type:uuid"`
+	Path        common.Ltree `gorm:"type:ltree;not null;index:idx_path,type:gist"`
+	OwnerID     *string      `gorm:"type:uuid"`
+	GID         string       `gorm:"-"`                                     // Legacy Alias for OwnerID
+	Name        string       `gorm:"size:100;not null;column:project_name"` // Map to existing project_name
+	ProjectName string       `gorm:"-"`                                     // Legacy Alias
+	Description string       `gorm:"type:text"`
+	CreatedAt   time.Time    `gorm:"autoCreateTime;column:create_at"` // Map to existing create_at
+	CreateAt    time.Time    `gorm:"-"`                               // Legacy Alias
 
-	GID string `gorm:"column:g_id;size:20;not null;index"`
+	// Legacy fields used by application layer
+	GPUQuota                 int `gorm:"column:gpu_quota;default:0"`
+	MaxConcurrentJobsPerUser int `gorm:"column:max_concurrent_jobs_per_user;default:0"`
+	MaxQueuedJobsPerUser     int `gorm:"column:max_queued_jobs_per_user;default:0"`
+	MaxJobRuntimeSeconds     int `gorm:"column:max_job_runtime_seconds;default:0"`
+	MaxProjectUsers          int `gorm:"column:max_project_users;default:0"`
 
-	GPUQuota int `gorm:"default:0;column:gpu_quota"`
-
-	MaxConcurrentJobsPerUser int            `gorm:"default:0;column:max_concurrent_jobs_per_user"`
-	MaxQueuedJobsPerUser     int            `gorm:"default:0;column:max_queued_jobs_per_user"`
-	MaxJobRuntimeSeconds     int            `gorm:"default:0;column:max_job_runtime_seconds"`
-	MaxProjectUsers          int            `gorm:"default:0;column:max_project_users"`
-	ScheduleWindows          datatypes.JSON `gorm:"type:jsonb;column:schedule_windows"`
-
-	CreatedAt time.Time `gorm:"column:create_at;autoCreateTime"`
-	UpdatedAt time.Time `gorm:"column:update_at;autoUpdateTime"`
-
-	// Note: intentionally not defining a `Group` association field here to avoid
-	// GORM inferring/creating incorrect foreign keys during AutoMigrate.
-	// Use repository methods to load the group when needed.
+	ResourcePlan ResourcePlan `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
 }
 
-// TableName specifies the database table name
-func (Project) TableName() string {
-	return "project_list"
+func (Project) TableName() string { return "projects" }
+
+type HierarchyNode = Project
+
+// ResourcePlan defines time-window based resource quotas.
+type ResourcePlan struct {
+	ID            string           `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	ProjectID     string           `gorm:"type:uuid;not null;index"`
+	WeekWindow    common.Int4Range `gorm:"type:int4range;not null"`
+	GPULimit      int              `gorm:"not null;default:0"`
+	CPULimitCores float64          `gorm:"not null;default:0"`
+	MemoryLimitGB float64          `gorm:"not null;default:0"`
 }
 
-// BeforeCreate hooks into GORM to generate ID
-func (p *Project) BeforeCreate(tx *gorm.DB) (err error) {
-	if p.PID == "" {
-		p.PID, err = gonanoid.New(12)
-	}
-	return
-}
-
-// HasGPUQuota checks if project has GPU quota available
-func (p *Project) HasGPUQuota() bool {
-	return p.GPUQuota > 0
-}
-
-func (p *Project) ScheduleWindowList() ([]ScheduleWindow, error) {
-	if len(p.ScheduleWindows) == 0 {
-		return nil, nil
-	}
-	var windows []ScheduleWindow
-	if err := json.Unmarshal(p.ScheduleWindows, &windows); err != nil {
-		return nil, err
-	}
-	return windows, nil
-}
+func (ResourcePlan) TableName() string { return "resource_plans" }

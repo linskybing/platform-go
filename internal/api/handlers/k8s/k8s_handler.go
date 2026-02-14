@@ -54,7 +54,7 @@ func (h *K8sHandler) GetPodLogs(c *gin.Context) {
 	}
 
 	if pk8s.Clientset == nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "kubernetes client not configured"})
+		response.Error(c, http.StatusInternalServerError, "Kubernetes client not configured")
 		return
 	}
 
@@ -66,7 +66,7 @@ func (h *K8sHandler) GetPodLogs(c *gin.Context) {
 
 	stream, err := req.Stream(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	defer func() { _ = stream.Close() }()
@@ -99,43 +99,41 @@ func (h *K8sHandler) GetPodLogs(c *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]interface{} "Returns nodePort"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Success 200 {object} response.StandardResponse{data=nil} "User file browser ready"
+// @Failure 401 {object} response.StandardResponse{data=nil} "Unauthorized"
+// @Failure 404 {object} response.StandardResponse{data=nil} "User not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal Server Error"
 // @Router /k8s/user-storage/browse [post]
 func (h *K8sHandler) OpenMyDrive(c *gin.Context) {
 	claimsVal, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 	claims, ok := claimsVal.(*types.Claims)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 	userID := claims.UserID
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 
 	user, err := h.UserService.FindUserByID(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "User not found: " + err.Error()})
+		response.Error(c, http.StatusNotFound, "User not found: "+err.Error())
 		return
 	}
 
 	_, err = h.K8sService.OpenUserGlobalFileBrowser(c, user.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to start file browser: " + err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Failed to start file browser: "+err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "User file browser ready",
-	})
+	response.Success(c, nil, "User file browser ready")
 }
 
 // CheckMyStorageStatus godoc
@@ -143,41 +141,41 @@ func (h *K8sHandler) OpenMyDrive(c *gin.Context) {
 // @Tags user
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {object} map[string]bool
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Success 200 {object} response.StandardResponse{data=map[string]bool}
+// @Failure 401 {object} response.StandardResponse{data=nil} "Unauthorized"
+// @Failure 404 {object} response.StandardResponse{data=nil} "User not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal Server Error"
 // @Router /k8s/user-storage/status [get]
 func (h *K8sHandler) CheckMyStorageStatus(c *gin.Context) {
 	claimsVal, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 	claims, ok := claimsVal.(*types.Claims)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 	userID := claims.UserID
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 
 	user, err := h.UserService.FindUserByID(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "User not found: " + err.Error()})
+		response.Error(c, http.StatusNotFound, "User not found: "+err.Error())
 		return
 	}
 
 	storageExists, err := h.K8sService.CheckUserStorageExists(c.Request.Context(), user.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to check storage status: " + err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Failed to check storage status: "+err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"exists": storageExists})
+	response.Success(c, gin.H{"exists": storageExists}, "User storage status retrieved successfully")
 }
 
 // StopMyDrive godoc
@@ -187,43 +185,41 @@ func (h *K8sHandler) CheckMyStorageStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Success 200 {object} response.MessageResponse "Resources cleaned up"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Success 200 {object} response.StandardResponse{data=nil} "Resources cleaned up"
+// @Failure 401 {object} response.StandardResponse{data=nil} "Unauthorized"
+// @Failure 404 {object} response.StandardResponse{data=nil} "User not found"
+// @Failure 500 {object} response.StandardResponse{data=nil} "Internal Server Error"
 // @Router /k8s/user-storage/browse [delete]
 func (h *K8sHandler) StopMyDrive(c *gin.Context) {
 	claimsVal, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 	claims, ok := claimsVal.(*types.Claims)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 	userID := claims.UserID
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 
 	user, err := h.UserService.FindUserByID(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, response.ErrorResponse{Error: "User not found: " + err.Error()})
+		response.Error(c, http.StatusNotFound, "User not found: "+err.Error())
 		return
 	}
 
 	err = h.K8sService.StopUserGlobalFileBrowser(c, user.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: "Failed to stop file browser: " + err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Failed to stop file browser: "+err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Message: "User file browser stopped successfully",
-	})
+	response.Success(c, nil, "User file browser stopped successfully")
 }
 
 // UserStorageProxy handles all traffic to the FileBrowser
@@ -236,7 +232,7 @@ func (h *K8sHandler) UserStorageProxy(c *gin.Context) {
 	claims := claimsVal.(*types.Claims)
 	userID := claims.UserID
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 

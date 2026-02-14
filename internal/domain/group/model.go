@@ -3,41 +3,32 @@ package group
 import (
 	"time"
 
+	"github.com/linskybing/platform-go/internal/domain/common"
 	"github.com/linskybing/platform-go/internal/domain/user"
-	gonanoid "github.com/matoous/go-nanoid/v2"
-	"gorm.io/gorm"
 )
 
+// Group represents a resource-owning collective.
 type Group struct {
-	GID         string    `gorm:"primaryKey;column:g_id;size:20"`
-	GroupName   string    `gorm:"size:100;not null"`
-	Description string    `gorm:"type:text"`
-	CreatedAt   time.Time `gorm:"column:create_at"`
-	UpdatedAt   time.Time `gorm:"column:update_at"`
+	ID            string               `gorm:"primaryKey;type:uuid;column:id;default:uuid_generate_v4()"`
+	GID           string               `gorm:"-"` // Alias for ID
+	Name          string               `gorm:"size:100;not null;column:name"`
+	GroupName     string               `gorm:"-"` // Alias for Name
+	Description   string               `gorm:"type:text;column:description"`
+	ParentGroupID *string              `gorm:"type:uuid;column:parent_group_id"`
+	Owner         common.ResourceOwner `gorm:"foreignKey:ID;references:ID"`
+	CreatedAt     time.Time            `gorm:"autoCreateTime;column:created_at"`
 }
 
-func (g *Group) BeforeCreate(tx *gorm.DB) (err error) {
-	if g.GID == "" {
-		g.GID, err = gonanoid.New(12)
-	}
-	return
-}
+func (Group) TableName() string { return "groups" }
 
-func (Group) TableName() string {
-	return "group_list"
-}
-
+// UserGroup defines the membership relationship.
 type UserGroup struct {
-	UID       string    `gorm:"primaryKey;column:u_id;size:20"`
-	GID       string    `gorm:"primaryKey;column:g_id;size:20"`
-	Role      string    `gorm:"type:user_role;default:user;not null"` // ENUM
-	CreatedAt time.Time `gorm:"column:create_at"`
-	UpdatedAt time.Time `gorm:"column:update_at"`
-	// Relationships
-	User  user.User `gorm:"foreignKey:UID;constraint:OnDelete:CASCADE"`
-	Group Group     `gorm:"foreignKey:GID;constraint:OnDelete:CASCADE"`
+	UID       string    `gorm:"primaryKey;type:uuid;column:user_id"`
+	GID       string    `gorm:"primaryKey;type:uuid;column:group_id"`
+	Role      string    `gorm:"size:50;not null;default:'user';column:role"`
+	User      user.User `gorm:"foreignKey:UID"` // Added back for preloading
+	CreatedAt time.Time `gorm:"autoCreateTime;column:created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime;column:updated_at"`
 }
 
-func (UserGroup) TableName() string {
-	return "user_group"
-}
+func (UserGroup) TableName() string { return "user_group" }

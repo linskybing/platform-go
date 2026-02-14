@@ -83,18 +83,18 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, re
 			"group_id", groupID,
 			"pvc_name", pvcName)
 		if sm.storageRepo != nil {
-			dbPVC := &storage.GroupStorage{
+			dbPVC := &storage.Storage{
 				ID:           pvcID,
 				Name:         req.Name,
-				GroupID:      groupID,
+				OwnerID:      groupID,
 				PVCName:      pvcName,
 				Capacity:     req.Capacity,
 				StorageClass: scName,
-				CreatedBy:    createdByID,
+				// CreatedBy:    createdByID, // Storage struct doesn't have CreatedBy yet, adding if needed or omitting
 			}
-			if err := sm.storageRepo.CreateGroupStorage(ctx, dbPVC); err != nil {
-				slog.Error("failed to persist group storage to database",
-					"group_id", groupID,
+			if err := sm.storageRepo.CreateStorage(ctx, dbPVC); err != nil {
+				slog.Error("failed to persist storage to database",
+					"owner_id", groupID,
 					"pvc_id", pvcID,
 					"error", err)
 			}
@@ -125,18 +125,18 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, re
 	}
 
 	if sm.storageRepo != nil {
-		dbPVC := &storage.GroupStorage{
+		dbPVC := &storage.Storage{
 			ID:           pvcID,
 			Name:         req.Name,
-			GroupID:      groupID,
+			OwnerID:      groupID,
 			PVCName:      result.Name,
 			Capacity:     req.Capacity,
 			StorageClass: scName,
-			CreatedBy:    createdByID,
+			// CreatedBy:    createdByID,
 		}
-		if err := sm.storageRepo.CreateGroupStorage(ctx, dbPVC); err != nil {
-			slog.Error("failed to persist group storage to database",
-				"group_id", groupID,
+		if err := sm.storageRepo.CreateStorage(ctx, dbPVC); err != nil {
+			slog.Error("failed to persist storage to database",
+				"owner_id", groupID,
 				"pvc_id", pvcID,
 				"error", err)
 		}
@@ -172,11 +172,11 @@ func (sm *StorageManager) CreateGroupPVC(ctx context.Context, groupID string, re
 
 // ListGroupPVCs retrieves all PVCs for a group with caching and performance metrics.
 func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID string) ([]storage.GroupPVCSpec, error) {
-	var records []storage.GroupStorage
+	var records []storage.Storage
 	if cached, ok := sm.getCachedPVCs(groupID); ok {
 		records = cached
 	} else if sm.storageRepo != nil {
-		list, err := sm.storageRepo.ListGroupStorageByGID(ctx, groupID)
+		list, err := sm.storageRepo.ListStorageByOwnerID(ctx, groupID)
 		if err != nil {
 			return nil, err
 		}
@@ -217,7 +217,7 @@ func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID string) ([]
 
 		result = append(result, storage.GroupPVCSpec{
 			ID:           rec.ID,
-			GroupID:      rec.GroupID,
+			GroupID:      rec.OwnerID,
 			Name:         rec.Name,
 			Namespace:    ns,
 			PVCName:      rec.PVCName,
@@ -226,7 +226,7 @@ func (sm *StorageManager) ListGroupPVCs(ctx context.Context, groupID string) ([]
 			AccessMode:   accessMode,
 			Status:       status,
 			CreatedAt:    rec.CreatedAt,
-			CreatedBy:    rec.CreatedBy,
+			// CreatedBy:    rec.CreatedBy,
 		})
 	}
 
@@ -239,9 +239,9 @@ func (sm *StorageManager) DeleteGroupPVC(ctx context.Context, pvcID string) erro
 	var pvcName string
 
 	if sm.storageRepo != nil {
-		rec, err := sm.storageRepo.GetGroupStorage(ctx, pvcID)
+		rec, err := sm.storageRepo.GetStorage(ctx, pvcID)
 		if err == nil && rec != nil {
-			groupID = rec.GroupID
+			groupID = rec.OwnerID
 			pvcName = rec.PVCName
 		}
 	}
@@ -268,8 +268,8 @@ func (sm *StorageManager) DeleteGroupPVC(ctx context.Context, pvcID string) erro
 	}
 
 	if sm.storageRepo != nil {
-		if err := sm.storageRepo.DeleteGroupStorage(ctx, pvcID); err != nil {
-			slog.Error("failed to delete group storage from database",
+		if err := sm.storageRepo.DeleteStorage(ctx, pvcID); err != nil {
+			slog.Error("failed to delete storage from database",
 				"pvc_id", pvcID,
 				"error", err)
 		}

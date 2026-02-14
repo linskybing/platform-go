@@ -1,47 +1,24 @@
 package application_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-	"github.com/golang/mock/gomock"
 	"github.com/linskybing/platform-go/internal/application"
 	"github.com/linskybing/platform-go/internal/domain/group"
-	"github.com/linskybing/platform-go/internal/repository"
-	"github.com/linskybing/platform-go/internal/repository/mock"
-	"github.com/linskybing/platform-go/pkg/utils"
 )
 
-func setupGroupMocks(t *testing.T) (*application.GroupService, *mock.MockGroupRepo, *mock.MockAuditRepo, *gin.Context) {
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	mockGroup := mock.NewMockGroupRepo(ctrl)
-	mockAudit := mock.NewMockAuditRepo(ctrl)
-	repos := &repository.Repos{
-		Group: mockGroup,
-		Audit: mockAudit,
-	}
-
-	svc := application.NewGroupService(repos)
-	c, _ := gin.CreateTestContext(nil)
-
-	// Mock audit log globally
-	utils.LogAuditWithConsole = func(c *gin.Context, action, resourceType, resourceID string, oldData, newData interface{}, msg string, repos repository.AuditRepo) {
-	}
-
-	return svc, mockGroup, mockAudit, c
-}
-
 func TestGroupServiceCRUD(t *testing.T) {
-	svc, mockGroup, _, c := setupGroupMocks(t)
+	svc, stubGroup, c := setupGroupService(t)
 
 	t.Run("ListGroups success", func(t *testing.T) {
-		mockGroup.EXPECT().GetAllGroups().Return([]group.Group{
-			{GID: "1", GroupName: "dev"},
-			{GID: "2", GroupName: "ops"},
-		}, nil)
+		stubGroup.list = func(ctx context.Context) ([]group.Group, error) {
+			return []group.Group{
+				{ID: "1", GID: "1", Name: "dev", GroupName: "dev"},
+				{ID: "2", GID: "2", Name: "ops", GroupName: "ops"},
+			}, nil
+		}
 
 		groups, err := svc.ListGroups()
 		if err != nil {
@@ -53,7 +30,9 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("GetGroup success", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID("1").Return(group.Group{GID: "1", GroupName: "dev"}, nil)
+		stubGroup.get = func(ctx context.Context, id string) (*group.Group, error) {
+			return &group.Group{ID: "1", GID: "1", Name: "dev", GroupName: "dev"}, nil
+		}
 		group, err := svc.GetGroup("1")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -64,7 +43,9 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("GetGroup not found", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID("99").Return(group.Group{}, errors.New("not found"))
+		stubGroup.get = func(ctx context.Context, id string) (*group.Group, error) {
+			return nil, errors.New("not found")
+		}
 		_, err := svc.GetGroup("99")
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -73,7 +54,9 @@ func TestGroupServiceCRUD(t *testing.T) {
 
 	t.Run("CreateGroup success", func(t *testing.T) {
 		input := group.GroupCreateDTO{GroupName: "qa", Description: nil}
-		mockGroup.EXPECT().CreateGroup(gomock.Any()).Return(nil)
+		stubGroup.create = func(ctx context.Context, g *group.Group) error {
+			return nil
+		}
 
 		group, err := svc.CreateGroup(c, input)
 		if err != nil {
@@ -93,9 +76,13 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("UpdateGroup success", func(t *testing.T) {
-		old := group.Group{GID: "1", GroupName: "dev"}
-		mockGroup.EXPECT().GetGroupByID("1").Return(old, nil)
-		mockGroup.EXPECT().UpdateGroup(gomock.Any()).Return(nil)
+		old := &group.Group{ID: "1", GID: "1", Name: "dev", GroupName: "dev"}
+		stubGroup.get = func(ctx context.Context, id string) (*group.Group, error) {
+			return old, nil
+		}
+		stubGroup.update = func(ctx context.Context, g *group.Group) error {
+			return nil
+		}
 
 		newName := "devops"
 		newDesc := "updated description"
@@ -110,8 +97,10 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("UpdateGroup reserved name", func(t *testing.T) {
-		old := group.Group{GID: "1", GroupName: "dev"}
-		mockGroup.EXPECT().GetGroupByID("1").Return(old, nil)
+		old := &group.Group{ID: "1", GID: "1", Name: "dev", GroupName: "dev"}
+		stubGroup.get = func(ctx context.Context, id string) (*group.Group, error) {
+			return old, nil
+		}
 		newName := "super"
 		input := group.GroupUpdateDTO{GroupName: &newName}
 		_, err := svc.UpdateGroup(c, "1", input)
@@ -121,7 +110,9 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("UpdateGroup not found", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID("99").Return(group.Group{}, errors.New("not found"))
+		stubGroup.get = func(ctx context.Context, id string) (*group.Group, error) {
+			return nil, errors.New("not found")
+		}
 		newName := "newname"
 		input := group.GroupUpdateDTO{GroupName: &newName}
 		_, err := svc.UpdateGroup(c, "99", input)
@@ -131,9 +122,13 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("DeleteGroup success", func(t *testing.T) {
-		existing := group.Group{GID: "1", GroupName: "dev"}
-		mockGroup.EXPECT().GetGroupByID("1").Return(existing, nil)
-		mockGroup.EXPECT().DeleteGroup("1").Return(nil)
+		existing := &group.Group{ID: "1", GID: "1", Name: "dev", GroupName: "dev"}
+		stubGroup.get = func(ctx context.Context, id string) (*group.Group, error) {
+			return existing, nil
+		}
+		stubGroup.deleteFunc = func(ctx context.Context, id string) error {
+			return nil
+		}
 
 		err := svc.DeleteGroup(c, "1")
 		if err != nil {
@@ -142,7 +137,9 @@ func TestGroupServiceCRUD(t *testing.T) {
 	})
 
 	t.Run("DeleteGroup not found", func(t *testing.T) {
-		mockGroup.EXPECT().GetGroupByID("99").Return(group.Group{}, errors.New("not found"))
+		stubGroup.get = func(ctx context.Context, id string) (*group.Group, error) {
+			return nil, errors.New("not found")
+		}
 		err := svc.DeleteGroup(c, "99")
 		if err == nil {
 			t.Fatal("expected error, got nil")

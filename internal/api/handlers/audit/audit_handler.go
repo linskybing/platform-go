@@ -53,7 +53,7 @@ func (h *AuditHandler) GetAuditLogs(c *gin.Context) {
 	if start := c.Query("start_time"); start != "" {
 		t, err := time.Parse(time.RFC3339, start)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid start_time"})
+			response.Error(c, http.StatusBadRequest, "Invalid start_time")
 			return
 		}
 		params.StartTime = &t
@@ -62,7 +62,7 @@ func (h *AuditHandler) GetAuditLogs(c *gin.Context) {
 	if end := c.Query("end_time"); end != "" {
 		t, err := time.Parse(time.RFC3339, end)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, response.ErrorResponse{Error: "Invalid end_time"})
+			response.Error(c, http.StatusBadRequest, "Invalid end_time")
 			return
 		}
 		params.EndTime = &t
@@ -82,7 +82,7 @@ func (h *AuditHandler) GetAuditLogs(c *gin.Context) {
 
 	logs, err := h.svc.QueryAuditLogs(params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{Error: err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 

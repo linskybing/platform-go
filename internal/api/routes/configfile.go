@@ -23,26 +23,26 @@ func registerConfigFileRoutes(auth *gin.RouterGroup, h *handlers.Handlers, am *m
 		configFile.GET("", am.Admin(), h.ConfigFile.ListConfigFilesHandler)
 
 		// View specific config file - group member access
-		configFile.GET("/:id", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.GetConfigFileHandler)
+		configFile.GET("/:id", am.GroupMember(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.GetConfigFileHandler)
 
 		// Create config file - group manager access (via project_id in body)
 		configFile.POST("", am.GroupManager(middleware.FromProjectIDInPayload()), h.ConfigFile.CreateConfigFileHandler)
 
 		// Update config file - group manager access
-		configFile.PUT("/:id", am.GroupManager(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.UpdateConfigFileHandler)
+		configFile.PUT("/:id", am.GroupManager(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.UpdateConfigFileHandler)
 
 		// Delete config file - group manager access
-		configFile.DELETE("/:id", am.GroupManager(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.DeleteConfigFileHandler)
+		configFile.DELETE("/:id", am.GroupManager(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.DeleteConfigFileHandler)
 
 		// List config files by project - group member access
 		configFile.GET("/project/:project_id", h.ConfigFile.ListConfigFilesByProjectIDHandler)
 
 		// Create instance from config file - group member access
-		configFile.POST("/:id/instance", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.CreateInstanceHandler)
+		configFile.POST("/:id/instance", am.GroupMember(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.CreateInstanceHandler)
 
 		// Delete instance - group member access
-		configFile.DELETE("/:id/instance", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.DestructInstanceHandler)
+		configFile.DELETE("/:id/instance", am.GroupMember(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.DestructInstanceHandler)
 	}
-	auth.POST("/instance/:id", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.CreateInstanceHandler)
-	auth.DELETE("/instance/:id", am.GroupMember(middleware.FromConfigFileIDParam(repos)), h.ConfigFile.DestructInstanceHandler)
+	auth.POST("/instance/:id", am.GroupMember(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.CreateInstanceHandler)
+	auth.DELETE("/instance/:id", am.GroupMember(middleware.FromConfigCommitIDParam(repos)), h.ConfigFile.DestructInstanceHandler)
 }

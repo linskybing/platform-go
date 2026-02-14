@@ -2,7 +2,6 @@ package routes
 
 import (
 	"context"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/api/handlers"
@@ -38,7 +37,6 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, cacheSvc *cache.Service) {
 	cron.StartCleanupTask(services.Audit)
 	cron.StartClusterResourceCollector(services.Cluster)
 	cron.StartGPUUsageCollector(services.GPUUsage)
-	cron.StartProjectScheduleEnforcer(repos, services.ConfigFile.GetExecutor(), time.Minute)
 	if config.FlashSchedEnabled || config.ExecutorMode == "scheduler" {
 		flashJobClient := k8s.NewFlashJobClient(k8s.DynamicClient)
 		executor.StartFlashJobReconciler(context.Background(), repos, flashJobClient)

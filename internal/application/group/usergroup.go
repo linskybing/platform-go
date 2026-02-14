@@ -1,6 +1,7 @@
 package group
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -30,7 +31,8 @@ func NewUserGroupService(repos *repository.Repos) *UserGroupService {
 }
 
 func (s *UserGroupService) AllocateGroupResource(gid string, userName string) error {
-	projects, err := s.Repos.Project.ListProjectsByGroup(gid)
+	ctx := context.Background()
+	projects, err := s.Repos.Project.ListProjectsByGroup(ctx, gid)
 	if err != nil {
 		return fmt.Errorf("failed to list projects for group %s: %w", gid, err)
 	}
@@ -38,7 +40,7 @@ func (s *UserGroupService) AllocateGroupResource(gid string, userName string) er
 	safeUsername := k8s.ToSafeK8sName(userName)
 
 	for _, project := range projects {
-		ns := k8s.FormatNamespaceName(project.PID, safeUsername)
+		ns := k8s.FormatNamespaceName(project.ID, safeUsername)
 
 		slog.Info("ensuring namespace exists for user",
 			"group_id", gid,
@@ -59,7 +61,8 @@ func (s *UserGroupService) AllocateGroupResource(gid string, userName string) er
 }
 
 func (s *UserGroupService) RemoveGroupResource(gid string, userName string) error {
-	projects, err := s.Repos.Project.ListProjectsByGroup(gid)
+	ctx := context.Background()
+	projects, err := s.Repos.Project.ListProjectsByGroup(ctx, gid)
 	if err != nil {
 		return fmt.Errorf("failed to list projects for group %s: %w", gid, err)
 	}
@@ -68,7 +71,7 @@ func (s *UserGroupService) RemoveGroupResource(gid string, userName string) erro
 	var lastErr error
 
 	for _, project := range projects {
-		ns := k8s.FormatNamespaceName(project.PID, safeUsername)
+		ns := k8s.FormatNamespaceName(project.ID, safeUsername)
 
 		slog.Info("removing resource namespace for user",
 			"group_id", gid,
@@ -93,7 +96,8 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 	if userGroup == nil {
 		return nil, errors.New("user group payload is nil")
 	}
-	projects, err := s.Repos.Project.ListProjectsByGroup(userGroup.GID)
+	ctx := c.Request.Context()
+	projects, err := s.Repos.Project.ListProjectsByGroup(ctx, userGroup.GID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,20 +105,20 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 		if proj.MaxProjectUsers <= 0 {
 			continue
 		}
-		count, err := s.Repos.UserGroup.CountUsersByGID(userGroup.GID)
+		count, err := s.Repos.UserGroup.CountUsersByGID(ctx, userGroup.GID)
 		if err != nil {
 			return nil, err
 		}
 		if count >= int64(proj.MaxProjectUsers) {
-			return nil, fmt.Errorf("project %s user limit reached", proj.PID)
+			return nil, fmt.Errorf("project %s user limit reached", proj.ID)
 		}
 	}
 
-	if err := s.Repos.UserGroup.CreateUserGroup(userGroup); err != nil {
+	if err := s.Repos.UserGroup.CreateUserGroup(ctx, userGroup); err != nil {
 		return nil, err
 	}
 
-	uesrName, err := s.Repos.User.GetUsernameByID(userGroup.UID)
+	uesrName, err := s.Repos.User.GetUsernameByID(ctx, userGroup.UID)
 
 	if err != nil {
 		return nil, err
@@ -132,10 +136,11 @@ func (s *UserGroupService) CreateUserGroup(c *gin.Context, userGroup *group.User
 }
 
 func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *group.UserGroup, existing group.UserGroup) (*group.UserGroup, error) {
+	ctx := c.Request.Context()
 	// Check if trying to downgrade admin user in super group
-	groupData, err := s.Repos.Group.GetGroupByID(userGroup.GID)
-	if err == nil && groupData.GroupName == config.ReservedGroupName {
-		username, err := s.Repos.User.GetUsernameByID(userGroup.UID)
+	groupData, err := s.Repos.Group.GetGroupByID(ctx, userGroup.GID)
+	if err == nil && groupData.Name == config.ReservedGroupName {
+		username, err := s.Repos.User.GetUsernameByID(ctx, userGroup.UID)
 		if err == nil && username == config.ReservedAdminUsername {
 			// Check if role is being changed to something other than admin
 			if userGroup.Role != "admin" && existing.Role == "admin" {
@@ -144,7 +149,7 @@ func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *group.User
 		}
 	}
 
-	if err := s.Repos.UserGroup.UpdateUserGroup(userGroup); err != nil {
+	if err := s.Repos.UserGroup.UpdateUserGroup(ctx, userGroup); err != nil {
 		return nil, err
 	}
 
@@ -156,26 +161,27 @@ func (s *UserGroupService) UpdateUserGroup(c *gin.Context, userGroup *group.User
 }
 
 func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid string) error {
-	oldUserGroup, err := s.Repos.UserGroup.GetUserGroup(uid, gid)
+	ctx := c.Request.Context()
+	oldUserGroup, err := s.Repos.UserGroup.GetUserGroup(ctx, uid, gid)
 	if err != nil {
 		return err
 	}
 
 	// Check if trying to remove admin user from super group
-	groupData, err := s.Repos.Group.GetGroupByID(gid)
-	if err == nil && groupData.GroupName == config.ReservedGroupName {
-		username, err := s.Repos.User.GetUsernameByID(uid)
+	groupData, err := s.Repos.Group.GetGroupByID(ctx, gid)
+	if err == nil && groupData.Name == config.ReservedGroupName {
+		username, err := s.Repos.User.GetUsernameByID(ctx, uid)
 		if err == nil && username == config.ReservedAdminUsername {
 			return ErrCannotRemoveAdminFromSuper
 		}
 	}
 
 	slog.Debug("removing user from group", "user_id", uid, "group_id", gid)
-	if err := s.Repos.UserGroup.DeleteUserGroup(uid, gid); err != nil {
+	if err := s.Repos.UserGroup.DeleteUserGroup(ctx, uid, gid); err != nil {
 		return err
 	}
 
-	uesrName, err := s.Repos.User.GetUsernameByID(uid)
+	uesrName, err := s.Repos.User.GetUsernameByID(ctx, uid)
 	if err != nil {
 		return err
 	}
@@ -186,32 +192,38 @@ func (s *UserGroupService) DeleteUserGroup(c *gin.Context, uid, gid string) erro
 
 	utils.LogAuditWithConsole(c, "delete", "user_group",
 		fmt.Sprintf("u_id=%s,g_id=%s", uid, gid),
-		oldUserGroup, nil, "", s.Repos.Audit)
+		*oldUserGroup, nil, "", s.Repos.Audit)
 
 	return nil
 }
 
 func (s *UserGroupService) GetUserGroup(uid, gid string) (group.UserGroup, error) {
-	return s.Repos.UserGroup.GetUserGroup(uid, gid)
+	ctx := context.Background()
+	ug, err := s.Repos.UserGroup.GetUserGroup(ctx, uid, gid)
+	if err != nil {
+		return group.UserGroup{}, err
+	}
+	return *ug, nil
 }
 
 func (s *UserGroupService) GetUserGroupsByUID(uid string) ([]group.UserGroup, error) {
-	return s.Repos.UserGroup.GetUserGroupsByUID(uid)
+	return s.Repos.UserGroup.GetUserGroupsByUID(context.Background(), uid)
 }
 
 func (s *UserGroupService) GetUserGroupsByGID(gid string) ([]group.UserGroup, error) {
-	return s.Repos.UserGroup.GetUserGroupsByGID(gid)
+	return s.Repos.UserGroup.GetUserGroupsByGID(context.Background(), gid)
 }
 
 func (s *UserGroupService) FormatByUID(records []group.UserGroup) map[string]map[string]interface{} {
 	result := make(map[string]map[string]interface{})
+	ctx := context.Background()
 
 	for _, r := range records {
 		// Get group name for this group
-		groupData, err := s.Repos.Group.GetGroupByID(r.GID)
+		groupData, err := s.Repos.Group.GetGroupByID(ctx, r.GID)
 		groupName := ""
 		if err == nil {
-			groupName = groupData.GroupName
+			groupName = groupData.Name
 		}
 
 		groupInfo := map[string]interface{}{
@@ -227,7 +239,7 @@ func (s *UserGroupService) FormatByUID(records []group.UserGroup) map[string]map
 			u["Groups"] = groups
 		} else {
 			// Get username
-			username, err := s.Repos.User.GetUsernameByID(r.UID)
+			username, err := s.Repos.User.GetUsernameByID(ctx, r.UID)
 			if err != nil {
 				username = "" // If we can't get the username, use empty string
 			}
@@ -245,6 +257,7 @@ func (s *UserGroupService) FormatByUID(records []group.UserGroup) map[string]map
 
 func (s *UserGroupService) FormatByGID(records []group.UserGroup) map[string]map[string]interface{} {
 	result := make(map[string]map[string]interface{})
+	ctx := context.Background()
 
 	for _, r := range records {
 		// Use preloaded username from User relationship
@@ -266,10 +279,10 @@ func (s *UserGroupService) FormatByGID(records []group.UserGroup) map[string]map
 			g["Users"] = users
 		} else {
 			// Get group name
-			groupData, err := s.Repos.Group.GetGroupByID(r.GID)
+			groupData, err := s.Repos.Group.GetGroupByID(ctx, r.GID)
 			groupName := ""
 			if err == nil {
-				groupName = groupData.GroupName
+				groupName = groupData.Name
 			}
 
 			// Create new entry with users array

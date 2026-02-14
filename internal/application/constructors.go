@@ -5,6 +5,7 @@ import (
 	"github.com/linskybing/platform-go/internal/application/group"
 	"github.com/linskybing/platform-go/internal/application/project"
 	"github.com/linskybing/platform-go/internal/repository"
+	"github.com/linskybing/platform-go/pkg/cache"
 )
 
 // Constructor wrappers for exported service types
@@ -19,7 +20,7 @@ func NewGroupService(repos *repository.Repos) *group.GroupService {
 }
 
 func NewProjectService(repos *repository.Repos) *project.ProjectService {
-	return project.NewProjectService(repos)
+	return project.NewProjectService(repos, (*cache.Service)(nil))
 }
 
 func NewUserGroupService(repos *repository.Repos) *group.UserGroupService {

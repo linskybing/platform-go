@@ -12,6 +12,7 @@ import (
 	"github.com/linskybing/platform-go/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/datatypes"
 )
 
 func TestRepository_Integration(t *testing.T) {
@@ -50,11 +51,14 @@ func TestRepository_Integration(t *testing.T) {
 		// Create a user storage
 		testCtx := GetTestContext()
 
-		s := storage.UserStorage{
-			ID:       "storage-repo-1",
-			UserID:   testCtx.TestUser.UID,
-			Name:     "test-storage",
-			Capacity: 1, // 1Gi (int)
+		s := storage.Storage{
+			ID:           "storage-repo-1",
+			OwnerID:      testCtx.TestUser.UID,
+			Name:         "test-storage",
+			K8sNamespace: "test-ns",
+			PVCName:      "test-pvc",
+			Capacity:     1, // 1Gi (int)
+			NodeAffinity: datatypes.JSON([]byte("{}")),
 		}
 
 		err := db.DB.Create(&s).Error
@@ -62,7 +66,7 @@ func TestRepository_Integration(t *testing.T) {
 		defer db.DB.Delete(&s)
 
 		// Fetch via repo
-		storages, err := repos.Storage.ListUserStorage(ctx)
+		storages, err := repos.Storage.ListStorageByOwnerID(ctx, testCtx.TestUser.UID)
 		require.NoError(t, err)
 		require.NotEmpty(t, storages)
 

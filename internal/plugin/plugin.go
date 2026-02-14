@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/linskybing/platform-go/internal/events"
+	"github.com/linskybing/platform-go/internal/priority"
 	"github.com/linskybing/platform-go/pkg/cache"
 	"gorm.io/gorm"
 	"k8s.io/client-go/kubernetes"
@@ -12,13 +13,14 @@ import (
 
 // PluginContext holds dependencies passed to plugins during initialization
 type PluginContext struct {
-	DB           *gorm.DB
-	Cache        *cache.Service
-	K8sClient    kubernetes.Interface
-	Config       map[string]string
-	EventBus     events.EventBus
-	HookRegistry *HookRegistry
-	Logger       *slog.Logger
+	DB              *gorm.DB
+	Cache           *cache.Service
+	K8sClient       kubernetes.Interface
+	Config          map[string]string
+	EventBus        events.EventBus
+	HookRegistry    *HookRegistry
+	PriorityManager *priority.Manager
+	Logger          *slog.Logger
 }
 
 // Migration defines database changes for a plugin

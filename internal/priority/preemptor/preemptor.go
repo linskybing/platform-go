@@ -25,9 +25,10 @@ type Preemptor interface {
 
 // ResourceRequirement represents resource requirements for a workload
 type ResourceRequirement struct {
-	CPU    float64
-	Memory int64
-	GPU    int
+	CPU           float64
+	Memory        int64
+	GPU           int
+	PriorityValue int
 }
 
 // PreemptionConfig defines preemption behavior configuration

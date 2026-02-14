@@ -1,94 +1,94 @@
 package repository
 
 import (
-	"fmt"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 
 	"github.com/linskybing/platform-go/internal/domain/configfile"
+	gonanoid "github.com/matoous/go-nanoid/v2"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 type ConfigFileRepo interface {
-	CreateConfigFile(cf *configfile.ConfigFile) error
-	GetConfigFileByID(id string) (*configfile.ConfigFile, error)
-	UpdateConfigFile(cf *configfile.ConfigFile) error
-	DeleteConfigFile(id string) error
-	ListConfigFiles() ([]configfile.ConfigFile, error)
-	GetConfigFilesByProjectID(projectID string) ([]configfile.ConfigFile, error)
-	GetGroupIDByConfigFileID(cfID string) (string, error)
+	Store(ctx context.Context, projectID, authorID, message string, content []byte) (*configfile.ConfigCommit, error)
+	GetHead(ctx context.Context, projectID string) (*configfile.ConfigCommit, error)
+	GetCommit(ctx context.Context, id string) (*configfile.ConfigCommit, error)
+	DeleteCommit(ctx context.Context, id string) error
+	GetBlob(ctx context.Context, hash string) (*configfile.ConfigBlob, error)
+	GetHistory(ctx context.Context, projectID string) ([]configfile.ConfigCommit, error)
+	ListAllCommits(ctx context.Context) ([]configfile.ConfigCommit, error)
 	WithTx(tx *gorm.DB) ConfigFileRepo
 }
 
-type DBConfigFileRepo struct {
+type ConfigFileRepoImpl struct {
 	db *gorm.DB
 }
 
-func NewConfigFileRepo(db *gorm.DB) *DBConfigFileRepo {
-	return &DBConfigFileRepo{
-		db: db,
-	}
+func NewConfigFileRepo(db *gorm.DB) ConfigFileRepo {
+	return &ConfigFileRepoImpl{db: db}
 }
 
-func (r *DBConfigFileRepo) CreateConfigFile(cf *configfile.ConfigFile) error {
-	return r.db.Create(cf).Error
-}
-
-func (r *DBConfigFileRepo) GetConfigFileByID(id string) (*configfile.ConfigFile, error) {
-	var cf configfile.ConfigFile
-	if err := r.db.First(&cf, "cf_id = ?", id).Error; err != nil {
-		return nil, err
-	}
-	return &cf, nil
-}
-
-func (r *DBConfigFileRepo) UpdateConfigFile(cf *configfile.ConfigFile) error {
-	if cf.CFID == "" {
-		return fmt.Errorf("missing ConfigFile ID: validation failed")
-	}
-	if err := r.db.Save(cf).Error; err != nil {
-		return fmt.Errorf("failed to update config file: %w", err)
-	}
-	return nil
-}
-
-func (r *DBConfigFileRepo) DeleteConfigFile(id string) error {
-	return r.db.Delete(&configfile.ConfigFile{}, "cf_id = ?", id).Error
-}
-
-func (r *DBConfigFileRepo) ListConfigFiles() ([]configfile.ConfigFile, error) {
-	var list []configfile.ConfigFile
-	if err := r.db.Find(&list).Error; err != nil {
-		return nil, err
-	}
-	return list, nil
-}
-
-func (r *DBConfigFileRepo) GetConfigFilesByProjectID(projectID string) ([]configfile.ConfigFile, error) {
-	var files []configfile.ConfigFile
-	if err := r.db.Where("project_id = ?", projectID).Find(&files).Error; err != nil {
-		return nil, err
-	}
-	return files, nil
-}
-
-func (r *DBConfigFileRepo) GetGroupIDByConfigFileID(cfID string) (string, error) {
-	var gID string
-	err := r.db.Table("config_files cf").
-		Select("p.g_id").
-		Joins("JOIN project_list p ON cf.project_id = p.p_id").
-		Where("cf.cf_id = ?", cfID).
-		Scan(&gID).Error
-
+func (r *ConfigFileRepoImpl) Store(ctx context.Context, projectID, authorID, message string, content []byte) (*configfile.ConfigCommit, error) {
+	hash := sha256.Sum256(content)
+	hashStr := hex.EncodeToString(hash[:])
+	contentJSON, err := json.Marshal(string(content))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return gID, nil
+	blob := configfile.ConfigBlob{Hash: hashStr, Content: datatypes.JSON(contentJSON)}
+	commitID, err := gonanoid.New()
+	if err != nil {
+		return nil, err
+	}
+	commit := configfile.ConfigCommit{ID: commitID, ProjectID: projectID, BlobHash: hashStr, AuthorID: authorID, Message: message}
+
+	db := r.db.WithContext(ctx)
+	if err := db.FirstOrCreate(&blob).Error; err != nil {
+		return nil, err
+	}
+	if err := db.Create(&commit).Error; err != nil {
+		return nil, err
+	}
+	return &commit, nil
 }
 
-func (r *DBConfigFileRepo) WithTx(tx *gorm.DB) ConfigFileRepo {
-	if tx == nil {
-		return r
-	}
-	return &DBConfigFileRepo{
-		db: tx,
-	}
+func (r *ConfigFileRepoImpl) GetHead(ctx context.Context, projectID string) (*configfile.ConfigCommit, error) {
+	var c configfile.ConfigCommit
+	err := r.db.WithContext(ctx).Where("project_id = ?", projectID).Order("created_at DESC").First(&c).Error
+	return &c, err
+}
+
+func (r *ConfigFileRepoImpl) GetCommit(ctx context.Context, id string) (*configfile.ConfigCommit, error) {
+	var c configfile.ConfigCommit
+	err := r.db.WithContext(ctx).First(&c, "id = ?", id).Error
+	return &c, err
+}
+
+func (r *ConfigFileRepoImpl) DeleteCommit(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Delete(&configfile.ConfigCommit{}, "id = ?", id).Error
+}
+
+func (r *ConfigFileRepoImpl) GetBlob(ctx context.Context, hash string) (*configfile.ConfigBlob, error) {
+	var b configfile.ConfigBlob
+	err := r.db.WithContext(ctx).First(&b, "hash = ?", hash).Error
+	return &b, err
+}
+
+func (r *ConfigFileRepoImpl) GetHistory(ctx context.Context, projectID string) ([]configfile.ConfigCommit, error) {
+	var commits []configfile.ConfigCommit
+	err := r.db.WithContext(ctx).Where("project_id = ?", projectID).Order("created_at DESC").Find(&commits).Error
+	return commits, err
+}
+
+func (r *ConfigFileRepoImpl) ListAllCommits(ctx context.Context) ([]configfile.ConfigCommit, error) {
+	var commits []configfile.ConfigCommit
+	err := r.db.WithContext(ctx).Order("created_at DESC").Find(&commits).Error
+	return commits, err
+}
+
+func (r *ConfigFileRepoImpl) WithTx(tx *gorm.DB) ConfigFileRepo {
+	return &ConfigFileRepoImpl{db: tx}
 }

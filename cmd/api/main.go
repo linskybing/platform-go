@@ -19,10 +19,10 @@ import (
 	"github.com/linskybing/platform-go/internal/domain/image"
 	"github.com/linskybing/platform-go/internal/domain/job"
 	"github.com/linskybing/platform-go/internal/domain/project"
-	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/internal/domain/storage"
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"github.com/linskybing/platform-go/internal/plugin"
+	"github.com/linskybing/platform-go/internal/plugin/builtin"
 	jobplugin "github.com/linskybing/platform-go/internal/plugin/builtin/job"
 	"github.com/linskybing/platform-go/pkg/cache"
 	"github.com/linskybing/platform-go/pkg/k8s"
@@ -81,10 +81,9 @@ func main() {
 	}()
 
 	// Auto migrate database schemas in phases to diagnose FK ordering
-	log.Println("AutoMigrating core models: user + project + settings")
+	log.Println("AutoMigrating core models: user + project")
 	if err := db.DB.AutoMigrate(
 		&user.User{},
-		&user.UserSettings{},
 		&project.Project{},
 	); err != nil {
 		log.Fatalf("Failed to migrate core database models: %v", err)
@@ -100,8 +99,8 @@ func main() {
 
 	log.Println("AutoMigrating remaining models")
 	if err := db.DB.AutoMigrate(
-		&configfile.ConfigFile{},
-		&resource.Resource{},
+		&configfile.ConfigBlob{},
+		&configfile.ConfigCommit{},
 		&form.Form{},
 		&form.FormMessage{},
 		&audit.AuditLog{},
@@ -116,10 +115,7 @@ func main() {
 
 	log.Println("AutoMigrating storage and job models")
 	if err := db.DB.AutoMigrate(
-		&storage.UserStorage{},
-		&storage.GroupStorage{},
-		&storage.GroupStoragePermission{},
-		&storage.GroupStorageAccessPolicy{},
+		&storage.Storage{},
 		&job.Job{},
 		&gpuusage.JobGPUUsageSnapshot{},
 		&gpuusage.JobGPUUsageSummary{},
@@ -144,6 +140,7 @@ func main() {
 	router.Use(middleware.LoggingMiddleware())
 
 	// Register builtin plugins
+	builtin.Init()
 	plugin.Register(jobplugin.NewJobPlugin())
 
 	// Initialize Plugin Manager

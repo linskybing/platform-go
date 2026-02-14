@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -14,7 +15,7 @@ import (
 )
 
 func IsSuperAdmin(uid string, repos repository.UserGroupRepo) (bool, error) {
-	return repos.IsSuperAdmin(uid)
+	return repos.IsSuperAdmin(context.Background(), uid)
 }
 
 var GetUserIDFromContext = func(c *gin.Context) (string, error) {
@@ -48,19 +49,11 @@ var GetUserNameFromContext = func(c *gin.Context) (string, error) {
 func HasGroupRole(userID string, gid string, roles []string) (bool, error) {
 	var v group.UserGroup
 	err := db.DB.
-		Where("u_id = ? AND g_id = ? AND role IN ?", userID, gid, roles).
+		Where("user_id = ? AND group_id = ? AND role IN ?", userID, gid, roles).
 		First(&v).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			var ug group.UserGroup
-			tableErr := db.DB.Where("u_id = ? AND g_id = ? AND role IN ?", userID, gid, roles).First(&ug).Error
-			if tableErr != nil {
-				if errors.Is(tableErr, gorm.ErrRecordNotFound) {
-					return false, nil
-				}
-				return false, tableErr
-			}
-			return true, nil
+			return false, nil
 		}
 		return false, err
 	}
@@ -76,7 +69,7 @@ func CheckGroupPermission(UID string, GID string, repos repository.UserGroupRepo
 		return true, nil
 	}
 
-	isSuper, err := repos.IsSuperAdmin(UID)
+	isSuper, err := repos.IsSuperAdmin(context.Background(), UID)
 	if err != nil {
 		return false, fmt.Errorf("failed to check super admin status: %w", err)
 	}
@@ -96,7 +89,7 @@ func CheckGroupManagePermission(UID string, GID string, repos repository.UserGro
 		return true, nil
 	}
 
-	isSuper, err := repos.IsSuperAdmin(UID)
+	isSuper, err := repos.IsSuperAdmin(context.Background(), UID)
 	if err != nil {
 		return false, fmt.Errorf("failed to check super admin status: %w", err)
 	}
@@ -116,7 +109,7 @@ func CheckGroupAdminPermission(UID string, GID string, repos repository.UserGrou
 		return true, nil
 	}
 
-	isSuper, err := repos.IsSuperAdmin(UID)
+	isSuper, err := repos.IsSuperAdmin(context.Background(), UID)
 	if err != nil {
 		return false, fmt.Errorf("failed to check super admin status: %w", err)
 	}

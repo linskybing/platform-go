@@ -104,9 +104,9 @@ func (s *ConfigFileService) patchImages(podSpec map[string]interface{}, ctx *Pat
 		}
 
 		// 1. Validation (Skip if Admin)
-		if !ctx.UserIsAdmin {
+		if !ctx.UserIsAdmin && s.imageSvc != nil {
 			imageName, imageTag := parseImageNameTag(img)
-			allowed, err := s.imageService.ValidateImageForProject(imageName, imageTag, &ctx.ProjectID)
+			allowed, err := s.imageSvc.ValidateImageForProject(imageName, imageTag, &ctx.ProjectID)
 			slog.Debug("validating image for project",
 				"image", imageName,
 				"tag", imageTag,
@@ -130,7 +130,10 @@ func (s *ConfigFileService) patchImages(podSpec map[string]interface{}, ctx *Pat
 			continue
 		}
 
-		allowedImg, err := s.imageService.GetAllowedImage(imageName, imageTag, ctx.ProjectID)
+		if s.imageSvc == nil {
+			continue
+		}
+		allowedImg, err := s.imageSvc.GetAllowedImage(imageName, imageTag, ctx.ProjectID)
 		if err == nil && allowedImg != nil && allowedImg.IsPulled {
 			cont["image"] = config.HarborPrivatePrefix + img
 		}

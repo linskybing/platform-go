@@ -44,6 +44,7 @@ func (am *AuthMiddleware) Admin() gin.HandlerFunc {
 // Use for: Group management, project deletion, group-level operations.
 func (am *AuthMiddleware) GroupAdmin(extractor IDExtractor) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		claims, exists := c.Get("claims")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
@@ -68,7 +69,7 @@ func (am *AuthMiddleware) GroupAdmin(extractor IDExtractor) gin.HandlerFunc {
 		}
 
 		// Check if user is admin of this group
-		userGroup, err := am.repos.UserGroup.GetUserGroup(userClaims.UserID, groupID)
+		userGroup, err := am.repos.UserGroup.GetUserGroup(ctx, userClaims.UserID, groupID)
 		if err != nil || userGroup.Role != "admin" {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":    "group admin access required",
@@ -86,6 +87,7 @@ func (am *AuthMiddleware) GroupAdmin(extractor IDExtractor) gin.HandlerFunc {
 // Use for: Project updates, resource configuration, management operations.
 func (am *AuthMiddleware) GroupManager(extractor IDExtractor) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		claims, exists := c.Get("claims")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
@@ -110,7 +112,7 @@ func (am *AuthMiddleware) GroupManager(extractor IDExtractor) gin.HandlerFunc {
 		}
 
 		// Check if user is admin or manager of this group
-		userGroup, err := am.repos.UserGroup.GetUserGroup(userClaims.UserID, groupID)
+		userGroup, err := am.repos.UserGroup.GetUserGroup(ctx, userClaims.UserID, groupID)
 		if err != nil {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":    "group manager access required",
@@ -137,6 +139,7 @@ func (am *AuthMiddleware) GroupManager(extractor IDExtractor) gin.HandlerFunc {
 // Use for: User submissions, viewing resources, member-level operations.
 func (am *AuthMiddleware) GroupMember(extractor IDExtractor) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		claims, exists := c.Get("claims")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
@@ -161,7 +164,7 @@ func (am *AuthMiddleware) GroupMember(extractor IDExtractor) gin.HandlerFunc {
 		}
 
 		// Check if user is member of this group (any role)
-		_, err := am.repos.UserGroup.GetUserGroup(userClaims.UserID, groupID)
+		_, err := am.repos.UserGroup.GetUserGroup(ctx, userClaims.UserID, groupID)
 		if err != nil {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":    "group membership required",

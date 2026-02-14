@@ -23,9 +23,9 @@ type UserStorageManager struct {
 	userRepo    UserRepo
 }
 
-// UserRepo defines the interface for User database operations
+// UserRepo defines the interface for User database operations matching repository.UserRepo
 type UserRepo interface {
-	GetUserByUsername(username string) (user.User, error)
+	GetByUsername(ctx context.Context, username string) (*user.User, error)
 }
 
 func NewUserStorageManager(storageRepo storage.StorageRepo, userRepo UserRepo) *UserStorageManager {
@@ -50,11 +50,11 @@ func (m *UserStorageManager) CheckExists(ctx context.Context, username string) (
 		}
 		userID := username
 		if m.userRepo != nil {
-			if u, err := m.userRepo.GetUserByUsername(username); err == nil {
-				userID = u.UID
+			if u, err := m.userRepo.GetByUsername(ctx, username); err == nil {
+				userID = u.ID
 			}
 		}
-		stored, dbErr := m.storageRepo.GetUserStorageByUserID(ctx, userID)
+		stored, dbErr := m.storageRepo.GetStorageByOwnerID(ctx, userID)
 		if dbErr == nil && stored != nil {
 			return true, nil
 		}
@@ -92,14 +92,14 @@ func (m *UserStorageManager) Initialize(username, adminID string) error {
 	// Get user ID from username
 	var userID string
 	if m.userRepo != nil {
-		u, err := m.userRepo.GetUserByUsername(username)
+		u, err := m.userRepo.GetByUsername(ctx, username)
 		if err != nil {
 			slog.Warn("failed to get user by username, using username as ID",
 				"username", username,
 				"error", err)
 			userID = username
 		} else {
-			userID = u.UID
+			userID = u.ID
 		}
 	} else {
 		userID = username
@@ -110,7 +110,7 @@ func (m *UserStorageManager) Initialize(username, adminID string) error {
 
 	// Persist to database
 	if m.storageRepo != nil {
-		existing, err := m.storageRepo.GetUserStorageByUserID(ctx, userID)
+		existing, err := m.storageRepo.GetStorageByOwnerID(ctx, userID)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			slog.Error("failed to load user storage from database",
 				"username", username,
@@ -120,24 +120,22 @@ func (m *UserStorageManager) Initialize(username, adminID string) error {
 			existing.PVCName = pvcName
 			existing.Capacity = capacity
 			existing.StorageClass = config.DefaultStorageClassName
-			if existing.CreatedBy == "" {
-				existing.CreatedBy = adminID
-			}
-			if err := m.storageRepo.UpdateUserStorage(ctx, existing); err != nil {
+			// existing.CreatedBy = adminID
+			if err := m.storageRepo.UpdateStorage(ctx, existing); err != nil {
 				slog.Error("failed to update user storage in database",
 					"username", username,
 					"error", err)
 			}
 		} else {
-			dbStorage := &storage.UserStorage{
+			dbStorage := &storage.Storage{
 				Name:         pvcName,
-				UserID:       userID,
+				OwnerID:      userID,
 				PVCName:      pvcName,
 				Capacity:     capacity,
 				StorageClass: config.DefaultStorageClassName,
-				CreatedBy:    adminID,
+				// CreatedBy:    adminID,
 			}
-			if err := m.storageRepo.CreateUserStorage(ctx, dbStorage); err != nil {
+			if err := m.storageRepo.CreateStorage(ctx, dbStorage); err != nil {
 				slog.Error("failed to persist user storage to database",
 					"username", username,
 					"error", err)
@@ -167,10 +165,10 @@ func (m *UserStorageManager) Expand(username, newSize string) error {
 		if capacity > 0 {
 			ctx := context.Background()
 			if m.userRepo != nil {
-				if u, err := m.userRepo.GetUserByUsername(username); err == nil {
-					if existing, err := m.storageRepo.GetUserStorageByUserID(ctx, u.UID); err == nil && existing != nil {
+				if u, err := m.userRepo.GetByUsername(ctx, username); err == nil {
+					if existing, err := m.storageRepo.GetStorageByOwnerID(ctx, u.ID); err == nil && existing != nil {
 						existing.Capacity = capacity
-						if err := m.storageRepo.UpdateUserStorage(ctx, existing); err != nil {
+						if err := m.storageRepo.UpdateStorage(ctx, existing); err != nil {
 							slog.Warn("failed to update user storage capacity",
 								"username", username,
 								"error", err)
@@ -191,14 +189,14 @@ func (m *UserStorageManager) Delete(ctx context.Context, username string) error 
 	// Get user ID to delete from database
 	var userID string
 	if m.userRepo != nil {
-		u, err := m.userRepo.GetUserByUsername(username)
+		u, err := m.userRepo.GetByUsername(ctx, username)
 		if err != nil {
 			slog.Warn("failed to get user by username for deletion",
 				"username", username,
 				"error", err)
 			userID = username
 		} else {
-			userID = u.UID
+			userID = u.ID
 		}
 	} else {
 		userID = username
@@ -206,15 +204,14 @@ func (m *UserStorageManager) Delete(ctx context.Context, username string) error 
 
 	// Delete from database first
 	if m.storageRepo != nil {
-		if err := m.storageRepo.DeleteUserStorageByUserID(ctx, userID); err != nil {
-			slog.Error("failed to delete user storage from database",
-				"username", username,
-				"user_id", userID,
-				"error", err)
-		} else {
-			slog.Info("user storage deleted from database",
-				"username", username,
-				"user_id", userID)
+		// Note: we don't have DeleteByOwnerID in StorageRepo interface, so we get then delete by ID
+		if existing, err := m.storageRepo.GetStorageByOwnerID(ctx, userID); err == nil && existing != nil {
+			if err := m.storageRepo.DeleteStorage(ctx, existing.ID); err != nil {
+				slog.Error("failed to delete user storage from database",
+					"username", username,
+					"user_id", userID,
+					"error", err)
+			}
 		}
 	}
 

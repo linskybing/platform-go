@@ -52,11 +52,17 @@ func SetupTestCluster(t *testing.T) *TestCluster {
 		t.Fatalf("failed to create K8s client: %v", err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := client.Discovery().ServerVersion(); err != nil {
+		t.Skipf("Skipping K8s integration tests; cluster unavailable: %v", err)
+	}
+
 	// Create test namespace
 	namespace := fmt.Sprintf("test-%s-%d", t.Name(), time.Now().Unix())
 	namespace = sanitizeNamespaceName(namespace)
 
-	ctx := context.Background()
+	ctx = context.Background()
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,

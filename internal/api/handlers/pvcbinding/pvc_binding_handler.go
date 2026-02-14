@@ -35,10 +35,10 @@ func NewPVCBindingHandler(bm *k8s.PVCBindingManager) *PVCBindingHandler {
 // @Accept json
 // @Produce json
 // @Param request body storage.CreateProjectPVCBindingRequest true "Binding request"
-// @Success 200 {object} response.Response{data=storage.ProjectPVCBindingInfo}
-// @Failure 400 {object} response.Response
-// @Failure 403 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=storage.ProjectPVCBindingInfo}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 403 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /k8s/pvc-binding [post]
 func (h *PVCBindingHandler) CreateBinding(c *gin.Context) {
 	var req storage.CreateProjectPVCBindingRequest
@@ -73,9 +73,9 @@ func (h *PVCBindingHandler) CreateBinding(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param project_id path string true "Project ID"
-// @Success 200 {object} response.Response{data=[]storage.ProjectPVCBindingInfo}
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=[]storage.ProjectPVCBindingInfo}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /k8s/pvc-binding/project/{project_id} [get]
 func (h *PVCBindingHandler) ListBindings(c *gin.Context) {
 	projectID := c.Param("project_id")
@@ -106,9 +106,9 @@ func (h *PVCBindingHandler) ListBindings(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param binding_id path string true "Binding ID"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /k8s/pvc-binding/{binding_id} [delete]
 func (h *PVCBindingHandler) DeleteBindingByID(c *gin.Context) {
 	bindingID := c.Param("binding_id")
@@ -133,9 +133,9 @@ func (h *PVCBindingHandler) DeleteBindingByID(c *gin.Context) {
 // @Produce json
 // @Param project_id path int true "Project ID"
 // @Param pvc_name path string true "PVC name in project namespace"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.StandardResponse{data=nil}
+// @Failure 400 {object} response.StandardResponse{data=nil}
+// @Failure 500 {object} response.StandardResponse{data=nil}
 // @Router /k8s/pvc-binding/{project_id}/{pvc_name} [delete]
 func (h *PVCBindingHandler) DeleteBinding(c *gin.Context) {
 	projectID := c.Param("project_id")

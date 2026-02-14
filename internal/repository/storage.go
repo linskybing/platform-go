@@ -2,100 +2,106 @@ package repository
 
 import (
 	"context"
-
 	"github.com/linskybing/platform-go/internal/domain/storage"
 	"gorm.io/gorm"
 )
 
-type DBStorageRepo struct {
+// StorageRepoImpl implements storage.StorageRepo
+type StorageRepoImpl struct {
 	db *gorm.DB
 }
 
-func NewStorageRepo(db *gorm.DB) *DBStorageRepo {
-	return &DBStorageRepo{db: db}
+func NewStorageRepo(db *gorm.DB) storage.StorageRepo {
+	return &StorageRepoImpl{db: db}
 }
 
-func (r *DBStorageRepo) WithTx(tx *gorm.DB) storage.StorageRepo {
+func (r *StorageRepoImpl) setAliases(s *storage.Storage) {
+	if s == nil {
+		return
+	}
+	s.GroupID = s.OwnerID
+	s.UserID = s.OwnerID
+}
+
+func (r *StorageRepoImpl) CreateStorage(ctx context.Context, s *storage.Storage) error {
+	return r.db.WithContext(ctx).Create(s).Error
+}
+
+func (r *StorageRepoImpl) GetStorage(ctx context.Context, id string) (*storage.Storage, error) {
+	var s storage.Storage
+	err := r.db.WithContext(ctx).First(&s, "id = ?", id).Error
+	r.setAliases(&s)
+	return &s, err
+}
+
+func (r *StorageRepoImpl) GetStorageByOwnerID(ctx context.Context, ownerID string) (*storage.Storage, error) {
+	var s storage.Storage
+	err := r.db.WithContext(ctx).First(&s, "owner_id = ?", ownerID).Error
+	r.setAliases(&s)
+	return &s, err
+}
+
+func (r *StorageRepoImpl) ListStorageByOwnerID(ctx context.Context, ownerID string) ([]storage.Storage, error) {
+	var ss []storage.Storage
+	err := r.db.WithContext(ctx).Where("owner_id = ?", ownerID).Find(&ss).Error
+	for i := range ss {
+		r.setAliases(&ss[i])
+	}
+	return ss, err
+}
+
+func (r *StorageRepoImpl) ListAllStorage(ctx context.Context) ([]storage.Storage, error) {
+	var ss []storage.Storage
+	err := r.db.WithContext(ctx).Find(&ss).Error
+	for i := range ss {
+		r.setAliases(&ss[i])
+	}
+	return ss, err
+}
+
+func (r *StorageRepoImpl) UpdateStorage(ctx context.Context, s *storage.Storage) error {
+	return r.db.WithContext(ctx).Save(s).Error
+}
+
+func (r *StorageRepoImpl) DeleteStorage(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Delete(&storage.Storage{}, "id = ?", id).Error
+}
+
+func (r *StorageRepoImpl) ListGroupStorageByGID(ctx context.Context, gid string) ([]storage.Storage, error) {
+	return r.ListStorageByOwnerID(ctx, gid)
+}
+
+func (r *StorageRepoImpl) GetGroupStorage(ctx context.Context, id string) (*storage.Storage, error) {
+	return r.GetStorage(ctx, id)
+}
+
+func (r *StorageRepoImpl) DeleteGroupStorage(ctx context.Context, id string) error {
+	return r.DeleteStorage(ctx, id)
+}
+
+func (r *StorageRepoImpl) GetUserStorageByUserID(ctx context.Context, userID string) (*storage.Storage, error) {
+	return r.GetStorageByOwnerID(ctx, userID)
+}
+
+func (r *StorageRepoImpl) DeleteUserStorageByUserID(ctx context.Context, userID string) error {
+	s, err := r.GetStorageByOwnerID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return r.DeleteStorage(ctx, s.ID)
+}
+
+func (r *StorageRepoImpl) UpdateUserStorage(ctx context.Context, s *storage.Storage) error {
+	return r.UpdateStorage(ctx, s)
+}
+
+func (r *StorageRepoImpl) CreateUserStorage(ctx context.Context, s *storage.Storage) error {
+	return r.CreateStorage(ctx, s)
+}
+
+func (r *StorageRepoImpl) WithTx(tx *gorm.DB) storage.StorageRepo {
 	if tx == nil {
 		return r
 	}
-	return &DBStorageRepo{
-		db: tx,
-	}
-}
-
-func (r *DBStorageRepo) CreateUserStorage(ctx context.Context, pvc *storage.UserStorage) error {
-	return r.db.WithContext(ctx).Create(pvc).Error
-}
-
-func (r *DBStorageRepo) CreateGroupStorage(ctx context.Context, pvc *storage.GroupStorage) error {
-	return r.db.WithContext(ctx).Create(pvc).Error
-}
-
-func (r *DBStorageRepo) GetUserStorage(ctx context.Context, id string) (*storage.UserStorage, error) {
-	var pvc storage.UserStorage
-	if err := r.db.WithContext(ctx).Where("id = ?", id).Preload("User").First(&pvc).Error; err != nil {
-		return nil, err
-	}
-	return &pvc, nil
-}
-
-func (r *DBStorageRepo) GetGroupStorage(ctx context.Context, id string) (*storage.GroupStorage, error) {
-	var pvc storage.GroupStorage
-	if err := r.db.WithContext(ctx).Where("id = ?", id).Preload("Group").First(&pvc).Error; err != nil {
-		return nil, err
-	}
-	return &pvc, nil
-}
-
-func (r *DBStorageRepo) GetUserStorageByUserID(ctx context.Context, userID string) (*storage.UserStorage, error) {
-	var pvc storage.UserStorage
-	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&pvc).Error; err != nil {
-		return nil, err
-	}
-	return &pvc, nil
-}
-
-func (r *DBStorageRepo) ListUserStorage(ctx context.Context) ([]storage.UserStorage, error) {
-	var pvcs []storage.UserStorage
-	if err := r.db.WithContext(ctx).Preload("User").Find(&pvcs).Error; err != nil {
-		return nil, err
-	}
-	return pvcs, nil
-}
-
-func (r *DBStorageRepo) ListGroupStorage(ctx context.Context) ([]storage.GroupStorage, error) {
-	var pvcs []storage.GroupStorage
-	if err := r.db.WithContext(ctx).Preload("Group").Find(&pvcs).Error; err != nil {
-		return nil, err
-	}
-	return pvcs, nil
-}
-
-func (r *DBStorageRepo) ListGroupStorageByGID(ctx context.Context, gid string) ([]storage.GroupStorage, error) {
-	var pvcs []storage.GroupStorage
-	if err := r.db.WithContext(ctx).Where("group_id = ?", gid).Preload("Group").Find(&pvcs).Error; err != nil {
-		return nil, err
-	}
-	return pvcs, nil
-}
-
-func (r *DBStorageRepo) UpdateUserStorage(ctx context.Context, pvc *storage.UserStorage) error {
-	return r.db.WithContext(ctx).Model(pvc).Save(pvc).Error
-}
-
-func (r *DBStorageRepo) UpdateGroupStorage(ctx context.Context, pvc *storage.GroupStorage) error {
-	return r.db.WithContext(ctx).Model(pvc).Save(pvc).Error
-}
-
-func (r *DBStorageRepo) DeleteUserStorage(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&storage.UserStorage{}).Error
-}
-
-func (r *DBStorageRepo) DeleteUserStorageByUserID(ctx context.Context, userID string) error {
-	return r.db.WithContext(ctx).Where("user_id = ?", userID).Delete(&storage.UserStorage{}).Error
-}
-
-func (r *DBStorageRepo) DeleteGroupStorage(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&storage.GroupStorage{}).Error
+	return &StorageRepoImpl{db: tx}
 }

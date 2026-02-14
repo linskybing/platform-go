@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,23 +13,19 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/linskybing/platform-go/internal/domain/job"
 	"github.com/linskybing/platform-go/internal/repository"
-	"github.com/linskybing/platform-go/internal/repository/mock"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 func TestWatchJobStatusHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockJobRepo := mock.NewMockJobRepo(ctrl)
-	repos := &repository.Repos{Job: mockJobRepo}
+	stubJobRepo := &stubJobRepo{}
+	repos := &repository.Repos{Job: stubJobRepo}
 
 	testJob := &job.Job{ID: "test-job-1", Status: "running"}
 
-	// Called initially, then via ticker
-	mockJobRepo.EXPECT().Get(gomock.Any(), "test-job-1").Return(testJob, nil).AnyTimes()
+	stubJobRepo.get = func(ctx context.Context, id string) (*job.Job, error) {
+		return testJob, nil
+	}
 
 	r := gin.New()
 	r.GET("/ws/jobs/:id", func(c *gin.Context) {
@@ -72,13 +69,12 @@ func TestWatchJobStatusHandler_MissingID(t *testing.T) {
 
 func TestWatchJobStatusHandler_JobNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	stubJobRepo := &stubJobRepo{}
+	repos := &repository.Repos{Job: stubJobRepo}
 
-	mockJobRepo := mock.NewMockJobRepo(ctrl)
-	repos := &repository.Repos{Job: mockJobRepo}
-
-	mockJobRepo.EXPECT().Get(gomock.Any(), "test-job-1").Return(nil, assert.AnError)
+	stubJobRepo.get = func(ctx context.Context, id string) (*job.Job, error) {
+		return nil, assert.AnError
+	}
 
 	r := gin.New()
 	r.GET("/ws/jobs/:id", func(c *gin.Context) {
@@ -106,11 +102,11 @@ func requireNoError(t *testing.T, err error) {
 
 func BenchmarkJobJSONMarshal(b *testing.B) {
 	j := &job.Job{
-		ID:          "bench-job",
-		Status:      "running",
-		ProjectID:   "project-abc",
-		UserID:      "user-123",
-		SubmittedAt: time.Now(),
+		ID:        "bench-job",
+		Status:    "running",
+		ProjectID: "project-abc",
+		UserID:    "user-123",
+		CreatedAt: time.Now(),
 	}
 
 	b.ResetTimer()

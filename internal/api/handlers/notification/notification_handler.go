@@ -22,23 +22,23 @@ func NewNotificationHandler() *NotificationHandler {
 func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		response.Error(c, http.StatusBadRequest, "notification ID required")
+		response.Error(c, http.StatusBadRequest, "Notification ID required")
 		return
 	}
 
 	// Stub: acknowledge receipt. A future implementation should update a
 	// notifications table in the DB.
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "notification marked as read"})
+	response.Success(c, nil, "Notification marked as read")
 }
 
 // MarkAllAsRead marks all notifications as read for the current user.
 // PUT /api/notifications/read-all
 func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "all notifications marked as read"})
+	response.Success(c, nil, "All notifications marked as read")
 }
 
 // ClearAll deletes all notifications for the current user.
 // DELETE /api/notifications/clear-all
 func (h *NotificationHandler) ClearAll(c *gin.Context) {
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "all notifications cleared"})
+	response.Success(c, nil, "All notifications cleared")
 }

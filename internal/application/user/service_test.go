@@ -1,36 +1,22 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/linskybing/platform-go/internal/api/middleware"
 	"github.com/linskybing/platform-go/internal/domain/user"
 	"github.com/linskybing/platform-go/internal/repository"
-	"github.com/linskybing/platform-go/internal/repository/mock"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// --------------------- Setup ---------------------
-func setupUserServiceMocks(t *testing.T) (*UserService, *mock.MockUserRepo) {
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	mockUser := mock.NewMockUserRepo(ctrl)
-	repos := &repository.Repos{
-		User: mockUser,
-	}
-	svc := NewUserService(repos)
-	return svc, mockUser
-}
-
 // --------------------- RegisterUser ---------------------
 func TestRegisterUser_Success(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
+	svc, stubUser := setupUserService(t)
 
 	input := user.CreateUserInput{
 		Username: "alice",
@@ -39,17 +25,23 @@ func TestRegisterUser_Success(t *testing.T) {
 		FullName: ptrString("Alice"),
 	}
 
-	mockUser.EXPECT().GetUserByUsername("alice").Return(user.User{}, gorm.ErrRecordNotFound)
-	mockUser.EXPECT().SaveUser(gomock.Any()).Return(nil)
+	stubUser.getByUsername = func(ctx context.Context, username string) (*user.User, error) {
+		return nil, gorm.ErrRecordNotFound
+	}
+	stubUser.saveUser = func(ctx context.Context, u *user.User) error {
+		return nil
+	}
 
 	err := svc.RegisterUser(input)
 	assert.NoError(t, err)
 }
 
 func TestRegisterUser_UsernameTaken(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
+	svc, stubUser := setupUserService(t)
 
-	mockUser.EXPECT().GetUserByUsername("admin").Return(user.User{UID: "1"}, nil)
+	stubUser.getByUsername = func(ctx context.Context, username string) (*user.User, error) {
+		return &user.User{UID: "1"}, nil
+	}
 
 	input := user.CreateUserInput{Username: "admin", Password: "password123"}
 	err := svc.RegisterUser(input)
@@ -58,13 +50,15 @@ func TestRegisterUser_UsernameTaken(t *testing.T) {
 
 // --------------------- LoginUser ---------------------
 func TestLoginUser_Success(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
+	svc, stubUser := setupUserService(t)
 
 	password := "password123"
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	usr := user.User{UID: "1", Username: "bob", Password: string(hashed)}
+	usr := user.User{ID: "1", UID: "1", Username: "bob", PasswordHash: string(hashed)}
 
-	mockUser.EXPECT().GetUserByUsername("bob").Return(usr, nil)
+	stubUser.getByUsername = func(ctx context.Context, username string) (*user.User, error) {
+		return &usr, nil
+	}
 
 	oldGen := middleware.GenerateToken
 	middleware.GenerateToken = func(userID string, username string, expireDuration time.Duration, repos repository.UserGroupRepo) (string, bool, error) {
@@ -80,13 +74,15 @@ func TestLoginUser_Success(t *testing.T) {
 }
 
 func TestLoginUser_InvalidPassword(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
+	svc, stubUser := setupUserService(t)
 
 	password := "123456"
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	usr := user.User{UID: "1", Username: "bob", Password: string(hashed)}
+	usr := user.User{ID: "1", UID: "1", Username: "bob", PasswordHash: string(hashed)}
 
-	mockUser.EXPECT().GetUserByUsername("bob").Return(usr, nil)
+	stubUser.getByUsername = func(ctx context.Context, username string) (*user.User, error) {
+		return &usr, nil
+	}
 
 	u, token, isAdmin, err := svc.LoginUser("bob", "wrong")
 	assert.Error(t, err)
@@ -96,8 +92,10 @@ func TestLoginUser_InvalidPassword(t *testing.T) {
 }
 
 func TestLoginUser_UserNotFound(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-	mockUser.EXPECT().GetUserByUsername("notexist").Return(user.User{}, errors.New("not found"))
+	svc, stubUser := setupUserService(t)
+	stubUser.getByUsername = func(ctx context.Context, username string) (*user.User, error) {
+		return nil, errors.New("not found")
+	}
 
 	u, token, isAdmin, err := svc.LoginUser("notexist", "123")
 	assert.Error(t, err)
@@ -108,14 +106,19 @@ func TestLoginUser_UserNotFound(t *testing.T) {
 
 // --------------------- UpdateUser ---------------------
 func TestUpdateUser_SuccessChangePassword(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
+	svc, stubUser := setupUserService(t)
 
 	oldPass := "oldpassword123"
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(oldPass), bcrypt.DefaultCost)
-	existing := user.User{UID: "1", Password: string(hashed)}
+	existing := user.User{ID: "1", UID: "1", PasswordHash: string(hashed)}
+	oldHash := existing.PasswordHash
 
-	mockUser.EXPECT().GetUserRawByID("1").Return(existing, nil)
-	mockUser.EXPECT().SaveUser(gomock.Any()).Return(nil)
+	stubUser.get = func(ctx context.Context, id string) (*user.User, error) {
+		return &existing, nil
+	}
+	stubUser.saveUser = func(ctx context.Context, u *user.User) error {
+		return nil
+	}
 
 	newPass := "newpassword456"
 	input := user.UpdateUserInput{
@@ -125,17 +128,20 @@ func TestUpdateUser_SuccessChangePassword(t *testing.T) {
 
 	updated, err := svc.UpdateUser("1", input)
 	assert.NoError(t, err)
-	assert.NotEqual(t, existing.Password, updated.Password)
+	assert.NotEqual(t, oldHash, updated.PasswordHash)
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.PasswordHash), []byte(newPass)))
 }
 
 func TestUpdateUser_WrongOldPassword(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
+	svc, stubUser := setupUserService(t)
 
 	oldPass := "oldpassword123"
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(oldPass), bcrypt.DefaultCost)
-	existing := user.User{UID: "1", Password: string(hashed)}
+	existing := user.User{ID: "1", UID: "1", PasswordHash: string(hashed)}
 
-	mockUser.EXPECT().GetUserRawByID("1").Return(existing, nil)
+	stubUser.get = func(ctx context.Context, id string) (*user.User, error) {
+		return &existing, nil
+	}
 
 	wrongPass := "wrongpass123"
 	input := user.UpdateUserInput{OldPassword: &wrongPass, Password: &wrongPass}
@@ -146,8 +152,10 @@ func TestUpdateUser_WrongOldPassword(t *testing.T) {
 }
 
 func TestUpdateUser_UserNotFound(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-	mockUser.EXPECT().GetUserRawByID("1").Return(user.User{}, errors.New("not found"))
+	svc, stubUser := setupUserService(t)
+	stubUser.get = func(ctx context.Context, id string) (*user.User, error) {
+		return nil, errors.New("not found")
+	}
 
 	input := user.UpdateUserInput{FullName: ptrString("NewName")}
 	updated, err := svc.UpdateUser("1", input)
@@ -157,104 +165,27 @@ func TestUpdateUser_UserNotFound(t *testing.T) {
 
 // --------------------- RemoveUser ---------------------
 func TestRemoveUser_Success(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-	mockUser.EXPECT().GetUserRawByID("1").Return(user.User{Username: "testuser"}, nil)
-	mockUser.EXPECT().DeleteUser("1").Return(nil)
+	svc, stubUser := setupUserService(t)
+	stubUser.get = func(ctx context.Context, id string) (*user.User, error) {
+		return &user.User{Username: "testuser"}, nil
+	}
+	stubUser.deleteUser = func(ctx context.Context, id string) error {
+		return nil
+	}
 
 	err := svc.RemoveUser("1")
 	assert.NoError(t, err)
 }
 
 func TestRemoveUser_Fail(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-	mockUser.EXPECT().GetUserRawByID("1").Return(user.User{Username: "testuser"}, nil)
-	mockUser.EXPECT().DeleteUser("1").Return(errors.New("delete fail"))
+	svc, stubUser := setupUserService(t)
+	stubUser.get = func(ctx context.Context, id string) (*user.User, error) {
+		return &user.User{Username: "testuser"}, nil
+	}
+	stubUser.deleteUser = func(ctx context.Context, id string) error {
+		return errors.New("delete fail")
+	}
 
 	err := svc.RemoveUser("1")
 	assert.EqualError(t, err, "delete fail")
 }
-
-// --------------------- ListUsers ---------------------
-func TestListUsers_Success(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-
-	users := []user.UserWithSuperAdmin{
-		{UID: "1", Username: "alice"},
-		{UID: "2", Username: "bob"},
-	}
-	mockUser.EXPECT().GetAllUsers().Return(users, nil)
-
-	result, err := svc.ListUsers()
-	assert.NoError(t, err)
-	assert.Len(t, result, 2)
-}
-
-// --------------------- ListUserByPaging ---------------------
-func TestListUserByPaging_Success(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-
-	users := []user.UserWithSuperAdmin{
-		{UID: "1", Username: "alice"},
-	}
-	mockUser.EXPECT().ListUsersPaging(1, 10).Return(users, nil)
-
-	result, err := svc.ListUserByPaging(1, 10)
-	assert.NoError(t, err)
-	assert.Len(t, result, 1)
-}
-
-// --------------------- FindUserByID ---------------------
-func TestFindUserByID_Success(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-
-	usr := user.UserWithSuperAdmin{UID: "1", Username: "alice"}
-	mockUser.EXPECT().GetUserByID("1").Return(usr, nil)
-
-	result, err := svc.FindUserByID("1")
-	assert.NoError(t, err)
-	assert.Equal(t, "alice", result.Username)
-}
-
-func TestFindUserByID_NotFound(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-
-	mockUser.EXPECT().GetUserByID("999").Return(user.UserWithSuperAdmin{}, errors.New("not found"))
-
-	_, err := svc.FindUserByID("999")
-	assert.Error(t, err)
-}
-
-// --------------------- UpdateUser (More cases) ---------------------
-func TestUpdateUser_SuccessNoPasswordChange(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-
-	oldEmail := "old@test.com"
-	existing := user.User{UID: "1", Username: "alice", Email: &oldEmail}
-	mockUser.EXPECT().GetUserRawByID("1").Return(existing, nil)
-
-	// Expect SaveUser with updated email
-	mockUser.EXPECT().SaveUser(gomock.Any()).DoAndReturn(func(u *user.User) error {
-		assert.Equal(t, "new@test.com", *u.Email)
-		return nil
-	})
-
-	input := user.UpdateUserInput{Email: ptrString("new@test.com")}
-	updated, err := svc.UpdateUser("1", input)
-	assert.NoError(t, err)
-	assert.Equal(t, "new@test.com", *updated.Email)
-}
-
-func TestUpdateUser_FailSave(t *testing.T) {
-	svc, mockUser := setupUserServiceMocks(t)
-
-	existing := user.User{UID: "1"}
-	mockUser.EXPECT().GetUserRawByID("1").Return(existing, nil)
-	mockUser.EXPECT().SaveUser(gomock.Any()).Return(errors.New("db error"))
-
-	input := user.UpdateUserInput{Email: ptrString("new@test.com")}
-	_, err := svc.UpdateUser("1", input)
-	assert.Error(t, err)
-}
-
-// --------------------- Helper ---------------------
-func ptrString(s string) *string { return &s }

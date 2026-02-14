@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/linskybing/platform-go/internal/config"
-	"github.com/linskybing/platform-go/internal/domain/configfile"
 	"github.com/linskybing/platform-go/internal/domain/project"
 	"github.com/linskybing/platform-go/internal/domain/resource"
 	"github.com/linskybing/platform-go/pkg/k8s"
@@ -16,19 +15,19 @@ import (
 
 // --- Helpers for Deployment ---
 
-func (s *ConfigFileService) prepareNamespaceAndProject(ctx context.Context, cf *configfile.ConfigFile, claims *types.Claims) (string, project.Project, error) {
+func (s *ConfigFileService) prepareNamespaceAndProject(ctx context.Context, projectID string, claims *types.Claims) (string, project.Project, error) {
 	safeUsername := k8s.ToSafeK8sName(claims.Username)
-	targetNs := k8s.FormatNamespaceName(cf.ProjectID, safeUsername)
+	targetNs := k8s.FormatNamespaceName(projectID, safeUsername)
 
 	if err := k8s.EnsureNamespaceExists(targetNs); err != nil {
 		return "", project.Project{}, fmt.Errorf("failed to ensure namespace %s: %w", targetNs, err)
 	}
 
-	p, err := s.Repos.Project.GetProjectByID(cf.ProjectID)
+	p, err := s.Repos.Project.GetProjectByID(ctx, projectID)
 	if err != nil {
 		return "", project.Project{}, err
 	}
-	return targetNs, p, nil
+	return targetNs, *p, nil
 }
 
 func (s *ConfigFileService) bindProjectAndUserVolumes(ctx context.Context, targetNs string, project project.Project, claims *types.Claims, resources []resource.Resource) (string, string, error) {
@@ -138,7 +137,7 @@ func (s *ConfigFileService) determineReadOnlyEnforcement(claims *types.Claims, p
 	if claims.IsAdmin {
 		return false, nil
 	}
-	ug, err := s.Repos.UserGroup.GetUserGroup(claims.UserID, project.GID)
+	ug, err := s.Repos.UserGroup.GetUserGroup(context.Background(), claims.UserID, project.GID)
 	if err != nil {
 		// If user is not in group, default to safe (Enforce RO) or error?
 		// Assuming error means access denied usually, but let's be strict.
@@ -148,13 +147,13 @@ func (s *ConfigFileService) determineReadOnlyEnforcement(claims *types.Claims, p
 	return ug.Role != "manager" && ug.Role != "admin", nil
 }
 
-func (s *ConfigFileService) buildTemplateValues(cf *configfile.ConfigFile, namespace, userPvc, groupPvc string, claims *types.Claims) map[string]string {
+func (s *ConfigFileService) buildTemplateValues(projectID, namespace, userPvc, groupPvc string, claims *types.Claims) map[string]string {
 	return map[string]string{
 		"username":         k8s.ToSafeK8sName(claims.Username),
 		"originalUsername": claims.Username,
 		"safeUsername":     k8s.ToSafeK8sName(claims.Username),
 		"namespace":        namespace,
-		"projectId":        cf.ProjectID,
+		"projectId":        projectID,
 		"userVolume":       userPvc,
 		"groupVolume":      groupPvc,
 	}

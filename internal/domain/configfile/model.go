@@ -3,24 +3,26 @@ package configfile
 import (
 	"time"
 
-	"github.com/linskybing/platform-go/internal/domain/project"
-	nanoid "github.com/matoous/go-nanoid/v2"
-	"gorm.io/gorm"
+	"gorm.io/datatypes"
 )
 
-type ConfigFile struct {
-	CFID      string           `gorm:"primaryKey;column:cf_id;size:21"`
-	Filename  string           `gorm:"size:200;not null"`
-	Content   string           `gorm:"size:10000"`
-	ProjectID string           `gorm:"not null;size:21;index;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
-	CreatedAt time.Time        `gorm:"column:create_at"`
-	UpdatedAt time.Time        `gorm:"column:update_at;autoUpdateTime"`
-	Project   *project.Project `json:"-" gorm:"foreignKey:ProjectID;references:PID"`
+// ConfigBlob stores deduplicated configuration content.
+type ConfigBlob struct {
+	Hash      string         `gorm:"primaryKey;size:64"`
+	Content   datatypes.JSON `gorm:"type:jsonb;not null"`
+	CreatedAt time.Time      `gorm:"autoCreateTime"`
 }
 
-func (cf *ConfigFile) BeforeCreate(tx *gorm.DB) (err error) {
-	if cf.CFID == "" {
-		cf.CFID, err = nanoid.New()
-	}
-	return
+func (ConfigBlob) TableName() string { return "config_blobs" }
+
+// ConfigCommit records the version history of configurations.
+type ConfigCommit struct {
+	ID        string    `gorm:"primaryKey;type:varchar(21)"`
+	ProjectID string    `gorm:"type:varchar(21);not null;index"`
+	BlobHash  string    `gorm:"size:64;not null"`
+	Message   string    `gorm:"not null"`
+	AuthorID  string    `gorm:"type:varchar(21);not null"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
+
+func (ConfigCommit) TableName() string { return "config_commits" }

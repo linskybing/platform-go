@@ -70,7 +70,7 @@ func NewWithCache(repos *repository.Repos, cacheSvc *cache.Service) *Services {
 		Cluster:    clusterService,
 		GPUUsage:   gpuUsageService,
 		Group:      group.NewGroupServiceWithCache(repos, cacheSvc),
-		Project:    project.NewProjectServiceWithCache(repos, cacheSvc),
+		Project:    project.NewProjectService(repos, cacheSvc),
 		Resource:   NewResourceService(repos),
 		UserGroup:  group.NewUserGroupService(repos),
 		User:       user.NewUserServiceWithCache(repos, cacheSvc),

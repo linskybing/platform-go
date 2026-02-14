@@ -1,6 +1,6 @@
 package configfile
 
-func injectJobLabels(obj map[string]interface{}, jobID, configFileID string) {
+func injectJobLabels(obj map[string]interface{}, jobID, commitID string) {
 	if obj == nil || jobID == "" {
 		return
 	}
@@ -15,8 +15,8 @@ func injectJobLabels(obj map[string]interface{}, jobID, configFileID string) {
 			metadata["labels"] = labels
 		}
 		labels["platform.job-id"] = jobID
-		if configFileID != "" {
-			labels["platform.configfile-id"] = configFileID
+		if commitID != "" {
+			labels["platform.configcommit-id"] = commitID
 		}
 	}
 

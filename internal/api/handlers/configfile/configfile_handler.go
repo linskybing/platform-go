@@ -1,6 +1,8 @@
 package configfile
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -16,62 +18,72 @@ type ConfigFileHandler struct {
 	svc *application.ConfigFileService
 }
 
+type ConfigCommitResponse struct {
+	Commit  configfile.ConfigCommit `json:"commit"`
+	Content string                  `json:"content"`
+}
+
 func NewConfigFileHandler(svc *application.ConfigFileService) *ConfigFileHandler {
 	return &ConfigFileHandler{svc: svc}
 }
 
 // ListConfigFiles godoc
-// @Summary List all config files
+// @Summary List all config commits
 // @Tags config_files
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {array} models.ConfigFile
+// @Success 200 {array} models.ConfigCommit
 // @Failure 500 {object} response.ErrorResponse
 // @Router /config-files [get]
 func (h *ConfigFileHandler) ListConfigFilesHandler(c *gin.Context) {
-	configFiles, err := h.svc.ListConfigFiles()
+	commits, err := h.svc.ListConfigFiles()
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	response.Success(c, configFiles, "Config files retrieved successfully")
+	response.Success(c, commits, "Config commits retrieved successfully")
 }
 
 // GetConfigFile godoc
-// @Summary Get a config file by ID
+// @Summary Get a config commit by ID
 // @Tags config_files
 // @Security BearerAuth
 // @Produce json
-// @Param id path int true "Config File ID"
-// @Success 200 {object} models.ConfigFile
+// @Param id path int true "Config Commit ID"
+// @Success 200 {object} ConfigCommitResponse
 // @Failure 400 {object} response.ErrorResponse "Invalid ID"
 // @Failure 404 {object} response.ErrorResponse "Not Found"
 // @Router /config-files/{id} [get]
 func (h *ConfigFileHandler) GetConfigFileHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid config file ID")
+		response.Error(c, http.StatusBadRequest, "invalid config commit ID")
 		return
 	}
 
-	configFile, err := h.svc.GetConfigFile(id)
+	commit, err := h.svc.GetConfigFile(id)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, "config file not found")
+		response.Error(c, http.StatusNotFound, "config commit not found")
 		return
 	}
-	response.Success(c, configFile, "Config file retrieved successfully")
+	resp, err := h.buildCommitResponse(commit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.Success(c, resp, "Config commit retrieved successfully")
 }
 
 // CreateConfigFile godoc
-// @Summary Create a new config file
+// @Summary Create a new config commit
 // @Tags config_files
 // @Security BearerAuth
 // @Accept multipart/form-data
 // @Produce json
-// @Param filename formData string true "Filename"
 // @Param raw_yaml formData string true "Raw YAML content"
 // @Param project_id formData int true "Project ID"
-// @Success 201 {object} models.ConfigFile
+// @Param message formData string false "Commit message"
+// @Success 201 {object} ConfigCommitResponse
 // @Failure 400 {object} response.ErrorResponse "Bad request"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /config-files [post]
@@ -82,31 +94,36 @@ func (h *ConfigFileHandler) CreateConfigFileHandler(c *gin.Context) {
 		return
 	}
 
-	if input.Filename == "" || input.RawYaml == "" || input.ProjectID == "" {
-		response.Error(c, http.StatusBadRequest, "filename, raw_yaml, and project_id are required")
+	if input.RawYaml == "" || input.ProjectID == "" {
+		response.Error(c, http.StatusBadRequest, "raw_yaml and project_id are required")
 		return
 	}
 
 	claims, _ := c.MustGet("claims").(*types.Claims)
-	configFile, err := h.svc.CreateConfigFile(c.Request.Context(), input, claims)
+	commit, err := h.svc.CreateConfigFile(c.Request.Context(), input, claims)
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	resp, err := h.buildCommitResponse(commit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
 
-	c.JSON(http.StatusCreated, configFile)
+	c.JSON(http.StatusCreated, resp)
 }
 
 // UpdateConfigFile godoc
-// @Summary Update a config file by ID
+// @Summary Update config by creating a new commit
 // @Tags config_files
 // @Security BearerAuth
 // @Accept multipart/form-data
 // @Produce json
-// @Param id path int true "Config File ID"
-// @Param filename formData string false "Filename"
+// @Param id path int true "Config Commit ID"
 // @Param raw_yaml formData string false "Raw YAML content"
-// @Success 200 {object} models.ConfigFile
+// @Param message formData string false "Commit message"
+// @Success 200 {object} ConfigCommitResponse
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 404 {object} response.ErrorResponse "Not Found"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
@@ -114,7 +131,7 @@ func (h *ConfigFileHandler) CreateConfigFileHandler(c *gin.Context) {
 func (h *ConfigFileHandler) UpdateConfigFileHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid config file ID")
+		response.Error(c, http.StatusBadRequest, "invalid config commit ID")
 		return
 	}
 
@@ -125,24 +142,29 @@ func (h *ConfigFileHandler) UpdateConfigFileHandler(c *gin.Context) {
 	}
 
 	claims, _ := c.MustGet("claims").(*types.Claims)
-	updatedConfigFile, err := h.svc.UpdateConfigFile(c.Request.Context(), id, input, claims)
+	updatedCommit, err := h.svc.UpdateConfigFile(c.Request.Context(), id, input, claims)
 	if err != nil {
 		if err == application.ErrConfigFileNotFound {
-			response.Error(c, http.StatusNotFound, "config file not found")
+			response.Error(c, http.StatusNotFound, "config commit not found")
 		} else {
 			response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return
 	}
 
-	response.Success(c, updatedConfigFile, "Config file updated successfully")
+	resp, err := h.buildCommitResponse(updatedCommit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.Success(c, resp, "Config commit updated successfully")
 }
 
 // DeleteConfigFile godoc
-// @Summary Delete a config file
+// @Summary Delete a config commit
 // @Tags config_files
 // @Security BearerAuth
-// @Param id path int true "ConfigFile ID"
+// @Param id path int true "Config Commit ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 404 {object} response.ErrorResponse
@@ -151,7 +173,7 @@ func (h *ConfigFileHandler) UpdateConfigFileHandler(c *gin.Context) {
 func (h *ConfigFileHandler) DeleteConfigFileHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid config file ID")
+		response.Error(c, http.StatusBadRequest, "invalid config commit ID")
 		return
 	}
 
@@ -159,7 +181,7 @@ func (h *ConfigFileHandler) DeleteConfigFileHandler(c *gin.Context) {
 	err = h.svc.DeleteConfigFile(c.Request.Context(), id, claims)
 	if err != nil {
 		if err == application.ErrConfigFileNotFound {
-			response.Error(c, http.StatusNotFound, "config file not found")
+			response.Error(c, http.StatusNotFound, "config commit not found")
 		} else {
 			response.Error(c, http.StatusInternalServerError, err.Error())
 		}
@@ -170,29 +192,32 @@ func (h *ConfigFileHandler) DeleteConfigFileHandler(c *gin.Context) {
 }
 
 // ListConfigFilesByProjectID godoc
-// @Summary List config files by project ID
+// @Summary List config commits by project ID
 // @Tags config_files
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Project ID"
-// @Success 200 {array} models.ConfigFile
+// @Success 200 {array} models.ConfigCommit
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /projects/{id}/config-files [get]
 func (h *ConfigFileHandler) ListConfigFilesByProjectIDHandler(c *gin.Context) {
-	id, err := utils.ParseIDParam(c, "id")
+	projectID, err := utils.ParseIDParam(c, "id")
+	if err != nil {
+		projectID, err = utils.ParseIDParam(c, "project_id")
+	}
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "invalid project_id")
 		return
 	}
 
-	configFiles, err := h.svc.ListConfigFilesByProjectID(id)
+	commits, err := h.svc.ListConfigFilesByProjectID(projectID)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	response.Success(c, configFiles, "Config files retrieved successfully")
+	response.Success(c, commits, "Config commits retrieved successfully")
 }
 
 // CreateInstanceHandler godoc
@@ -209,7 +234,7 @@ func (h *ConfigFileHandler) ListConfigFilesByProjectIDHandler(c *gin.Context) {
 func (h *ConfigFileHandler) CreateInstanceHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid config id")
+		response.Error(c, http.StatusBadRequest, "invalid config commit id")
 		return
 	}
 	claims, _ := c.MustGet("claims").(*types.Claims)
@@ -234,7 +259,7 @@ func (h *ConfigFileHandler) CreateInstanceHandler(c *gin.Context) {
 func (h *ConfigFileHandler) DestructInstanceHandler(c *gin.Context) {
 	id, err := utils.ParseIDParam(c, "id")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "invalid config id")
+		response.Error(c, http.StatusBadRequest, "invalid config commit id")
 		return
 	}
 	claims, _ := c.MustGet("claims").(*types.Claims)
@@ -244,4 +269,16 @@ func (h *ConfigFileHandler) DestructInstanceHandler(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *ConfigFileHandler) buildCommitResponse(commit *configfile.ConfigCommit) (ConfigCommitResponse, error) {
+	blob, err := h.svc.Repos.ConfigFile.GetBlob(context.Background(), commit.BlobHash)
+	if err != nil {
+		return ConfigCommitResponse{}, err
+	}
+	var content string
+	if err := json.Unmarshal(blob.Content, &content); err != nil {
+		content = string(blob.Content)
+	}
+	return ConfigCommitResponse{Commit: *commit, Content: content}, nil
 }

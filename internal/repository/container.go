@@ -1,13 +1,14 @@
 package repository
 
-import "gorm.io/gorm"
+import (
+	"github.com/linskybing/platform-go/internal/domain/storage"
+	"gorm.io/gorm"
+)
 
 type Repos struct {
 	ConfigFile        ConfigFileRepo
 	Group             GroupRepo
 	Project           ProjectRepo
-	Resource          ResourceRepo
-	UserGroup         UserGroupRepo
 	User              UserRepo
 	Audit             AuditRepo
 	Form              FormRepo
@@ -15,9 +16,10 @@ type Repos struct {
 	StoragePermission StoragePermissionRepo
 	Job               JobRepo
 	GPUUsage          GPUUsageRepo
-	Storage           *DBStorageRepo
-
-	db *gorm.DB
+	Storage           storage.StorageRepo
+	UserGroup         UserGroupRepo
+	Resource          ResourceRepo
+	db                *gorm.DB
 }
 
 func NewRepositories(db *gorm.DB) *Repos {
@@ -25,8 +27,6 @@ func NewRepositories(db *gorm.DB) *Repos {
 		ConfigFile:        NewConfigFileRepo(db),
 		Group:             NewGroupRepo(db),
 		Project:           NewProjectRepo(db),
-		Resource:          NewResourceRepo(db),
-		UserGroup:         NewUserGroupRepo(db),
 		User:              NewUserRepo(db),
 		Audit:             NewAuditRepo(db),
 		Form:              NewFormRepo(db),
@@ -35,28 +35,23 @@ func NewRepositories(db *gorm.DB) *Repos {
 		Storage:           NewStorageRepo(db),
 		Job:               NewJobRepo(db),
 		GPUUsage:          NewGPUUsageRepo(db),
+		UserGroup:         NewUserGroupRepo(db),
+		Resource:          NewResourceRepo(db),
 		db:                db,
 	}
 }
 
-func (r *Repos) Begin() *gorm.DB {
-	return r.db.Begin()
-}
+func (r *Repos) Begin() *gorm.DB { return r.db.Begin() }
 
 func (r *Repos) WithTx(tx *gorm.DB) *Repos {
 	txRepos := NewRepositories(tx)
-	txRepos.db = tx
 	return txRepos
 }
 
-// DB returns the underlying GORM database handle.
-func (r *Repos) DB() *gorm.DB {
-	return r.db
-}
+func (r *Repos) DB() *gorm.DB { return r.db }
 
 func (r *Repos) ExecTx(fn func(*Repos) error) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		txRepos := r.WithTx(tx)
-		return fn(txRepos)
+		return fn(r.WithTx(tx))
 	})
 }
